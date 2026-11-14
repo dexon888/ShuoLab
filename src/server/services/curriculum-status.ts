@@ -8,6 +8,7 @@ import {
   VOCAB_NEW_ENTRIES_BY_BAND,
   VOCAB_TOTAL_ENTRIES,
   cumulativeVocabEntries,
+  getEdition,
   isHskBand,
   type HskBand,
   type ItemType,
@@ -18,7 +19,7 @@ import { curriculumEditions, curriculumItems, sourceManifests } from "../db/sche
  * Reports what has actually been imported for the active edition.
  *
  * Vocabulary is `verified` only when every band holds exactly the published
- * number of entries. Other dimensions have no verified totals yet, so imported
+ * number of entries and a verified source manifest exists. Other dimensions have no verified totals yet, so imported
  * rows are reported as `imported` (unverified) and never as verified coverage.
  */
 export async function getCurriculumStatus(d1: D1Database): Promise<CurriculumStatusResponse> {
@@ -65,6 +66,8 @@ export async function getCurriculumStatus(d1: D1Database): Promise<CurriculumSta
       commitSha: m.commitSha,
       sha256: m.sha256,
       rightsNote: m.rightsNote,
+      fieldMappingVersion: m.fieldMappingVersion,
+      verificationStatus: m.verificationStatus === "verified" ? ("verified" as const) : ("unverified" as const),
       recordCount: m.recordCount,
       importedAt: m.importedAt,
     }));
@@ -77,7 +80,11 @@ export async function getCurriculumStatus(d1: D1Database): Promise<CurriculumSta
     expectedCumulative: cumulativeVocabEntries(band),
   }));
 
-  const vocabVerified = vocabByBand.every((b) => b.importedNew === b.expectedNew);
+  // Counts alone are not enough: the rows must also come from a validated
+  // import, which is the only thing that writes a verified vocabulary manifest.
+  const vocabVerified =
+    vocabByBand.every((b) => b.importedNew === b.expectedNew) &&
+    manifests.some((m) => m.datasetKind === "vocab" && m.verificationStatus === "verified");
 
   const dimensions = ITEM_TYPES.map((itemType) => {
     const importedCount = typeCounts.get(itemType) ?? 0;
@@ -93,7 +100,12 @@ export async function getCurriculumStatus(d1: D1Database): Promise<CurriculumSta
 
   return {
     activeEdition: edition
-      ? { id: edition.id, publisher: edition.publisher, editionDate: edition.editionDate }
+      ? {
+          id: edition.id,
+          publisher: edition.publisher,
+          editionDate: edition.editionDate,
+          synthetic: getEdition(edition.id)?.synthetic ?? false,
+        }
       : null,
     dimensions,
     vocabByBand,

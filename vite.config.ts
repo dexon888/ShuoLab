@@ -17,7 +17,10 @@ export default defineConfig({
     react(),
     tailwindcss(),
     // Runs src/server in workerd with local D1 during `vite dev` / `vite preview`.
-    cloudflare(),
+    // SHUOLAB_STATE_DIR points it at a separate local database (used by the e2e tests).
+    cloudflare(
+      process.env.SHUOLAB_STATE_DIR ? { persistState: { path: process.env.SHUOLAB_STATE_DIR } } : {},
+    ),
     VitePWA({
       registerType: "autoUpdate",
       // Registered from src/client/main.tsx so no inline script is needed (CSP).

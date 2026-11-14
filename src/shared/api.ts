@@ -79,7 +79,8 @@ export type MeResponse = z.infer<typeof meResponseSchema>;
  * `missing`  — no rows imported for this dimension.
  * `imported` — rows exist but do not (yet) pass the edition's integrity checks,
  *              or come from an unverified secondary transcription.
- * `verified` — rows match the published totals for the edition.
+ * `verified` — rows match the published totals for the edition and came from
+ *              a validated import with a recorded source manifest.
  */
 export const dimensionStatusSchema = z.enum(["missing", "imported", "verified"]);
 export type DimensionStatus = z.infer<typeof dimensionStatusSchema>;
@@ -90,6 +91,8 @@ export const curriculumStatusResponseSchema = z.object({
       id: z.string(),
       publisher: z.string(),
       editionDate: z.string(),
+      /** True for generated placeholder data, which must never be shown as HSK content. */
+      synthetic: z.boolean(),
     })
     .nullable(),
   dimensions: z.array(
@@ -116,6 +119,8 @@ export const curriculumStatusResponseSchema = z.object({
       commitSha: z.string().nullable(),
       sha256: z.string(),
       rightsNote: z.string(),
+      fieldMappingVersion: z.string(),
+      verificationStatus: z.enum(["verified", "unverified"]),
       recordCount: z.number().int().nonnegative(),
       importedAt: z.string(),
     }),

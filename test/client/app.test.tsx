@@ -24,7 +24,7 @@ const me: MeResponse = {
 
 function curriculumStatus(importedBand1 = 0): CurriculumStatusResponse {
   return {
-    activeEdition: importedBand1 > 0 ? { id: "test-edition", publisher: "Synthetic", editionDate: "2025-11-01" } : null,
+    activeEdition: importedBand1 > 0 ? { id: "test-edition", publisher: "Synthetic", editionDate: "2025-11-01", synthetic: false } : null,
     dimensions: ITEM_TYPES.map((itemType) => ({
       itemType,
       status: itemType === "vocab" && importedBand1 > 0 ? "imported" : "missing",
@@ -181,6 +181,63 @@ describe("curriculum page", () => {
     expect(screen.getByText(/3 of 11,000 numbered entries/)).toBeInTheDocument();
     expect(screen.getByText("Vocabulary").closest("li")).toHaveTextContent("Imported, not verified, 3 rows");
     expect(screen.queryByText(/Vocabulary verified/)).not.toBeInTheDocument();
+  });
+
+  function fullImport(synthetic: boolean): CurriculumStatusResponse {
+    const base = curriculumStatus();
+    return {
+      ...base,
+      activeEdition: {
+        id: synthetic ? "synthetic-fixture" : "hsk3-2025-11",
+        publisher: "Test publisher",
+        editionDate: "2025-11",
+        synthetic,
+      },
+      dimensions: base.dimensions.map((d) =>
+        d.itemType === "vocab" ? { ...d, status: "verified" as const, importedCount: 11000 } : d,
+      ),
+      vocabByBand: base.vocabByBand.map((b) => ({ ...b, importedNew: b.expectedNew })),
+      manifests: [
+        {
+          datasetKind: "vocab",
+          sourceUrl: "https://example.test/dataset#all.csv",
+          commitSha: "0123456789abcdef0123456789abcdef01234567",
+          sha256: "a".repeat(64),
+          rightsNote: "Imported locally for personal use.",
+          fieldMappingVersion: "vocab-v1",
+          verificationStatus: "verified",
+          recordCount: 11000,
+          importedAt: "2026-01-02T03:04:05.000Z",
+        },
+      ],
+    };
+  }
+
+  it("shows a verified import with its source, pinned commit and rights note", async () => {
+    renderApp("/curriculum", {
+      ...okRoutes,
+      "/api/v1/curriculum/status": () => json(fullImport(false)),
+    });
+    expect(await screen.findByText("Vocabulary verified.")).toBeInTheDocument();
+    expect(screen.getByText(/11,000 numbered entries imported from edition hsk3-2025-11/)).toBeInTheDocument();
+    expect(screen.getByText("Vocabulary").closest("li")).toHaveTextContent("Verified, 11,000 rows");
+    expect(screen.getByText("Grammar").closest("li")).toHaveTextContent("Not imported");
+    const sources = screen.getByRole("region", { name: "Sources" });
+    expect(sources).toHaveTextContent("0123456789ab");
+    expect(sources).toHaveTextContent("imported 2026-01-02");
+    expect(sources).toHaveTextContent("Imported locally for personal use.");
+  });
+
+  it("never presents synthetic test data as HSK content, even when it verifies", async () => {
+    renderApp("/curriculum", {
+      ...okRoutes,
+      "/api/v1/curriculum/status": () => json(fullImport(true)),
+    });
+    expect(await screen.findByText("Test data loaded, not HSK content")).toBeInTheDocument();
+    expect(screen.getByText(/not words from the HSK syllabus/)).toBeInTheDocument();
+    expect(screen.queryByText("Vocabulary verified.")).not.toBeInTheDocument();
+    expect(screen.getByText("Vocabulary").closest("li")).toHaveTextContent("Test data, 11,000 rows");
+    expect(screen.queryByText(/^Verified/)).not.toBeInTheDocument();
   });
 });
 

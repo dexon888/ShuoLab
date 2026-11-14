@@ -9,16 +9,18 @@ of truth for what it must do; `docs/PLAN.md` lists the build phases and
 
 ## Status
 
-Phase 0 (scaffolding) is in place. The app shell, owner authentication, and
-the curriculum-status API work locally with no accounts or secrets. Guided
-sessions, HSK import, the tutor, speech and review are **not built yet**.
+Phase 0 (scaffolding) and the first part of Phase 1 (the vocabulary importer)
+are in place. The app shell, owner authentication, the curriculum-status API
+and the import tool work locally with no accounts or secrets. Browsing
+entries, guided sessions, the tutor, speech and review are **not built yet**.
 
 | Area | State |
 |---|---|
 | App shell, navigation, PWA manifest and service worker | Working, tested locally |
 | Owner authentication (Cloudflare Access JWT) | Working against locally signed test tokens; not yet verified on a deployment |
-| Curriculum status | Working on local D1; reports "not imported" |
-| HSK vocabulary import | Phase 1 |
+| Curriculum status | Working on local D1 |
+| HSK vocabulary import | Working and tested with generated placeholder data; not yet run on the real dataset |
+| Browsing entries, colloquial track | Phase 1, next |
 | Sessions and tutor | Phase 2 — only a local fake tutor exists |
 | Speech | Phase 3 — only a local fake token issuer exists |
 | Review, progress, export | Phase 4 |
@@ -58,6 +60,9 @@ no secrets and costs nothing.
 | `pnpm db:generate` | Generate a SQL migration after editing `src/server/db/schema.ts` |
 | `pnpm db:migrate:local` | Apply migrations to the local database |
 | `pnpm db:migrate:remote` | Apply migrations to the deployed database |
+| `pnpm curriculum:import` | Validate and import your HSK vocabulary files (see below) |
+| `pnpm curriculum:verify` | Check the stored curriculum against the edition's published totals |
+| `pnpm seed:dev` | Load generated placeholder vocabulary into the local database |
 | `pnpm deploy` | Safety checks, build, then `wrangler deploy` |
 | `pnpm icons` | Regenerate the app icons |
 
@@ -67,8 +72,8 @@ Before the first `pnpm test:e2e`, install the test browser once:
 pnpm exec playwright install chromium
 ```
 
-Not available yet: `pnpm curriculum:import` and `pnpm curriculum:verify`
-(Phase 1).
+The browser tests use their own empty database (`.wrangler/e2e-state`), so
+they are unaffected by anything imported into the development database.
 
 ## Layout
 
@@ -207,13 +212,101 @@ After deployment and sign-in:
 
 Installation has not been tested on a real device yet.
 
-## HSK data
+## Importing the HSK vocabulary
 
 ShuoLab never invents HSK words or levels. You import the November 2025 HSK
-3.0 vocabulary (11,000 numbered entries) from your own copy into
-`private-data/`, which is git-ignored. The import tool and exact file format
-arrive in Phase 1; see `docs/DATA_SOURCES.md`. Until then the app says
-"Curriculum not imported".
+3.0 vocabulary (11,000 numbered entries) from your own copy. The files stay in
+`private-data/`, which is git-ignored, and are never committed or bundled into
+the app. Until the import passes, the app says "Curriculum not imported".
+
+The importer has been tested with generated placeholder data only. **It has
+not yet been run on the real dataset**; the first real run is the check that
+the field mapping below matches every row.
+
+### 1. Get the files
+
+The source is an independent transcription of the syllabus:
+<https://github.com/uranbekanarbaev/hsk-3.0-vocabulary-dataset>. Read its
+`LICENSE.md` and `SOURCES.md` first: it states no licence for the vocabulary
+data itself, so this is a local, personal import, not something to republish.
+
+Clone it somewhere outside this repository and note the commit:
+
+```bash
+git clone https://github.com/uranbekanarbaev/hsk-3.0-vocabulary-dataset.git
+```
+
+```bash
+git -C hsk-3.0-vocabulary-dataset rev-parse HEAD
+```
+
+### 2. Copy one set of files
+
+Copy the seven per-level CSV files from the dataset's `data/by-level/` folder
+(`hsk-1.csv` … `hsk-6.csv`, `hsk-7-9.csv`) into `private-data/hsk-vocab/`.
+
+Use one set only. The single complete file (`data/hsk-3.0-all.csv`) also
+works on its own, as do the JSON versions. Do not mix sets or formats, and do
+not use `data/cumulative/`: every numbered entry must appear exactly once, and
+the import is rejected otherwise.
+
+### 3. Check, then import
+
+Validate without writing anything:
+
+```bash
+pnpm curriculum:import --source ./private-data/hsk-vocab --edition hsk3-2025-11 --commit <the 40-character commit from step 1> --dry-run
+```
+
+Import into the local database (stop `pnpm dev` first):
+
+```bash
+pnpm curriculum:import --source ./private-data/hsk-vocab --edition hsk3-2025-11 --commit <the 40-character commit from step 1>
+```
+
+Check what is stored at any time:
+
+```bash
+pnpm curriculum:verify
+```
+
+Add `--remote` to either command to target the deployed database. The remote
+path has not been exercised yet.
+
+### What the import checks
+
+Everything is validated before anything is written, and the write is a single
+transaction, so a rejected or failed import leaves the database untouched.
+
+- Files are valid UTF-8 (a BOM is fine) and well-formed CSV or JSON.
+- Columns: `id`, `level`, `hanzi`, `pinyin`, `part_of_speech`, `entry`,
+  `homograph`, `level_label`, `source_pdf_page`. Only `part_of_speech` and
+  `homograph` may be empty.
+- `id` is a whole number, unique, and covers 1–11,000 with no gaps.
+- `level` is `1`–`6` or `7-9`. Separate 7, 8 or 9 levels are rejected.
+- Each band holds exactly the published number of new entries
+  (300, 200, 500, 1,000, 1,600, 1,800, 5,600).
+- Entries that share a written form stay separate items, told apart by
+  `entry` and `homograph`.
+
+Each file's SHA-256, the source URL, the pinned commit, a rights note and the
+field-mapping version (`vocab-v1`) are stored and shown on the Curriculum page.
+Re-running the same import changes nothing. English definitions are not
+imported; the syllabus has none.
+
+Grammar, characters, topics and tasks have no importer yet and show as
+"Not imported".
+
+### Placeholder data for development
+
+```bash
+pnpm seed:dev
+```
+
+loads 11,000 generated placeholder entries (`样例词1` …) into the local
+database under a separate `synthetic-fixture` edition. The app labels them
+"Test data loaded, not HSK content". This command never touches the deployed
+database, and it refuses to replace a real edition unless you pass `--force`.
 
 ## Budget limits, backup and export
 

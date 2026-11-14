@@ -67,13 +67,19 @@ function BandTable({ status }: { status: CurriculumStatusResponse }) {
 }
 
 function DimensionList({ status }: { status: CurriculumStatusResponse }) {
+  const synthetic = status.activeEdition?.synthetic ?? false;
   return (
     <ul className="divide-y divide-line">
       {status.dimensions.map((dimension) => (
         <li key={dimension.itemType} className="flex flex-wrap justify-between gap-x-4 py-2">
           <span className="font-medium">{DIMENSION_NAMES[dimension.itemType]}</span>
-          <span className={dimension.status === "verified" ? "text-jade" : "text-mist"}>
-            {DIMENSION_STATUS_LABELS[dimension.status]}
+          <span
+            className={dimension.status === "verified" && !synthetic ? "text-jade" : "text-mist"}
+          >
+            {/* Placeholder data can be complete, but it is never "verified" HSK content. */}
+            {synthetic && dimension.status !== "missing"
+              ? "Test data"
+              : DIMENSION_STATUS_LABELS[dimension.status]}
             {dimension.importedCount > 0 ? `, ${numberFormat.format(dimension.importedCount)} rows` : ""}
           </span>
         </li>
