@@ -4,6 +4,7 @@
  */
 import { z } from "zod";
 import { HSK_BANDS, ITEM_TYPES } from "./curriculum";
+import { ownerSettingsSchema } from "./settings";
 import { COLLOQUIAL_CHANNELS, COLLOQUIAL_REGISTERS, CURRENCY_STATUSES } from "./colloquial";
 
 export const API_PREFIX = "/api/v1";
@@ -68,6 +69,8 @@ export const meResponseSchema = z.object({
     email: z.string().nullable(),
     authMode: z.enum(["access", "dev-bypass"]),
   }),
+  /** Saved preferences, or the defaults when nothing has been saved. */
+  settings: ownerSettingsSchema,
   providers: z.array(providerStatusSchema),
   curriculumImported: z.boolean(),
   version: z.string(),

@@ -158,3 +158,34 @@ never copied.
 Register, channel and currency come from the source; the warning sentences
 are authored here from those tags. A status the source has not dated is
 stored as unknown rather than repeated as a claim.
+
+## 25. One settings row, enforced by the database
+
+`owner_settings` has a CHECK that allows only the id `owner`, so a second
+row cannot exist. The API reads and upserts that row; before the first save it
+returns defaults without writing anything.
+
+## 26. The settings schema is the whitelist
+
+`PUT /settings` accepts any subset of the editable fields through a strict
+Zod schema. An unknown field is an error, not something to ignore, so nothing
+can be written that the schema does not name. `locale`, `updatedAt` and
+`onboardedAt` are not writable; onboarding is marked with `onboarded: true`
+and keeps its first timestamp.
+
+## 27. A chosen band and a self-rating are never a measured level
+
+Onboarding stores the owner's own estimate and an optional study band. The UI
+says both are choices. With no band chosen the planner will suggest HSK 1. The
+placement sample is P1 and is shown as not built.
+
+## 28. Spending limits are stored before they are enforced
+
+The amounts are editable now so the tutor PR only has to read them. The UI
+says they are not yet enforced and are not a provider-side cap.
+
+## 29. Cross-site writes are refused by Origin
+
+Access cookies are sent by the browser automatically, so a state-changing
+request whose `Origin` is another host gets 403. JSON-only bodies also force
+a preflight that the API never approves.

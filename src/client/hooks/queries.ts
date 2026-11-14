@@ -1,4 +1,4 @@
-import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   colloquialResponseSchema,
   curriculumFacetsResponseSchema,
@@ -7,8 +7,10 @@ import {
   curriculumStatusResponseSchema,
   meResponseSchema,
 } from "../../shared/api";
+import type { MeResponse } from "../../shared/api";
 import type { HskBand } from "../../shared/curriculum";
-import { apiGet } from "../lib/api";
+import { settingsResponseSchema, type SettingsUpdate } from "../../shared/settings";
+import { apiGet, apiPut } from "../lib/api";
 
 export function useMe() {
   return useQuery({ queryKey: ["me"], queryFn: () => apiGet("/me", meResponseSchema) });
@@ -84,5 +86,16 @@ export function useColloquial(filters: ColloquialFilters) {
       return apiGet(query ? `/colloquial?${query}` : "/colloquial", colloquialResponseSchema);
     },
     getNextPageParam: (lastPage) => lastPage.nextCursor,
+  });
+}
+
+/** Saves preferences. Never retried automatically: the owner sees the error and decides. */
+export function useUpdateSettings() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (patch: SettingsUpdate) => apiPut("/settings", patch, settingsResponseSchema),
+    onSuccess: ({ settings }) => {
+      client.setQueryData<MeResponse>(["me"], (me) => (me ? { ...me, settings } : me));
+    },
   });
 }

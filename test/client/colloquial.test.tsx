@@ -2,10 +2,11 @@ import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import type { ColloquialExpression, ColloquialResponse, ColloquialSourceStatus, MeResponse } from "../../src/shared/api";
-import { json, renderApp } from "./render";
+import { json, renderApp, savedSettings } from "./render";
 
 const me: MeResponse = {
   owner: { email: null, authMode: "dev-bypass" },
+  settings: savedSettings(),
   providers: [],
   curriculumImported: false,
   version: "test",
