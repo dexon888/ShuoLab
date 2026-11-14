@@ -21,12 +21,31 @@ export class ApiRequestError extends Error {
 }
 
 /** GETs a same-origin API route and validates the response against its contract. */
-export async function apiGet<S extends z.ZodType>(path: string, schema: S): Promise<z.infer<S>> {
+export function apiGet<S extends z.ZodType>(path: string, schema: S): Promise<z.infer<S>> {
+  return apiRequest("GET", path, schema);
+}
+
+/** PUTs a JSON body to a same-origin API route and validates the response. */
+export function apiPut<S extends z.ZodType>(path: string, body: unknown, schema: S): Promise<z.infer<S>> {
+  return apiRequest("PUT", path, schema, body);
+}
+
+async function apiRequest<S extends z.ZodType>(
+  method: "GET" | "PUT",
+  path: string,
+  schema: S,
+  payload?: unknown,
+): Promise<z.infer<S>> {
   let response: Response;
   try {
     response = await fetch(`${API_PREFIX}${path}`, {
-      headers: { Accept: "application/json" },
+      method,
+      headers:
+        payload === undefined
+          ? { Accept: "application/json" }
+          : { Accept: "application/json", "Content-Type": "application/json" },
       credentials: "same-origin",
+      ...(payload === undefined ? {} : { body: JSON.stringify(payload) }),
     });
   } catch {
     throw new ApiRequestError(

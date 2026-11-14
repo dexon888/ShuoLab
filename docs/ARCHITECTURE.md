@@ -40,15 +40,22 @@ produced it from.
 | `GET /api/v1/curriculum/items` | owner | one page (default 50, max 100) of the active edition's entries; filters `band`, `type`, `pos`, `q`, `state`; opaque `cursor`; `total` for the filters |
 | `GET /api/v1/curriculum/facets` | owner | part-of-speech tags present in a band, with counts |
 | `GET /api/v1/curriculum/items/:id` | owner | one entry with its edition, source manifests and same-form entries |
+| `GET /api/v1/settings` | owner | saved preferences, or the defaults when nothing is saved (also included in `/me`) |
+| `PUT /api/v1/settings` | owner | partial update of whitelisted preference fields; unknown fields are rejected; returns the full settings |
 | `GET /api/v1/colloquial` | owner | one page of colloquial expressions with `register`, `channel`, `status`, `q` filters, plus the sources to credit; reads only `colloquial_expressions` |
 
 Client pages: `/curriculum` (overview), `/curriculum/:band` (entries of one
 band; filters live in the address as `?q=` and `?pos=`),
 `/curriculum/item/:itemId` (one entry), `/curriculum/colloquial` (the
-separate colloquial track).
+separate colloquial track), `/onboarding` and `/settings` (the same
+preferences form; Settings adds the spending limits).
 
 Tables: `curriculum_editions`, `source_manifests`, `curriculum_items`,
-`colloquial_expressions`.
+`colloquial_expressions`, `owner_settings` (at most one row).
+
+Writes: a JSON body of at most 16 KB, validated by a strict Zod schema shared
+with the client. A write whose `Origin` header names another host is refused
+(`src/server/validation/body.ts`).
 
 ## Curriculum import
 

@@ -15,6 +15,16 @@ export function DashboardPage() {
     <>
       <PageHeader zh="今天" en="Today" />
 
+      {me.data && !me.data.settings.onboardedAt ? (
+        <p className="mb-6 border-l-4 border-cobalt bg-wash px-4 py-3">
+          <span className="font-semibold">Set up your preferences.</span> Choose your session
+          length, reading help and study band.{" "}
+          <Link to="/onboarding" className="font-medium text-cobalt underline">
+            Get started
+          </Link>
+        </p>
+      ) : null}
+
       <Section title="Today's session">
         <button
           type="button"

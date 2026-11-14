@@ -1,0 +1,21 @@
+CREATE TABLE `owner_settings` (
+	`owner_id` text PRIMARY KEY NOT NULL,
+	`nickname` text,
+	`locale` text DEFAULT 'zh-Hans' NOT NULL,
+	`timezone` text NOT NULL,
+	`session_minutes` integer NOT NULL,
+	`study_band` text,
+	`display_mode` text NOT NULL,
+	`speech_rate` real NOT NULL,
+	`slang_intensity` text NOT NULL,
+	`self_rated_listening` text,
+	`self_rated_speaking` text,
+	`limits_json` text NOT NULL,
+	`onboarded_at` text,
+	`updated_at` text NOT NULL,
+	CONSTRAINT "owner_settings_single_owner_check" CHECK("owner_settings"."owner_id" = 'owner'),
+	CONSTRAINT "owner_settings_session_minutes_check" CHECK("owner_settings"."session_minutes" IN (15,20,25,30)),
+	CONSTRAINT "owner_settings_study_band_check" CHECK("owner_settings"."study_band" IS NULL OR "owner_settings"."study_band" IN ('1','2','3','4','5','6','7-9')),
+	CONSTRAINT "owner_settings_speech_rate_check" CHECK("owner_settings"."speech_rate" >= 0.75 AND "owner_settings"."speech_rate" <= 1.15),
+	CONSTRAINT "owner_settings_slang_intensity_check" CHECK("owner_settings"."slang_intensity" IN ('low','normal','high'))
+);

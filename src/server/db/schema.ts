@@ -7,7 +7,7 @@
  * immutable (edition_id, item_type, source_id) triple.
  */
 import { sql } from "drizzle-orm";
-import { check, index, integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
+import { check, index, integer, real, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
 
 export const curriculumEditions = sqliteTable("curriculum_editions", {
   id: text("id").primaryKey(),
@@ -127,5 +127,39 @@ export const colloquialExpressions = sqliteTable(
       "colloquial_expressions_verification_status_check",
       sql`${t.verificationStatus} IN ('verified','unverified')`,
     ),
+  ],
+);
+
+/**
+ * Owner preferences (SPEC §8). The app has exactly one owner, so the table
+ * holds at most one row: the CHECK allows only the fixed id.
+ */
+export const ownerSettings = sqliteTable(
+  "owner_settings",
+  {
+    ownerId: text("owner_id").primaryKey(),
+    nickname: text("nickname"),
+    locale: text("locale").notNull().default("zh-Hans"),
+    timezone: text("timezone").notNull(),
+    sessionMinutes: integer("session_minutes").notNull(),
+    studyBand: text("study_band"),
+    displayMode: text("display_mode").notNull(),
+    speechRate: real("speech_rate").notNull(),
+    slangIntensity: text("slang_intensity").notNull(),
+    selfRatedListening: text("self_rated_listening"),
+    selfRatedSpeaking: text("self_rated_speaking"),
+    limitsJson: text("limits_json").notNull(),
+    onboardedAt: text("onboarded_at"),
+    updatedAt: text("updated_at").notNull(),
+  },
+  (t) => [
+    check("owner_settings_single_owner_check", sql`${t.ownerId} = 'owner'`),
+    check("owner_settings_session_minutes_check", sql`${t.sessionMinutes} IN (15,20,25,30)`),
+    check(
+      "owner_settings_study_band_check",
+      sql`${t.studyBand} IS NULL OR ${t.studyBand} IN ('1','2','3','4','5','6','7-9')`,
+    ),
+    check("owner_settings_speech_rate_check", sql`${t.speechRate} >= 0.75 AND ${t.speechRate} <= 1.15`),
+    check("owner_settings_slang_intensity_check", sql`${t.slangIntensity} IN ('low','normal','high')`),
   ],
 );

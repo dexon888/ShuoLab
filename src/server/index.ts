@@ -6,7 +6,10 @@ import { APP_VERSION } from "./env";
 import { getProviderStatuses } from "./providers/status";
 import { colloquialRoutes } from "./routes/colloquial";
 import { curriculumRoutes } from "./routes/curriculum";
+import { settingsRoutes } from "./routes/settings";
 import { getCurriculumStatus, isVocabVerified } from "./services/curriculum-status";
+import { getSettings } from "./services/settings";
+import { sameOriginWrites } from "./validation/body";
 import { ApiError } from "./validation/errors";
 
 export interface AppDeps {
@@ -38,6 +41,7 @@ export function createApp(deps: AppDeps = {}) {
 
   const api = new Hono<AppBindings>();
   api.use("*", configGuard());
+  api.use("*", sameOriginWrites());
 
   // Public: safe status only — no user info, no database or secret details.
   api.get("/health", (c) => {
@@ -50,9 +54,10 @@ export function createApp(deps: AppDeps = {}) {
 
   api.get("/me", async (c) => {
     const owner = c.get("owner");
-    const status = await getCurriculumStatus(c.env.DB);
+    const [status, settings] = await Promise.all([getCurriculumStatus(c.env.DB), getSettings(c.env.DB)]);
     const body: MeResponse = {
       owner,
+      settings,
       providers: getProviderStatuses(c.env),
       curriculumImported: isVocabVerified(status),
       version: APP_VERSION,
@@ -60,6 +65,7 @@ export function createApp(deps: AppDeps = {}) {
     return c.json(body);
   });
 
+  api.route("/settings", settingsRoutes);
   api.route("/curriculum", curriculumRoutes);
   // Separate from the syllabus: never part of an HSK count.
   api.route("/colloquial", colloquialRoutes);

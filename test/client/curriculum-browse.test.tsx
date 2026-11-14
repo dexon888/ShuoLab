@@ -7,10 +7,11 @@ import type {
   CurriculumItemsResponse,
   MeResponse,
 } from "../../src/shared/api";
-import { json, renderApp } from "./render";
+import { json, renderApp, savedSettings } from "./render";
 
 const me: MeResponse = {
   owner: { email: null, authMode: "dev-bypass" },
+  settings: savedSettings(),
   providers: [],
   curriculumImported: true,
   version: "test",

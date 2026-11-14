@@ -12,8 +12,9 @@ of truth for what it must do; `docs/PLAN.md` lists the build phases and
 Phase 0 (scaffolding) and Phase 1 (the vocabulary importer, curriculum
 browsing and the separate colloquial track) are in place. The app shell, owner
 authentication, the import tools and browsing, searching and opening imported
-entries work locally with no accounts or secrets. Guided sessions, the tutor,
-speech and review are **not built yet**.
+entries work locally with no accounts or secrets. Phase 2 has started: your
+preferences (onboarding and Settings) are saved in the database. Guided
+sessions, the tutor, speech and review are **not built yet**.
 
 | Area | State |
 |---|---|
@@ -23,6 +24,7 @@ speech and review are **not built yet**.
 | HSK vocabulary import | Working and tested with generated placeholder data; not yet run on the real dataset |
 | Browsing entries | Working and tested with generated placeholder data |
 | Colloquial expressions (separate from HSK) | Working and tested with generated placeholder rows; not yet run on the real dataset file |
+| Preferences (onboarding, Settings) | Working locally; saved in the database, so they follow you across devices once deployed |
 | Sessions and tutor | Phase 2 — only a local fake tutor exists |
 | Speech | Phase 3 — only a local fake token issuer exists |
 | Review, progress, export | Phase 4 |
@@ -356,8 +358,11 @@ The page is at `/curriculum/colloquial`.
 
 ## Budget limits, backup and export
 
-Not built yet. Spending limits arrive with the tutor (Phase 2) and JSON/CSV
-export with Phase 4. See `docs/COSTS.md` and `docs/PRIVACY.md`.
+The monthly warning and stop amounts can be set in Settings (defaults US$5
+and US$10). They are stored but not yet enforced: enforcement arrives with the
+tutor later in Phase 2. They are ShuoLab's own estimate, not a cap at OpenAI or
+Azure, so set limits in those accounts too. JSON/CSV export arrives with
+Phase 4. See `docs/COSTS.md` and `docs/PRIVACY.md`.
 
 ## Troubleshooting
 

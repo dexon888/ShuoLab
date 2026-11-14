@@ -1,5 +1,7 @@
+import { Link } from "react-router";
 import { AsyncStatus } from "../components/AsyncStatus";
 import { PageHeader } from "../components/PageHeader";
+import { PreferencesForm } from "../components/PreferencesForm";
 import { ProviderStatusList } from "../components/ProviderStatusList";
 import { NotBuiltYet, Section } from "../components/Section";
 import { useMe } from "../hooks/queries";
@@ -32,11 +34,18 @@ export function SettingsPage() {
                 may charge for use.
               </p>
             </Section>
-            <Section title="Preferences, limits, export and deletion">
-              <NotBuiltYet phase={2}>
-                Session length, speech rate, help level and monthly spending limits are saved here.
-                Export and deletion follow in Phase 4.
-              </NotBuiltYet>
+            <div className="border-t border-line py-6">
+              <PreferencesForm settings={me.data.settings} mode="settings" />
+            </div>
+            <Section title="Curriculum sources and credits">
+              <p>
+                <Link to="/curriculum" className="font-medium text-cobalt underline">
+                  Imported data, sources and licences
+                </Link>
+              </p>
+            </Section>
+            <Section title="Export and deletion">
+              <NotBuiltYet phase={4}>Exporting your data as JSON or CSV, and deleting it.</NotBuiltYet>
             </Section>
             <Section title="About">
               <p>ShuoLab version {me.data.version}</p>

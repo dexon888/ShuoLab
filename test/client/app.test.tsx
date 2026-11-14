@@ -8,10 +8,11 @@ import {
   VOCAB_NEW_ENTRIES_BY_BAND,
   cumulativeVocabEntries,
 } from "../../src/shared/curriculum";
-import { json, renderApp } from "./render";
+import { json, renderApp, savedSettings } from "./render";
 
 const me: MeResponse = {
   owner: { email: null, authMode: "dev-bypass" },
+  settings: savedSettings(),
   providers: [
     { id: "tutor", vendor: "Local fake tutor", mode: "mock", model: null, setupHint: null },
     { id: "speech", vendor: "Local fake speech", mode: "mock", model: null, setupHint: null },

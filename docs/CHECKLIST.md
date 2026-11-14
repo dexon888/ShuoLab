@@ -30,9 +30,9 @@ Status values:
 | FR-015 | Mastery reporting | 4 | Not started | |
 | FR-016 | HSK coverage | 0, 1, 4 | Partial | New and cumulative counts explicit, 7–9 shared, unimported sections shown as not imported, partial import never shown as verified, counts without a verified manifest never shown as verified, synthetic data labelled as not HSK. Entries can be browsed by band, searched, filtered by part of speech and opened with their source and edition (`test/integration/curriculum-items.test.ts`, `test/client/curriculum-browse.test.tsx`, `test/e2e/curriculum.spec.ts`, all on generated placeholder data). Remains: coverage by skill; filtering by learner state is accepted by the API but every entry is `unseen` until evidence exists (Phase 4). |
 | FR-017 | Slang source | 1 | Mocked / Owner | Separate `colloquial_expressions` table with no HSK band column; register, channel, currency, usage warnings, credit and licence shown; HSK counts proven unchanged by a colloquial import (`test/integration/colloquial.test.ts`, `test/client/colloquial.test.tsx`, `test/e2e/curriculum.spec.ts`), all on generated placeholder rows. Remains: import the real HearMandarin file (Owner downloads it). |
-| FR-018 | Monthly cost guard | 2 | Not started | |
+| FR-018 | Monthly cost guard | 2 | Partial | Warning and stop amounts are editable and stored (defaults US$5 / US$10), warning never above stop (`test/integration/settings.test.ts`). Remains: usage metering and the gate itself (PR 7). |
 | FR-019 | Data export | 4 | Not started | |
-| FR-020 | Device switching | 2, 4 | Not started | |
+| FR-020 | Device switching | 2, 4 | Partial | Settings live in D1, not in the browser: a second app instance and a second browser session see the same values (`test/integration/settings.test.ts`, `test/e2e/settings.spec.ts`). Remains: sessions and progress (later PRs); a check on two real devices after deployment (Owner). |
 | FR-021 | Pronunciation drill (P1) | 5 | Not started | |
 | FR-022 | Monthly unseen checkpoint (P1) | 5 | Not started | |
 
