@@ -45,6 +45,7 @@ test.describe("first launch (FR-001, FR-005)", () => {
       ["/curriculum/1", /HSK 1/],
       ["/curriculum/7-9", /HSK 7–9/],
       ["/curriculum/8", /Page not found/],
+      ["/curriculum/colloquial", /Colloquial expressions/],
       ["/curriculum/item/example", /Page not found/],
       ["/review", /Review/],
       ["/progress", /Progress/],
@@ -64,6 +65,12 @@ test.describe("first launch (FR-001, FR-005)", () => {
     await page.getByRole("link", { name: /how to import the vocabulary/ }).click();
     await expect(page).toHaveURL(/\/curriculum$/);
   });
+});
+
+test("the colloquial track says nothing is imported and how to add it", async ({ page }) => {
+  await page.goto("/curriculum/colloquial");
+  await expect(page.getByText("No colloquial expressions imported")).toBeVisible();
+  await expect(page.getByText("Not part of the HSK syllabus.")).toBeVisible();
 });
 
 test.describe("navigation and accessibility", () => {

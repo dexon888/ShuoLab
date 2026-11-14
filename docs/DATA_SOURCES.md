@@ -29,9 +29,22 @@ as "Not imported" and never counts them toward coverage.
 
 ## Colloquial expressions (Phase 1, separate from HSK)
 
-Candidate: <https://hearmandarin.com/datasets/chinese-slang/> — 185
-expressions, CC BY 4.0, credit "HearMandarin". The licence covers the dataset
-terms only, not the site's examples or audio.
+Source: <https://hearmandarin.com/datasets/chinese-slang/> — 185 expressions
+(dataset version 2026-09-09 as read on 2026-11-14), CC BY 4.0, credit
+"HearMandarin (https://hearmandarin.com)". The licence covers the dataset's
+terms and tags only, not the site's example sentences or audio, which are
+never imported.
+
+The owner downloads the file and runs `pnpm colloquial:import`; the app does
+not fetch it. Fields: `slug, term, pinyin, category, register, channel, since,
+status, checked, literal_en, real_en, url`. The dataset page's prose lists
+category and channel values that differ from the file; the importer follows
+the file (channel `both` or `typed`; category stored as given). Register
+mapping: `anyone` → `neutral`, `casual` → `casual`, `mates` →
+`very_informal`. The dataset has no region field, so `region` stays empty.
+
+Not yet run on the real file: the importer is tested on generated rows in the
+same shape.
 
 ## Software licences
 

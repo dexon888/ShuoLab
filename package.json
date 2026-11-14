@@ -23,6 +23,7 @@
     "db:migrate:local": "wrangler d1 migrations apply shuolab --local",
     "db:migrate:remote": "wrangler d1 migrations apply shuolab --remote",
     "curriculum:import": "tsx scripts/import-curriculum.ts",
+    "colloquial:import": "tsx scripts/import-colloquial.ts",
     "curriculum:verify": "tsx scripts/verify-curriculum.ts",
     "seed:dev": "tsx scripts/seed-dev-fixtures.ts",
     "icons": "node scripts/generate-icons.mjs",

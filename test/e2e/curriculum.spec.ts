@@ -137,3 +137,40 @@ test.describe("browsing the curriculum (FR-016)", () => {
     expect((await request.get("/api/v1/curriculum/items?limit=5000")).status()).toBe(400);
   });
 });
+
+test.describe("colloquial track (FR-017)", () => {
+  test("is reached from the curriculum, labelled as outside HSK, and shows register and context", async ({ page }) => {
+    const errors = trackErrors(page);
+    await page.goto("/curriculum");
+    await page.getByRole("link", { name: "Colloquial expressions" }).click();
+    await expect(page).toHaveURL(/\/curriculum\/colloquial$/);
+
+    await expect(page.getByText("Not part of the HSK syllabus.")).toBeVisible();
+    await expect(page.getByText("Test data, not real expressions.")).toBeVisible();
+    await expect(page.getByText("12 expressions, showing 12.")).toBeVisible();
+    await expect(page.getByRole("list", { name: "Register and context" })).toHaveCount(12);
+    await expect(page.getByRole("list", { name: "Usage warnings" }).first()).toBeVisible();
+    await expect(page.getByRole("region", { name: "Source and credit" })).toContainText("12 expressions");
+    await expectNoSidewaysScroll(page, "colloquial page");
+    expect(errors).toEqual([]);
+  });
+
+  test("filters by channel and clears the filter", async ({ page }) => {
+    await page.goto("/curriculum/colloquial");
+    await page.getByLabel("Spoken or typed").selectOption("typed");
+    await page.getByRole("button", { name: "Filter" }).click();
+    await expect(page.getByText("4 expressions match, showing 4.")).toBeVisible();
+    await expect(page).toHaveURL(/channel=typed/);
+
+    await page.getByRole("link", { name: "Clear filters" }).click();
+    await expect(page.getByText("12 expressions, showing 12.")).toBeVisible();
+  });
+
+  test("leaves the HSK counts untouched", async ({ request }) => {
+    const status = await (await request.get("/api/v1/curriculum/status")).json();
+    const vocab = status.dimensions.find((d: { itemType: string }) => d.itemType === "vocab");
+    expect(vocab.importedCount).toBe(11000);
+    const colloquial = await (await request.get("/api/v1/colloquial")).json();
+    expect(colloquial.total).toBe(12);
+  });
+});

@@ -12,6 +12,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { HSK_BANDS } from "../../src/shared/curriculum";
+import { colloquialToJson, makeSyntheticColloquial } from "../fixtures/synthetic-colloquial";
 import { makeSyntheticRecords, recordsForBand, toCsv } from "../fixtures/synthetic-vocab";
 
 const ROOT = fileURLToPath(new URL("../../", import.meta.url));
@@ -130,5 +131,52 @@ describe("pnpm curriculum:import / curriculum:verify", { timeout: 120_000 }, () 
 
   it("never leaves an import script behind", () => {
     expect(existsSync(join(ROOT, ".wrangler", "tmp"))).toBe(false);
+  });
+});
+
+describe("pnpm colloquial:import", { timeout: 120_000 }, () => {
+  const file = () => join(work, "chinese-slang.json");
+  const count = () => {
+    const verify = run(WRANGLER, [
+      "d1", "execute", "shuolab", "--local", "--persist-to", state, "--json",
+      "--command", "SELECT COUNT(*) AS n FROM colloquial_expressions",
+    ]);
+    return (JSON.parse(verify.out.slice(verify.out.indexOf("["))) as { results: { n: number }[] }[])[0]?.results[0]?.n;
+  };
+
+  it("requires a file", () => {
+    const result = script("import-colloquial.ts", ["--persist-to", state]);
+    expect(result.code).toBe(2);
+    expect(result.out).toContain("Missing --file.");
+  });
+
+  it("validates without writing on a dry run", () => {
+    writeFileSync(file(), colloquialToJson(makeSyntheticColloquial()), "utf8");
+    const result = script("import-colloquial.ts", ["--file", file(), "--persist-to", state, "--dry-run"]);
+    expect(result.code, result.out).toBe(0);
+    expect(result.out).toContain("12 expressions validated");
+    expect(result.out).toContain("nothing was written");
+    expect(count()).toBe(0);
+  });
+
+  it("rejects a damaged file and writes nothing", () => {
+    const records = makeSyntheticColloquial().map((r, i) => (i === 4 ? { ...r, register: "posh" } : r));
+    writeFileSync(file(), colloquialToJson(records), "utf8");
+    const result = script("import-colloquial.ts", ["--file", file(), "--persist-to", state]);
+    expect(result.code).toBe(1);
+    expect(result.out).toContain("UNKNOWN_REGISTER");
+    expect(result.out).toContain("chinese-slang.json:5");
+    expect(count()).toBe(0);
+  });
+
+  it("imports, credits the source, and is safe to run twice", () => {
+    writeFileSync(file(), colloquialToJson(makeSyntheticColloquial()), "utf8");
+    for (let i = 0; i < 2; i++) {
+      const result = script("import-colloquial.ts", ["--file", file(), "--persist-to", state]);
+      expect(result.code, result.out).toBe(0);
+      expect(result.out).toContain("Stored: 12 expressions from HearMandarin.");
+      expect(result.out).toContain("CC BY 4.0");
+    }
+    expect(count()).toBe(12);
   });
 });

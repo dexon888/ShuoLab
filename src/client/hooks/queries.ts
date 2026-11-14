@@ -1,5 +1,6 @@
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import {
+  colloquialResponseSchema,
   curriculumFacetsResponseSchema,
   curriculumItemDetailResponseSchema,
   curriculumItemsResponseSchema,
@@ -57,5 +58,31 @@ export function useCurriculumItem(id: string) {
     queryKey: ["curriculum", "item", id],
     queryFn: () =>
       apiGet(`/curriculum/items/${encodeURIComponent(id)}`, curriculumItemDetailResponseSchema),
+  });
+}
+
+export interface ColloquialFilters {
+  q: string;
+  register: string;
+  channel: string;
+  status: string;
+}
+
+/** Colloquial expressions, a page at a time. A separate track from the HSK syllabus. */
+export function useColloquial(filters: ColloquialFilters) {
+  return useInfiniteQuery({
+    queryKey: ["colloquial", filters],
+    initialPageParam: null as string | null,
+    queryFn: ({ pageParam }) => {
+      const params = new URLSearchParams();
+      if (filters.register) params.set("register", filters.register);
+      if (filters.channel) params.set("channel", filters.channel);
+      if (filters.status) params.set("status", filters.status);
+      if (filters.q) params.set("q", filters.q);
+      if (pageParam) params.set("cursor", pageParam);
+      const query = params.toString();
+      return apiGet(query ? `/colloquial?${query}` : "/colloquial", colloquialResponseSchema);
+    },
+    getNextPageParam: (lastPage) => lastPage.nextCursor,
   });
 }

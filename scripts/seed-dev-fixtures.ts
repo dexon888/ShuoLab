@@ -1,5 +1,5 @@
 /**
- * Loads SYNTHETIC placeholder vocabulary into the LOCAL database so the app
+ * Loads SYNTHETIC placeholder vocabulary and colloquial rows into the LOCAL database so the app
  * can be developed without the copyrighted source files. The rows are
  * generated ("样例词 1" …), stored under the `synthetic-fixture` edition, and
  * labelled as synthetic everywhere they appear. Never runs against the
@@ -13,7 +13,10 @@ import {
   prepareVocabImport,
   verifyDatabase,
 } from "../src/server/services/curriculum-import";
+import { prepareColloquialImport } from "../src/server/services/colloquial-import";
+import { COLLOQUIAL_SOURCES, SYNTHETIC_COLLOQUIAL_SOURCE_KEY } from "../src/shared/colloquial";
 import { SYNTHETIC_EDITION_ID, getEdition } from "../src/shared/curriculum";
+import { colloquialToCsv, makeSyntheticColloquial } from "../test/fixtures/synthetic-colloquial";
 import { makeSyntheticRecords, toCsv } from "../test/fixtures/synthetic-vocab";
 import { hasCurriculumTables, openLocalDatabase } from "./lib/d1";
 import { printIssues, printSummary, printVerifyReport, sha256Hex } from "./lib/report";
@@ -42,6 +45,21 @@ async function main(): Promise<number> {
     return 1;
   }
 
+  // Placeholder colloquial rows, stored under their own synthetic source.
+  const colloquialSource = COLLOQUIAL_SOURCES[SYNTHETIC_COLLOQUIAL_SOURCE_KEY];
+  if (!colloquialSource) throw new Error("Synthetic colloquial source missing.");
+  const colloquialBytes = new TextEncoder().encode(colloquialToCsv(makeSyntheticColloquial()));
+  const colloquial = prepareColloquialImport({
+    source: colloquialSource,
+    file: { name: "synthetic-colloquial.csv", bytes: colloquialBytes, sha256: sha256Hex(colloquialBytes) },
+    importedAt: new Date().toISOString(),
+    datasetVersion: "synthetic",
+  });
+  if (!colloquial.ok) {
+    console.error(colloquial.issues);
+    return 1;
+  }
+
   const local = await openLocalDatabase(values["persist-to"]);
   try {
     if (!(await hasCurriculumTables(local.query))) {
@@ -58,6 +76,8 @@ async function main(): Promise<number> {
     }
     printSummary(result.summary);
     await applyStatements(local.db, result.statements);
+    await applyStatements(local.db, colloquial.statements);
+    console.log(`Loaded ${colloquial.summary.total} SYNTHETIC colloquial placeholder rows (not real expressions).`);
     printVerifyReport(await verifyDatabase(local.query));
     return 0;
   } finally {

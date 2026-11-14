@@ -4,6 +4,7 @@
  */
 import { z } from "zod";
 import { HSK_BANDS, ITEM_TYPES } from "./curriculum";
+import { COLLOQUIAL_CHANNELS, COLLOQUIAL_REGISTERS, CURRENCY_STATUSES } from "./colloquial";
 
 export const API_PREFIX = "/api/v1";
 
@@ -216,3 +217,62 @@ export const curriculumItemDetailResponseSchema = z.object({
   progress: z.null(),
 });
 export type CurriculumItemDetailResponse = z.infer<typeof curriculumItemDetailResponseSchema>;
+
+// --- GET /colloquial --------------------------------------------------------
+// A separate track from the HSK syllabus: nothing here has an HSK band and
+// nothing here is part of any HSK count (SPEC §2.3, FR-017).
+
+export const colloquialQuerySchema = z.object({
+  register: z.enum(COLLOQUIAL_REGISTERS).optional(),
+  channel: z.enum(COLLOQUIAL_CHANNELS).optional(),
+  status: z.enum(CURRENCY_STATUSES).optional(),
+  /** Matches any part of the term, pinyin or meaning. */
+  q: z.string().trim().min(1).max(40).optional(),
+  cursor: z.string().max(200).optional(),
+  limit: z.coerce.number().int().min(1).max(ITEMS_PAGE_SIZE_MAX).default(ITEMS_PAGE_SIZE_DEFAULT),
+});
+export type ColloquialQuery = z.infer<typeof colloquialQuerySchema>;
+
+export const colloquialExpressionSchema = z.object({
+  id: z.string(),
+  sourceKey: z.string(),
+  term: z.string(),
+  pinyin: z.string().nullable(),
+  meaningEn: z.string(),
+  literalEn: z.string().nullable(),
+  category: z.string().nullable(),
+  register: z.enum(COLLOQUIAL_REGISTERS),
+  channel: z.enum(COLLOQUIAL_CHANNELS),
+  region: z.string().nullable(),
+  currencyStatus: z.enum(CURRENCY_STATUSES),
+  inUseSince: z.string().nullable(),
+  lastVerifiedAt: z.string().nullable(),
+  sourceUrl: z.string(),
+  verificationStatus: z.enum(["verified", "unverified"]),
+});
+export type ColloquialExpression = z.infer<typeof colloquialExpressionSchema>;
+
+export const colloquialSourceSchema = z.object({
+  key: z.string(),
+  name: z.string(),
+  homepage: z.string().nullable(),
+  license: z.string(),
+  licenseUrl: z.string().nullable(),
+  attribution: z.string(),
+  synthetic: z.boolean(),
+  /** Expressions imported from this source, regardless of filters. */
+  count: z.number().int().nonnegative(),
+  datasetVersion: z.string().nullable(),
+  importedAt: z.string().nullable(),
+});
+export type ColloquialSourceStatus = z.infer<typeof colloquialSourceSchema>;
+
+export const colloquialResponseSchema = z.object({
+  items: z.array(colloquialExpressionSchema),
+  /** Number of expressions matching the filters, across all pages. */
+  total: z.number().int().nonnegative(),
+  nextCursor: z.string().nullable(),
+  /** Every source with imported expressions, for credit and licence display. */
+  sources: z.array(colloquialSourceSchema),
+});
+export type ColloquialResponse = z.infer<typeof colloquialResponseSchema>;

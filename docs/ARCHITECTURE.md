@@ -40,12 +40,15 @@ produced it from.
 | `GET /api/v1/curriculum/items` | owner | one page (default 50, max 100) of the active edition's entries; filters `band`, `type`, `pos`, `q`, `state`; opaque `cursor`; `total` for the filters |
 | `GET /api/v1/curriculum/facets` | owner | part-of-speech tags present in a band, with counts |
 | `GET /api/v1/curriculum/items/:id` | owner | one entry with its edition, source manifests and same-form entries |
+| `GET /api/v1/colloquial` | owner | one page of colloquial expressions with `register`, `channel`, `status`, `q` filters, plus the sources to credit; reads only `colloquial_expressions` |
 
 Client pages: `/curriculum` (overview), `/curriculum/:band` (entries of one
 band; filters live in the address as `?q=` and `?pos=`),
-`/curriculum/item/:itemId` (one entry).
+`/curriculum/item/:itemId` (one entry), `/curriculum/colloquial` (the
+separate colloquial track).
 
-Tables: `curriculum_editions`, `source_manifests`, `curriculum_items`.
+Tables: `curriculum_editions`, `source_manifests`, `curriculum_items`,
+`colloquial_expressions`.
 
 ## Curriculum import
 
