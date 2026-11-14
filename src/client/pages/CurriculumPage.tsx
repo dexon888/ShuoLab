@@ -147,6 +147,17 @@ export function CurriculumPage() {
                 A section counts toward HSK coverage only after its data is imported and verified.
               </p>
             </Section>
+            <Section title="Outside the syllabus">
+              <p>
+                <Link to="/curriculum/colloquial" className="font-medium text-cobalt underline">
+                  Colloquial expressions
+                </Link>
+              </p>
+              <p className="mt-1 text-mist">
+                Everyday and slang expressions with register and context notes. A separate track:
+                not HSK content, and never counted in the numbers above.
+              </p>
+            </Section>
             <Section title="Sources">
               <SourceList status={curriculum.data} />
             </Section>

@@ -9,10 +9,10 @@ of truth for what it must do; `docs/PLAN.md` lists the build phases and
 
 ## Status
 
-Phase 0 (scaffolding) and most of Phase 1 (the vocabulary importer and
-curriculum browsing) are in place. The app shell, owner authentication, the
-import tool and browsing, searching and opening imported entries work locally
-with no accounts or secrets. The colloquial track, guided sessions, the tutor,
+Phase 0 (scaffolding) and Phase 1 (the vocabulary importer, curriculum
+browsing and the separate colloquial track) are in place. The app shell, owner
+authentication, the import tools and browsing, searching and opening imported
+entries work locally with no accounts or secrets. Guided sessions, the tutor,
 speech and review are **not built yet**.
 
 | Area | State |
@@ -21,7 +21,8 @@ speech and review are **not built yet**.
 | Owner authentication (Cloudflare Access JWT) | Working against locally signed test tokens; not yet verified on a deployment |
 | Curriculum status | Working on local D1 |
 | HSK vocabulary import | Working and tested with generated placeholder data; not yet run on the real dataset |
-| Browsing entries, colloquial track | Phase 1, next |
+| Browsing entries | Working and tested with generated placeholder data |
+| Colloquial expressions (separate from HSK) | Working and tested with generated placeholder rows; not yet run on the real dataset file |
 | Sessions and tutor | Phase 2 — only a local fake tutor exists |
 | Speech | Phase 3 — only a local fake token issuer exists |
 | Review, progress, export | Phase 4 |
@@ -63,7 +64,8 @@ no secrets and costs nothing.
 | `pnpm db:migrate:remote` | Apply migrations to the deployed database |
 | `pnpm curriculum:import` | Validate and import your HSK vocabulary files (see below) |
 | `pnpm curriculum:verify` | Check the stored curriculum against the edition's published totals |
-| `pnpm seed:dev` | Load generated placeholder vocabulary into the local database |
+| `pnpm colloquial:import` | Validate and import the optional colloquial-expression dataset (see below) |
+| `pnpm seed:dev` | Load generated placeholder vocabulary and colloquial rows into the local database |
 | `pnpm deploy` | Safety checks, build, then `wrangler deploy` |
 | `pnpm icons` | Regenerate the app icons |
 
@@ -314,6 +316,43 @@ loads 11,000 generated placeholder entries (`样例词1` …) into the local
 database under a separate `synthetic-fixture` edition. The app labels them
 "Test data loaded, not HSK content". This command never touches the deployed
 database, and it refuses to replace a real edition unless you pass `--force`.
+It also loads 12 placeholder colloquial rows, labelled "Test data, not real
+expressions".
+
+## Importing colloquial expressions (optional)
+
+Everyday and slang expressions are a separate track. They have no HSK level
+and are never part of an HSK count. The source is the HearMandarin dataset
+(185 expressions, CC BY 4.0, credit "HearMandarin (https://hearmandarin.com)").
+
+1. Open <https://hearmandarin.com/datasets/chinese-slang/> and download the
+   JSON file (`chinese-slang.json`). The CSV works too.
+2. Save it as `private-data/colloquial/chinese-slang.json` (that folder is
+   git-ignored).
+3. Check it, then import it:
+
+```bash
+pnpm colloquial:import --file ./private-data/colloquial/chinese-slang.json --dry-run
+```
+
+```bash
+pnpm colloquial:import --file ./private-data/colloquial/chinese-slang.json
+```
+
+Add `--remote` to import into the deployed database (not yet exercised).
+For the CSV, pass the version shown on the dataset page with
+`--dataset-version`.
+
+The import rejects the whole file if any row has a duplicate or invalid
+identifier, an unknown register, channel or status, a malformed date, a
+non-https entry address, a missing term or meaning, or damaged text. The
+source's register words are stored as: `anyone` → fine with anyone,
+`casual` → casual, `mates` → very informal. A status with no "checked" date
+is stored as "not verified". Example sentences and audio are not part of the
+dataset's licence and are never imported; each expression links to its entry
+on the source's site instead.
+
+The page is at `/curriculum/colloquial`.
 
 ## Budget limits, backup and export
 

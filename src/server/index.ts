@@ -4,6 +4,7 @@ import { API_PREFIX, type HealthResponse, type MeResponse } from "../shared/api"
 import { configGuard, requireOwner, type AppBindings, type AuthDeps } from "./auth/access";
 import { APP_VERSION } from "./env";
 import { getProviderStatuses } from "./providers/status";
+import { colloquialRoutes } from "./routes/colloquial";
 import { curriculumRoutes } from "./routes/curriculum";
 import { getCurriculumStatus, isVocabVerified } from "./services/curriculum-status";
 import { ApiError } from "./validation/errors";
@@ -60,6 +61,8 @@ export function createApp(deps: AppDeps = {}) {
   });
 
   api.route("/curriculum", curriculumRoutes);
+  // Separate from the syllabus: never part of an HSK count.
+  api.route("/colloquial", colloquialRoutes);
 
   app.route(API_PREFIX, api);
   return app;

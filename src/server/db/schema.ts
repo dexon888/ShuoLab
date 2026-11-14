@@ -78,3 +78,54 @@ export const curriculumItems = sqliteTable(
     check("curriculum_items_source_id_check", sql`${t.sourceId} >= 1`),
   ],
 );
+
+/**
+ * Colloquial expressions (SPEC §2.3): a separate namespace from the HSK
+ * syllabus. There is deliberately no HSK band column, so these rows cannot
+ * enter any HSK count.
+ */
+export const colloquialExpressions = sqliteTable(
+  "colloquial_expressions",
+  {
+    /** `colloquial:<source_key>:<slug>` */
+    id: text("id").primaryKey(),
+    sourceKey: text("source_key").notNull(),
+    slug: text("slug").notNull(),
+    term: text("term").notNull(),
+    pinyin: text("pinyin"),
+    meaningEn: text("meaning_en").notNull(),
+    literalEn: text("literal_en"),
+    category: text("category"),
+    register: text("register").notNull(),
+    channel: text("channel").notNull(),
+    region: text("region"),
+    currencyStatus: text("currency_status").notNull().default("unknown"),
+    inUseSince: text("in_use_since"),
+    /** When the source last checked the currency status (YYYY-MM or YYYY-MM-DD). */
+    lastVerifiedAt: text("last_verified_at"),
+    sourceUrl: text("source_url").notNull(),
+    license: text("license").notNull(),
+    attribution: text("attribution").notNull(),
+    /** `unverified` for anything not taken from a reviewed source (e.g. AI proposals). */
+    verificationStatus: text("verification_status").notNull().default("unverified"),
+    datasetVersion: text("dataset_version"),
+    fileSha256: text("file_sha256"),
+    importedAt: text("imported_at").notNull(),
+  },
+  (t) => [
+    uniqueIndex("colloquial_expressions_source_slug_uq").on(t.sourceKey, t.slug),
+    check(
+      "colloquial_expressions_register_check",
+      sql`${t.register} IN ('formal','neutral','casual','very_informal')`,
+    ),
+    check("colloquial_expressions_channel_check", sql`${t.channel} IN ('spoken','typed','both')`),
+    check(
+      "colloquial_expressions_currency_status_check",
+      sql`${t.currencyStatus} IN ('hot','steady','fading','unknown')`,
+    ),
+    check(
+      "colloquial_expressions_verification_status_check",
+      sql`${t.verificationStatus} IN ('verified','unverified')`,
+    ),
+  ],
+);

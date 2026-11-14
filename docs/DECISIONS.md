@@ -139,3 +139,22 @@ return nothing. The UI does not offer the filter until it means something.
 
 The syllabus joins tags (`数、（副）`). Filtering matches one whole tag, so 数
 does not match 数量, and the brackets are ignored.
+
+## 22. Colloquial expressions cannot enter an HSK count by construction
+
+They live in their own table with no HSK band column and their own id
+namespace (`colloquial:<source>:<slug>`). No HSK query reads that table, and
+a test checks the curriculum status is identical before and after an import.
+
+## 23. The colloquial dataset is imported from a file, not bundled
+
+CC BY 4.0 would allow shipping it, but the owner downloads it so the app
+records exactly which version was imported and nothing is fetched at build or
+run time. Example sentences and audio are outside the licence and are linked,
+never copied.
+
+## 24. Usage warnings are derived from tags, in ShuoLab's own words
+
+Register, channel and currency come from the source; the warning sentences
+are authored here from those tags. A status the source has not dated is
+stored as unknown rather than repeated as a claim.
