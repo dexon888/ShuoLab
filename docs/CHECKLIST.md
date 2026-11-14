@@ -15,9 +15,9 @@ Status values:
 |---|---|---|---|---|
 | FR-001 | First launch on mobile and desktop | 0 | Partial | Responsive shell at 320px and desktop, manifest, service worker, no JS errors (`test/e2e`). Remains: real install on iOS and Android (Owner). |
 | FR-002 | Single-owner restriction | 0, 3 | Partial | Access JWT verified in the Worker; unsigned, expired, wrong-audience, wrong-issuer, wrong-person and header-only requests rejected (`test/integration/api.test.ts`). Remains: speech-token endpoint (Phase 3), verification on the deployed hostname (Owner). |
-| FR-003 | Official vocabulary import, 11,000 IDs | 1 | Not started | Published totals are encoded and tested (`test/unit/curriculum.test.ts`). |
-| FR-004 | Tampered dataset fails atomically | 1 | Not started | Schema already rejects invalid bands, duplicate IDs, unknown types. |
-| FR-005 | No HSK data available | 0, 2 | Partial | Honest "not imported" state in API and UI; session start blocked. Remains: import instructions (Phase 1), unlabeled free chat (Phase 2). |
+| FR-003 | Official vocabulary import, 11,000 IDs | 1 | Mocked / Owner | Importer stores exactly 11,000 IDs with the published band counts and is idempotent, proven on generated placeholder data (`test/integration/curriculum-import.test.ts`, `cli.test.ts`). Remains: run on the real dataset (Owner supplies files). |
+| FR-004 | Tampered dataset fails atomically | 1 | Done | Duplicate ID, wrong level, wrong total, missing or damaged fields are rejected with file and line; nothing is written; a failure mid-write rolls back (`test/unit/curriculum-import.test.ts`, `test/integration/curriculum-import.test.ts`). |
+| FR-005 | No HSK data available | 0, 2 | Partial | Honest "not imported" state in API and UI; session start blocked. Import instructions in the README and in the app. Remains: unlabeled free chat (Phase 2). |
 | FR-006 | Lesson planning | 2 | Not started | |
 | FR-007 | AI hallucinates wrong HSK level | 2 | Not started | |
 | FR-008 | Short Mandarin voice turn | 3 | Not started | |
@@ -28,7 +28,7 @@ Status values:
 | FR-013 | 15/20/25/30-minute plan | 2 | Not started | |
 | FR-014 | Vocabulary review (FSRS) | 4 | Not started | |
 | FR-015 | Mastery reporting | 4 | Not started | |
-| FR-016 | HSK coverage | 0, 1, 4 | Partial | New and cumulative counts explicit, 7–9 shared, unimported sections shown as not imported, partial import never shown as verified. Remains: coverage by skill. |
+| FR-016 | HSK coverage | 0, 1, 4 | Partial | New and cumulative counts explicit, 7–9 shared, unimported sections shown as not imported, partial import never shown as verified, counts without a verified manifest never shown as verified, synthetic data labelled as not HSK. Remains: coverage by skill. |
 | FR-017 | Slang source | 1 | Not started | |
 | FR-018 | Monthly cost guard | 2 | Not started | |
 | FR-019 | Data export | 4 | Not started | |
@@ -56,4 +56,5 @@ Status values:
 
 | Phase | Gate | Status |
 |---|---|---|
-| 0 | install, typecheck, lint, unit tests, build, mocked local Worker on a clean clone | Passed locally on Windows (60 unit/integration tests, 22 browser tests). CI has not run yet: nothing is pushed. |
+| 0 | install, typecheck, lint, unit tests, build, mocked local Worker on a clean clone | Passed locally and in CI on a clean Linux checkout (PR 1). |
+| 1 | verified 11k-entry real import when dataset supplied; deterministic tests for every count, homograph identity, bad-data rejection; no false official labels in UI | Tests pass on generated data. **Open:** real import (Owner), curriculum browsing and colloquial track (PRs 3–4). |

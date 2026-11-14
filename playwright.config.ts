@@ -24,6 +24,8 @@ export default defineConfig({
   webServer: {
     command: `pnpm build && pnpm preview --port ${PORT} --strictPort`,
     url: `http://localhost:${PORT}/api/v1/health`,
+    // A separate, empty database created by scripts/prepare-e2e.mjs.
+    env: { SHUOLAB_STATE_DIR: ".wrangler/e2e-state" },
     reuseExistingServer: !process.env.CI,
     timeout: 180_000,
   },

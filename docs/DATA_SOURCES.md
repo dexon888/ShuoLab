@@ -3,7 +3,7 @@
 Nothing in this repository is HSK syllabus content. Test fixtures are
 synthetic and say so.
 
-## HSK 3.0 vocabulary (not imported yet — Phase 1)
+## HSK 3.0 vocabulary
 
 - **Edition:** November 2025 *HSK Examination Syllabus*, id `hsk3-2025-11`.
 - **Publisher portal:** <https://www.chinesetest.cn/HSK>
@@ -15,7 +15,7 @@ synthetic and say so.
 
 A public repository being readable does not grant the right to republish the
 syllabus. The owner downloads the data and imports it locally from
-`private-data/`, which is git-ignored. The importer will record the source
+`private-data/`, which is git-ignored. The importer records the source
 URL, pinned commit, SHA-256, rights note and import time for each file.
 
 English glosses are not part of the syllabus. A missing definition is normal;

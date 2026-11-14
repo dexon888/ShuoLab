@@ -64,3 +64,46 @@ export function parseCurriculumItemId(id: string): CurriculumItemKey | null {
   }
   return { editionId, itemType: itemType as ItemType, sourceId: Number(sourceId) };
 }
+
+// --- Editions ---------------------------------------------------------------
+
+export interface EditionDefinition {
+  id: string;
+  publisher: string;
+  editionDate: string;
+  /** True for generated placeholder data that must never be shown as HSK content. */
+  synthetic: boolean;
+  vocabNewEntriesByBand: Readonly<Record<HskBand, number>>;
+  vocabTotalEntries: number;
+}
+
+/** Generated placeholder rows for development and tests. Not HSK content. */
+export const SYNTHETIC_EDITION_ID = "synthetic-fixture";
+
+/**
+ * Editions the importer knows how to verify. An edition that is not listed
+ * here cannot be imported, because there are no published totals to check
+ * it against.
+ */
+export const EDITIONS: Readonly<Record<string, EditionDefinition>> = {
+  [ACTIVE_EDITION_ID]: {
+    id: ACTIVE_EDITION_ID,
+    publisher: "Center for Language Education and Cooperation / Chinese Testing International",
+    editionDate: "2025-11",
+    synthetic: false,
+    vocabNewEntriesByBand: VOCAB_NEW_ENTRIES_BY_BAND,
+    vocabTotalEntries: VOCAB_TOTAL_ENTRIES,
+  },
+  [SYNTHETIC_EDITION_ID]: {
+    id: SYNTHETIC_EDITION_ID,
+    publisher: "ShuoLab synthetic test fixture — not HSK content",
+    editionDate: "2025-11",
+    synthetic: true,
+    vocabNewEntriesByBand: VOCAB_NEW_ENTRIES_BY_BAND,
+    vocabTotalEntries: VOCAB_TOTAL_ENTRIES,
+  },
+};
+
+export function getEdition(id: string): EditionDefinition | undefined {
+  return Object.hasOwn(EDITIONS, id) ? EDITIONS[id] : undefined;
+}

@@ -74,4 +74,42 @@ them is Phase 1. Two columns were added to `source_manifests` beyond §8.1:
 ## 11. Vocabulary is "verified" only when every band matches the published total
 
 A partial or over-full import is reported as "imported, not verified" and HSK
-progress stays hidden.
+progress stays hidden. Since PR 2 a verified source manifest is also required,
+so rows inserted by any route other than a validated import never count.
+
+## 12. Only editions with known totals can be imported
+
+`src/shared/curriculum.ts` lists the editions the importer accepts. An
+unknown edition is rejected because there is nothing to verify it against.
+
+## 13. Synthetic data lives under its own edition
+
+Generated placeholder vocabulary is stored as edition `synthetic-fixture`,
+never as `hsk3-2025-11`. The API marks it `synthetic`, the UI says "Test
+data loaded, not HSK content", `curriculum:import` refuses that edition, and
+`seed:dev` is local-only and will not displace a real edition without
+`--force`.
+
+## 14. The source commit is mandatory for a real import
+
+`--commit` must be a full 40-character SHA. The importer never downloads
+anything; the URL and commit are provenance records for files the owner
+obtained.
+
+## 15. All source fields except part of speech and homograph are required
+
+The source dataset documents only those two as possibly empty, so an empty
+hanzi, pinyin, entry, level label or page is treated as damage and rejected.
+If the real file turns out to have legitimate blanks, this rule is revisited
+with the evidence rather than loosened in advance.
+
+## 16. Re-import never overwrites definitions and never deletes
+
+Items are upserted on their immutable id. Definition columns are left alone
+so a separately sourced gloss keeps its provenance, and no row is deleted so
+future learner evidence cannot be orphaned.
+
+## 17. Browser tests have their own database
+
+`pnpm test:e2e` recreates `.wrangler/e2e-state` each run, so results do not
+depend on what the developer has imported or seeded.

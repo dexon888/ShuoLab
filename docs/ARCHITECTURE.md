@@ -30,7 +30,7 @@ produced it from.
    Messages are written in the Worker and never include provider output,
    tokens or prompts.
 
-## What exists today (Phase 0)
+## What exists today
 
 | Route | Auth | Purpose |
 |---|---|---|
@@ -39,6 +39,24 @@ produced it from.
 | `GET /api/v1/curriculum/status` | owner | per-section import state, per-band counts, source manifests |
 
 Tables: `curriculum_editions`, `source_manifests`, `curriculum_items`.
+
+## Curriculum import
+
+`src/server/services/curriculum-import` is pure code with no file or network
+access: read files → validate against the edition's published totals → build
+SQL statements. The scripts in `scripts/` supply the files and the database.
+
+```text
+files ─ readVocabFiles ─ validateVocab ─ buildImportStatements ─ one D1 batch (transaction)
+                              │ any issue
+                              └──────────► report, exit 1, nothing written
+```
+
+- Local imports use Wrangler's D1 binding and one `batch`, which is atomic.
+- `--remote` renders the same statements as a SQL script for
+  `wrangler d1 execute --remote --file`. The script is tested against local
+  D1; the remote run itself is untested.
+- `verifyDatabase` re-checks what is stored, independently of the import.
 
 Provider adapters are interfaces plus local fakes (`src/server/providers`).
 No request leaves the Worker yet.
