@@ -10,7 +10,13 @@ import {
 import type { MeResponse } from "../../shared/api";
 import type { HskBand } from "../../shared/curriculum";
 import { settingsResponseSchema, type SettingsUpdate } from "../../shared/settings";
-import { apiGet, apiPut } from "../lib/api";
+import {
+  planResponseSchema,
+  sessionListResponseSchema,
+  sessionResponseSchema,
+  type PlanRequest,
+} from "../../shared/session";
+import { apiGet, apiPost, apiPut } from "../lib/api";
 
 export function useMe() {
   return useQuery({ queryKey: ["me"], queryFn: () => apiGet("/me", meResponseSchema) });
@@ -96,6 +102,33 @@ export function useUpdateSettings() {
     mutationFn: (patch: SettingsUpdate) => apiPut("/settings", patch, settingsResponseSchema),
     onSuccess: ({ settings }) => {
       client.setQueryData<MeResponse>(["me"], (me) => (me ? { ...me, settings } : me));
+    },
+  });
+}
+
+/** Recent sessions and today's unfinished one. */
+export function useSessions() {
+  return useQuery({
+    queryKey: ["sessions", "list"],
+    queryFn: () => apiGet("/sessions?limit=5", sessionListResponseSchema),
+  });
+}
+
+export function useSession(id: string) {
+  return useQuery({
+    queryKey: ["sessions", "detail", id],
+    queryFn: () => apiGet(`/sessions/${encodeURIComponent(id)}`, sessionResponseSchema),
+  });
+}
+
+/** Plans today's session. Asking twice returns the same unfinished session. */
+export function usePlanSession() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (request: PlanRequest) => apiPost("/sessions/plan", request, planResponseSchema),
+    onSuccess: ({ session }) => {
+      client.setQueryData(["sessions", "detail", session.id], { session });
+      void client.invalidateQueries({ queryKey: ["sessions", "list"] });
     },
   });
 }

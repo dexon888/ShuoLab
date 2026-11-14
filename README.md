@@ -13,8 +13,10 @@ Phase 0 (scaffolding) and Phase 1 (the vocabulary importer, curriculum
 browsing and the separate colloquial track) are in place. The app shell, owner
 authentication, the import tools and browsing, searching and opening imported
 entries work locally with no accounts or secrets. Phase 2 has started: your
-preferences (onboarding and Settings) are saved in the database. Guided
-sessions, the tutor, speech and review are **not built yet**.
+preferences (onboarding and Settings) are saved in the database, and Today
+plans a session: a situation, the words to practise and a time budget. The
+conversation that runs the plan, the tutor, speech and review are **not built
+yet**.
 
 | Area | State |
 |---|---|
@@ -25,7 +27,8 @@ sessions, the tutor, speech and review are **not built yet**.
 | Browsing entries | Working and tested with generated placeholder data |
 | Colloquial expressions (separate from HSK) | Working and tested with generated placeholder rows; not yet run on the real dataset file |
 | Preferences (onboarding, Settings) | Working locally; saved in the database, so they follow you across devices once deployed |
-| Sessions and tutor | Phase 2 — only a local fake tutor exists |
+| Session planning | Working locally and tested with generated placeholder data: one saved plan per study day for 15, 20, 25 or 30 minutes, or a labelled open conversation when no vocabulary is imported |
+| Session conversation and tutor | Phase 2 — not built; only a local fake tutor exists |
 | Speech | Phase 3 — only a local fake token issuer exists |
 | Review, progress, export | Phase 4 |
 

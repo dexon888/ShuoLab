@@ -2,7 +2,7 @@ import { defineConfig, devices } from "@playwright/test";
 
 const PORT = 4173;
 const SEEDED_PORT = 4174;
-const SEEDED_SPECS = /curriculum\.spec\.ts$/;
+const SEEDED_SPECS = /(curriculum|sessions-seeded)\.spec\.ts$/;
 
 const desktop = { ...devices["Desktop Chrome"] };
 const mobile = { ...devices["Desktop Chrome"], viewport: { width: 320, height: 640 }, hasTouch: true };

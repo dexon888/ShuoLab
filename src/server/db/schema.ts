@@ -7,7 +7,7 @@
  * immutable (edition_id, item_type, source_id) triple.
  */
 import { sql } from "drizzle-orm";
-import { check, index, integer, real, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
+import { check, index, integer, primaryKey, real, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
 
 export const curriculumEditions = sqliteTable("curriculum_editions", {
   id: text("id").primaryKey(),
@@ -161,5 +161,71 @@ export const ownerSettings = sqliteTable(
     ),
     check("owner_settings_speech_rate_check", sql`${t.speechRate} >= 0.75 AND ${t.speechRate} <= 1.15`),
     check("owner_settings_slang_intensity_check", sql`${t.slangIntensity} IN ('low','normal','high')`),
+  ],
+);
+
+/**
+ * Practice sessions (SPEC §8). `plan_json` is the planner's output, fixed
+ * when the session is created.
+ */
+export const sessions = sqliteTable(
+  "sessions",
+  {
+    id: text("id").primaryKey(),
+    ownerId: text("owner_id").notNull().default("owner"),
+    /** `hsk` sessions use imported syllabus entries; `free_chat` sessions use none. */
+    kind: text("kind").notNull(),
+    /** Null for free chat. */
+    editionId: text("edition_id").references(() => curriculumEditions.id),
+    /** The owner's calendar date in their time zone, YYYY-MM-DD. */
+    localStudyDate: text("local_study_date").notNull(),
+    durationTargetMin: integer("duration_target_min").notNull(),
+    status: text("status").notNull().default("planned"),
+    planJson: text("plan_json").notNull(),
+    actualSeconds: integer("actual_seconds").notNull().default(0),
+    /** The tutor model used, once a turn has been taken. */
+    model: text("model"),
+    createdAt: text("created_at").notNull(),
+    startedAt: text("started_at"),
+    endedAt: text("ended_at"),
+  },
+  (t) => [
+    index("sessions_date_idx").on(t.localStudyDate),
+    index("sessions_created_idx").on(t.createdAt),
+    check("sessions_owner_check", sql`${t.ownerId} = 'owner'`),
+    check("sessions_kind_check", sql`${t.kind} IN ('hsk','free_chat')`),
+    check(
+      "sessions_status_check",
+      sql`${t.status} IN ('planned','active','paused','complete','abandoned')`,
+    ),
+    check("sessions_duration_check", sql`${t.durationTargetMin} IN (15,20,25,30)`),
+    // A free-chat session never carries an edition, and an HSK one always does.
+    check(
+      "sessions_kind_edition_check",
+      sql`(${t.kind} = 'hsk' AND ${t.editionId} IS NOT NULL) OR (${t.kind} = 'free_chat' AND ${t.editionId} IS NULL)`,
+    ),
+  ],
+);
+
+/**
+ * The syllabus entries a session targets. The foreign key means a plan can
+ * only reference entries that were really imported.
+ */
+export const sessionTargets = sqliteTable(
+  "session_targets",
+  {
+    sessionId: text("session_id")
+      .notNull()
+      .references(() => sessions.id, { onDelete: "cascade" }),
+    curriculumItemId: text("curriculum_item_id")
+      .notNull()
+      .references(() => curriculumItems.id),
+    role: text("role").notNull(),
+    position: integer("position").notNull(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.sessionId, t.curriculumItemId] }),
+    index("session_targets_item_idx").on(t.curriculumItemId),
+    check("session_targets_role_check", sql`${t.role} IN ('active','review','stretch')`),
   ],
 );

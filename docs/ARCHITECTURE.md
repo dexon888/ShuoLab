@@ -42,16 +42,28 @@ produced it from.
 | `GET /api/v1/curriculum/items/:id` | owner | one entry with its edition, source manifests and same-form entries |
 | `GET /api/v1/settings` | owner | saved preferences, or the defaults when nothing is saved (also included in `/me`) |
 | `PUT /api/v1/settings` | owner | partial update of whitelisted preference fields; unknown fields are rejected; returns the full settings |
+| `POST /api/v1/sessions/plan` | owner | plans today's session from the saved settings (optional `durationMinutes`, `studyBand`, `freeChat`); 201 for a new plan, 200 with `reused: true` when today's unfinished session is returned; 503 `CURRICULUM_MISSING` for an HSK plan with no verified vocabulary |
+| `GET /api/v1/sessions/:id` | owner | one session with its saved plan |
+| `GET /api/v1/sessions` | owner | the most recent sessions (`limit` 1–50, default 10) and today's resumable one, if any |
 | `GET /api/v1/colloquial` | owner | one page of colloquial expressions with `register`, `channel`, `status`, `q` filters, plus the sources to credit; reads only `colloquial_expressions` |
 
 Client pages: `/curriculum` (overview), `/curriculum/:band` (entries of one
 band; filters live in the address as `?q=` and `?pos=`),
 `/curriculum/item/:itemId` (one entry), `/curriculum/colloquial` (the
 separate colloquial track), `/onboarding` and `/settings` (the same
-preferences form; Settings adds the spending limits).
+preferences form; Settings adds the spending limits), `/` (Today: start
+or reopen today's session) and `/session/:sessionId` (the saved plan).
 
 Tables: `curriculum_editions`, `source_manifests`, `curriculum_items`,
-`colloquial_expressions`, `owner_settings` (at most one row).
+`colloquial_expressions`, `owner_settings` (at most one row), `sessions`
+(the plan is stored as validated JSON in `plan_json`) and `session_targets`
+(which curriculum entries a session targets, and in what role).
+
+Session planning is plain code with no model call. `src/server/services/planner.ts`
+is pure: given candidates it returns a plan. `src/server/services/sessions.ts`
+reads the candidates from D1, checks every target id and band against
+`curriculum_items` before saving, and writes the session and its targets in
+one batch. The plan contract is `src/shared/session.ts`.
 
 Writes: a JSON body of at most 16 KB, validated by a strict Zod schema shared
 with the client. A write whose `Origin` header names another host is refused

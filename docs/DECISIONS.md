@@ -189,3 +189,45 @@ says they are not yet enforced and are not a provider-side cap.
 Access cookies are sent by the browser automatically, so a state-changing
 request whose `Origin` is another host gets 403. JSON-only bodies also force
 a preflight that the API never approves.
+
+## 30. The session planner is code, not a model
+
+Choosing the words, their roles and the time budget is deterministic and
+makes no provider call: the same database state and date give the same plan.
+The planner is a pure function over candidates read from D1, so it costs
+nothing and cannot invent an entry or a band. Before a plan is saved every
+target id and band is checked again against `curriculum_items`.
+
+## 31. One plan per study day
+
+`POST /sessions/plan` returns today's unfinished session if there is one,
+where "today" is the date in the owner's time zone. A plan that was never
+started is replaced (marked abandoned, not deleted) only when the requested
+kind, length or band differs. Tapping Start twice, or on two devices, does not
+make two sessions.
+
+## 32. Words rotate by exposure until there is mastery evidence
+
+There is no mastery data yet, so "new" means not targeted by an earlier
+session and "review" means targeted by one. The plan page says that appearing
+in a plan is not evidence of knowing a word. Phase 4 replaces this with the
+evidence model; nothing here writes to mastery.
+
+## 33. Situations are app-authored and labelled
+
+The scenario list is written for ShuoLab and carries `sourceType:
+"app-authored"`. The UI says a situation is not an HSK topic or task. They
+rotate so none repeats until all have been used.
+
+## 34. Stretch and colloquial content stay inside limits
+
+At most 20% of the words come from the next band, only in sessions of six or
+more words, and they are labelled as exposure. At most one colloquial
+expression is added, by the slang setting: none at low, and never one marked
+very informal. It is shown apart from the HSK words with its usage warnings.
+
+## 35. Open conversation is a separate kind of session
+
+With no verified vocabulary an HSK plan is refused. An open conversation has
+no edition, no band and no targets, enforced by a table CHECK, and is
+labelled as not an HSK lesson so it can never count toward HSK coverage.

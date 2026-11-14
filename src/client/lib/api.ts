@@ -30,8 +30,13 @@ export function apiPut<S extends z.ZodType>(path: string, body: unknown, schema:
   return apiRequest("PUT", path, schema, body);
 }
 
+/** POSTs a JSON body to a same-origin API route and validates the response. */
+export function apiPost<S extends z.ZodType>(path: string, body: unknown, schema: S): Promise<z.infer<S>> {
+  return apiRequest("POST", path, schema, body);
+}
+
 async function apiRequest<S extends z.ZodType>(
-  method: "GET" | "PUT",
+  method: "GET" | "PUT" | "POST",
   path: string,
   schema: S,
   payload?: unknown,
