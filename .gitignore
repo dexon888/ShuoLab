@@ -1,0 +1,30 @@
+# Dependencies and build output
+node_modules/
+dist/
+.wrangler/
+*.tsbuildinfo
+
+# Local secrets — never commit (SPEC §12 SEC-02)
+.dev.vars
+.dev.vars.*
+.env
+.env.*
+!.env.example
+
+# Owner-provided syllabus data and personal exports — local only (SPEC §2.2 #9)
+private-data/
+exports/
+
+# Test output
+playwright-report/
+test-results/
+coverage/
+
+# Per-machine tool settings (the project settings.json stays tracked)
+.claude/settings.local.json
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

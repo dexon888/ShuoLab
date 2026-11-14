@@ -1,0 +1,70 @@
+import { Link } from "react-router";
+import { AsyncStatus } from "../components/AsyncStatus";
+import { CurriculumImportNotice } from "../components/CurriculumImportNotice";
+import { PageHeader } from "../components/PageHeader";
+import { ProviderStatusList } from "../components/ProviderStatusList";
+import { Section } from "../components/Section";
+import { useCurriculumStatus, useMe } from "../hooks/queries";
+
+export function DashboardPage() {
+  const me = useMe();
+  const curriculum = useCurriculumStatus();
+  const curriculumImported = me.data?.curriculumImported ?? false;
+
+  return (
+    <>
+      <PageHeader zh="今天" en="Today" />
+
+      <Section title="Today's session">
+        <button
+          type="button"
+          aria-disabled="true"
+          aria-describedby="session-unavailable"
+          className="min-h-12 w-full cursor-not-allowed rounded-md bg-line px-5 text-lg font-semibold text-mist sm:w-auto"
+        >
+          Start today's session
+        </button>
+        <p id="session-unavailable" className="mt-3 text-mist">
+          {curriculumImported
+            ? "Guided sessions are not built yet. They arrive in Phase 2 of the build plan."
+            : "Guided HSK sessions need the real HSK vocabulary, which has not been imported yet."}
+        </p>
+      </Section>
+
+      <Section title="HSK curriculum">
+        <AsyncStatus
+          isPending={curriculum.isPending}
+          error={curriculum.error}
+          onRetry={() => void curriculum.refetch()}
+          label="curriculum status"
+        >
+          {curriculum.data ? <CurriculumImportNotice status={curriculum.data} /> : null}
+          <p className="mt-3">
+            <Link to="/curriculum" className="font-medium text-cobalt underline">
+              See what is imported, band by band
+            </Link>
+          </p>
+        </AsyncStatus>
+      </Section>
+
+      <Section title="Communication progress">
+        <p>No evidence yet.</p>
+        <p className="mt-1 text-mist">
+          Listening checks and speaking turns will be counted here once you have completed sessions.
+          This is measured separately from HSK coverage, and neither one is an HSK exam score.
+        </p>
+      </Section>
+
+      <Section title="Services">
+        <AsyncStatus
+          isPending={me.isPending}
+          error={me.error}
+          onRetry={() => void me.refetch()}
+          label="service status"
+        >
+          {me.data ? <ProviderStatusList providers={me.data.providers} /> : null}
+        </AsyncStatus>
+      </Section>
+    </>
+  );
+}

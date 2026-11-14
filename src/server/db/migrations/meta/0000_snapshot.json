@@ -1,0 +1,341 @@
+{
+  "version": "6",
+  "dialect": "sqlite",
+  "id": "571d5906-81d1-4391-90aa-e9a221e0a855",
+  "prevId": "00000000-0000-0000-0000-000000000000",
+  "tables": {
+    "curriculum_editions": {
+      "name": "curriculum_editions",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "publisher": {
+          "name": "publisher",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "edition_date": {
+          "name": "edition_date",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "is_active": {
+          "name": "is_active",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": false
+        },
+        "notes": {
+          "name": "notes",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "curriculum_items": {
+      "name": "curriculum_items",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "edition_id": {
+          "name": "edition_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "source_id": {
+          "name": "source_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "item_type": {
+          "name": "item_type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "hsk_band": {
+          "name": "hsk_band",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "hanzi": {
+          "name": "hanzi",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "entry_raw": {
+          "name": "entry_raw",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "pinyin": {
+          "name": "pinyin",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "part_of_speech": {
+          "name": "part_of_speech",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "homograph": {
+          "name": "homograph",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "level_label": {
+          "name": "level_label",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "source_pdf_page": {
+          "name": "source_pdf_page",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "definition": {
+          "name": "definition",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "definition_provenance": {
+          "name": "definition_provenance",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "metadata_json": {
+          "name": "metadata_json",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "curriculum_items_edition_type_source_uq": {
+          "name": "curriculum_items_edition_type_source_uq",
+          "columns": [
+            "edition_id",
+            "item_type",
+            "source_id"
+          ],
+          "isUnique": true
+        },
+        "curriculum_items_edition_type_band_idx": {
+          "name": "curriculum_items_edition_type_band_idx",
+          "columns": [
+            "edition_id",
+            "item_type",
+            "hsk_band"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "curriculum_items_edition_id_curriculum_editions_id_fk": {
+          "name": "curriculum_items_edition_id_curriculum_editions_id_fk",
+          "tableFrom": "curriculum_items",
+          "tableTo": "curriculum_editions",
+          "columnsFrom": [
+            "edition_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "curriculum_items_item_type_check": {
+          "name": "curriculum_items_item_type_check",
+          "value": "\"curriculum_items\".\"item_type\" IN ('vocab','grammar','character','topic','task')"
+        },
+        "curriculum_items_hsk_band_check": {
+          "name": "curriculum_items_hsk_band_check",
+          "value": "\"curriculum_items\".\"hsk_band\" IN ('1','2','3','4','5','6','7-9')"
+        },
+        "curriculum_items_source_id_check": {
+          "name": "curriculum_items_source_id_check",
+          "value": "\"curriculum_items\".\"source_id\" >= 1"
+        }
+      }
+    },
+    "source_manifests": {
+      "name": "source_manifests",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "edition_id": {
+          "name": "edition_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "dataset_kind": {
+          "name": "dataset_kind",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "source_url": {
+          "name": "source_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "commit_sha": {
+          "name": "commit_sha",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "sha256": {
+          "name": "sha256",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "rights_note": {
+          "name": "rights_note",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "field_mapping_version": {
+          "name": "field_mapping_version",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "verification_status": {
+          "name": "verification_status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'unverified'"
+        },
+        "record_count": {
+          "name": "record_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "imported_at": {
+          "name": "imported_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "source_manifests_edition_kind_idx": {
+          "name": "source_manifests_edition_kind_idx",
+          "columns": [
+            "edition_id",
+            "dataset_kind"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "source_manifests_edition_id_curriculum_editions_id_fk": {
+          "name": "source_manifests_edition_id_curriculum_editions_id_fk",
+          "tableFrom": "source_manifests",
+          "tableTo": "curriculum_editions",
+          "columnsFrom": [
+            "edition_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "source_manifests_verification_status_check": {
+          "name": "source_manifests_verification_status_check",
+          "value": "\"source_manifests\".\"verification_status\" IN ('verified','unverified')"
+        }
+      }
+    }
+  },
+  "views": {},
+  "enums": {},
+  "_meta": {
+    "schemas": {},
+    "tables": {},
+    "columns": {}
+  },
+  "internal": {
+    "indexes": {}
+  }
+}
