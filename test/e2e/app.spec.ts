@@ -40,7 +40,7 @@ test.describe("first launch (FR-001, FR-005)", () => {
     const errors = trackErrors(page);
     const routes: [string, RegExp][] = [
       ["/onboarding", /Getting started/],
-      ["/session/example", /Session/],
+      ["/session/example", /Page not found/],
       ["/curriculum", /Curriculum/],
       ["/curriculum/1", /HSK 1/],
       ["/curriculum/7-9", /HSK 7–9/],

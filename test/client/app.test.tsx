@@ -40,8 +40,11 @@ function curriculumStatus(importedBand1 = 0): CurriculumStatusResponse {
   };
 }
 
+const noSessions = () => json({ sessions: [], resumable: null });
+
 const okRoutes = {
   "/api/v1/me": () => json(me),
+  "/api/v1/sessions?limit=5": noSessions,
   "/api/v1/curriculum/status": () => json(curriculumStatus()),
 };
 

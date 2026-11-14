@@ -6,6 +6,7 @@ import { APP_VERSION } from "./env";
 import { getProviderStatuses } from "./providers/status";
 import { colloquialRoutes } from "./routes/colloquial";
 import { curriculumRoutes } from "./routes/curriculum";
+import { sessionRoutes } from "./routes/sessions";
 import { settingsRoutes } from "./routes/settings";
 import { getCurriculumStatus, isVocabVerified } from "./services/curriculum-status";
 import { getSettings } from "./services/settings";
@@ -66,6 +67,7 @@ export function createApp(deps: AppDeps = {}) {
   });
 
   api.route("/settings", settingsRoutes);
+  api.route("/sessions", sessionRoutes);
   api.route("/curriculum", curriculumRoutes);
   // Separate from the syllabus: never part of an HSK count.
   api.route("/colloquial", colloquialRoutes);

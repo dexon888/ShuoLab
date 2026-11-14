@@ -4,12 +4,12 @@ import { CurriculumImportNotice } from "../components/CurriculumImportNotice";
 import { PageHeader } from "../components/PageHeader";
 import { ProviderStatusList } from "../components/ProviderStatusList";
 import { Section } from "../components/Section";
+import { TodaySession } from "../components/TodaySession";
 import { useCurriculumStatus, useMe } from "../hooks/queries";
 
 export function DashboardPage() {
   const me = useMe();
   const curriculum = useCurriculumStatus();
-  const curriculumImported = me.data?.curriculumImported ?? false;
 
   return (
     <>
@@ -26,19 +26,12 @@ export function DashboardPage() {
       ) : null}
 
       <Section title="Today's session">
-        <button
-          type="button"
-          aria-disabled="true"
-          aria-describedby="session-unavailable"
-          className="min-h-12 w-full cursor-not-allowed rounded-md bg-line px-5 text-lg font-semibold text-mist sm:w-auto"
-        >
-          Start today's session
-        </button>
-        <p id="session-unavailable" className="mt-3 text-mist">
-          {curriculumImported
-            ? "Guided sessions are not built yet. They arrive in Phase 2 of the build plan."
-            : "Guided HSK sessions need the real HSK vocabulary, which has not been imported yet."}
-        </p>
+        {me.data ? (
+          <TodaySession me={me.data} />
+        ) : (
+          // The Services section below reports a loading failure; it is not repeated here.
+          <p className="text-mist">{me.isPending ? "Loading…" : "Unavailable until ShuoLab loads. See Services below."}</p>
+        )}
       </Section>
 
       <Section title="HSK curriculum">
