@@ -1,14 +1,10 @@
 import { Hono } from "hono";
 import { secureHeaders } from "hono/secure-headers";
-import {
-  API_PREFIX,
-  type CurriculumStatusResponse,
-  type HealthResponse,
-  type MeResponse,
-} from "../shared/api";
+import { API_PREFIX, type HealthResponse, type MeResponse } from "../shared/api";
 import { configGuard, requireOwner, type AppBindings, type AuthDeps } from "./auth/access";
 import { APP_VERSION } from "./env";
 import { getProviderStatuses } from "./providers/status";
+import { curriculumRoutes } from "./routes/curriculum";
 import { getCurriculumStatus, isVocabVerified } from "./services/curriculum-status";
 import { ApiError } from "./validation/errors";
 
@@ -63,10 +59,7 @@ export function createApp(deps: AppDeps = {}) {
     return c.json(body);
   });
 
-  api.get("/curriculum/status", async (c) => {
-    const body: CurriculumStatusResponse = await getCurriculumStatus(c.env.DB);
-    return c.json(body);
-  });
+  api.route("/curriculum", curriculumRoutes);
 
   app.route(API_PREFIX, api);
   return app;

@@ -9,10 +9,11 @@ of truth for what it must do; `docs/PLAN.md` lists the build phases and
 
 ## Status
 
-Phase 0 (scaffolding) and the first part of Phase 1 (the vocabulary importer)
-are in place. The app shell, owner authentication, the curriculum-status API
-and the import tool work locally with no accounts or secrets. Browsing
-entries, guided sessions, the tutor, speech and review are **not built yet**.
+Phase 0 (scaffolding) and most of Phase 1 (the vocabulary importer and
+curriculum browsing) are in place. The app shell, owner authentication, the
+import tool and browsing, searching and opening imported entries work locally
+with no accounts or secrets. The colloquial track, guided sessions, the tutor,
+speech and review are **not built yet**.
 
 | Area | State |
 |---|---|
@@ -72,8 +73,14 @@ Before the first `pnpm test:e2e`, install the test browser once:
 pnpm exec playwright install chromium
 ```
 
-The browser tests use their own empty database (`.wrangler/e2e-state`), so
-they are unaffected by anything imported into the development database.
+The browser tests build the app once and use two databases of their own: an
+empty one (`.wrangler/e2e-state`) and one loaded with generated placeholder
+entries (`.wrangler/e2e-seeded`), each served on its own port (4173, 4174).
+They are unaffected by anything imported into the development database.
+
+To try browsing locally without the real dataset, run `pnpm seed:dev`. It
+loads generated placeholder entries, which the app labels as test data, not
+HSK content, on every page where they appear.
 
 ## Layout
 

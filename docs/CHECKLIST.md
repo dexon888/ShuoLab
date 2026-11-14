@@ -28,7 +28,7 @@ Status values:
 | FR-013 | 15/20/25/30-minute plan | 2 | Not started | |
 | FR-014 | Vocabulary review (FSRS) | 4 | Not started | |
 | FR-015 | Mastery reporting | 4 | Not started | |
-| FR-016 | HSK coverage | 0, 1, 4 | Partial | New and cumulative counts explicit, 7–9 shared, unimported sections shown as not imported, partial import never shown as verified, counts without a verified manifest never shown as verified, synthetic data labelled as not HSK. Remains: coverage by skill. |
+| FR-016 | HSK coverage | 0, 1, 4 | Partial | New and cumulative counts explicit, 7–9 shared, unimported sections shown as not imported, partial import never shown as verified, counts without a verified manifest never shown as verified, synthetic data labelled as not HSK. Entries can be browsed by band, searched, filtered by part of speech and opened with their source and edition (`test/integration/curriculum-items.test.ts`, `test/client/curriculum-browse.test.tsx`, `test/e2e/curriculum.spec.ts`, all on generated placeholder data). Remains: coverage by skill; filtering by learner state is accepted by the API but every entry is `unseen` until evidence exists (Phase 4). |
 | FR-017 | Slang source | 1 | Not started | |
 | FR-018 | Monthly cost guard | 2 | Not started | |
 | FR-019 | Data export | 4 | Not started | |
@@ -57,4 +57,4 @@ Status values:
 | Phase | Gate | Status |
 |---|---|---|
 | 0 | install, typecheck, lint, unit tests, build, mocked local Worker on a clean clone | Passed locally and in CI on a clean Linux checkout (PR 1). |
-| 1 | verified 11k-entry real import when dataset supplied; deterministic tests for every count, homograph identity, bad-data rejection; no false official labels in UI | Tests pass on generated data. **Open:** real import (Owner), curriculum browsing and colloquial track (PRs 3–4). |
+| 1 | verified 11k-entry real import when dataset supplied; deterministic tests for every count, homograph identity, bad-data rejection; no false official labels in UI | Tests pass on generated data. Curriculum browsing done (PR 3). **Open:** real import (Owner), colloquial track (PR 4). |

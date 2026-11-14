@@ -127,3 +127,92 @@ export const curriculumStatusResponseSchema = z.object({
   ),
 });
 export type CurriculumStatusResponse = z.infer<typeof curriculumStatusResponseSchema>;
+
+// --- GET /curriculum/items --------------------------------------------------
+
+export const ITEMS_PAGE_SIZE_DEFAULT = 50;
+export const ITEMS_PAGE_SIZE_MAX = 100;
+
+/** Query string of GET /curriculum/items. Everything arrives as text. */
+export const curriculumItemsQuerySchema = z.object({
+  band: z.enum(HSK_BANDS).optional(),
+  type: z.enum(ITEM_TYPES).default("vocab"),
+  /** One part-of-speech tag exactly as the syllabus writes it, e.g. 名. */
+  pos: z.string().trim().min(1).max(20).optional(),
+  /** Matches the start of the written form or any part of the pinyin. */
+  q: z.string().trim().min(1).max(40).optional(),
+  /**
+   * Learner state. No practice evidence is recorded yet, so every item is
+   * `unseen`; the other states become meaningful with Phase 4.
+   */
+  state: z.enum(["unseen", "introduced", "practiced", "developing", "mastered"]).optional(),
+  cursor: z.string().max(64).optional(),
+  limit: z.coerce.number().int().min(1).max(ITEMS_PAGE_SIZE_MAX).default(ITEMS_PAGE_SIZE_DEFAULT),
+});
+export type CurriculumItemsQuery = z.infer<typeof curriculumItemsQuerySchema>;
+
+export const curriculumItemSummarySchema = z.object({
+  id: z.string(),
+  sourceId: z.number().int().positive(),
+  itemType: z.enum(ITEM_TYPES),
+  hskBand: z.enum(HSK_BANDS),
+  hanzi: z.string(),
+  pinyin: z.string().nullable(),
+  partOfSpeech: z.string().nullable(),
+  homograph: z.string().nullable(),
+  levelLabel: z.string().nullable(),
+});
+export type CurriculumItemSummary = z.infer<typeof curriculumItemSummarySchema>;
+
+export const curriculumItemsResponseSchema = z.object({
+  editionId: z.string().nullable(),
+  synthetic: z.boolean(),
+  items: z.array(curriculumItemSummarySchema),
+  /** Number of items matching the filters, across all pages. */
+  total: z.number().int().nonnegative(),
+  /** Pass back as `cursor` for the next page; null on the last page. */
+  nextCursor: z.string().nullable(),
+});
+export type CurriculumItemsResponse = z.infer<typeof curriculumItemsResponseSchema>;
+
+// --- GET /curriculum/facets -------------------------------------------------
+
+export const curriculumFacetsResponseSchema = z.object({
+  /** Part-of-speech tags present in the band, most common first. */
+  partsOfSpeech: z.array(z.object({ tag: z.string(), count: z.number().int().positive() })),
+});
+export type CurriculumFacetsResponse = z.infer<typeof curriculumFacetsResponseSchema>;
+
+// --- GET /curriculum/items/:id ----------------------------------------------
+
+export const curriculumItemDetailResponseSchema = z.object({
+  item: curriculumItemSummarySchema.extend({
+    /** The entry exactly as the syllabus prints it, e.g. 本1. */
+    entryRaw: z.string().nullable(),
+    sourcePdfPage: z.number().int().nullable(),
+    /** Null unless a gloss was imported from a separate, named source. */
+    definition: z.string().nullable(),
+    definitionProvenance: z.string().nullable(),
+  }),
+  edition: z.object({
+    id: z.string(),
+    publisher: z.string(),
+    editionDate: z.string(),
+    synthetic: z.boolean(),
+    isActive: z.boolean(),
+  }),
+  /** Other numbered entries in the same edition with the same written form. */
+  homographs: z.array(curriculumItemSummarySchema),
+  /** Where this entry's data came from; empty if no manifest is recorded. */
+  sources: z.array(
+    z.object({
+      sourceUrl: z.string(),
+      commitSha: z.string().nullable(),
+      rightsNote: z.string(),
+      importedAt: z.string(),
+    }),
+  ),
+  /** Null until practice evidence is recorded (Phase 4). */
+  progress: z.null(),
+});
+export type CurriculumItemDetailResponse = z.infer<typeof curriculumItemDetailResponseSchema>;

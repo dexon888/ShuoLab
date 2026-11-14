@@ -42,8 +42,10 @@ test.describe("first launch (FR-001, FR-005)", () => {
       ["/onboarding", /Getting started/],
       ["/session/example", /Session/],
       ["/curriculum", /Curriculum/],
-      ["/curriculum/1", /Curriculum/],
-      ["/curriculum/item/example", /Entry/],
+      ["/curriculum/1", /HSK 1/],
+      ["/curriculum/7-9", /HSK 7–9/],
+      ["/curriculum/8", /Page not found/],
+      ["/curriculum/item/example", /Page not found/],
       ["/review", /Review/],
       ["/progress", /Progress/],
       ["/settings", /Settings/],
@@ -54,6 +56,13 @@ test.describe("first launch (FR-001, FR-005)", () => {
       await expect(page.getByRole("heading", { level: 1, name: heading })).toBeVisible();
     }
     expect(errors).toEqual([]);
+  });
+
+  test("a band with nothing imported says so and points to the import steps", async ({ page }) => {
+    await page.goto("/curriculum/1");
+    await expect(page.getByText("No entries are imported for this band.")).toBeVisible();
+    await page.getByRole("link", { name: /how to import the vocabulary/ }).click();
+    await expect(page).toHaveURL(/\/curriculum$/);
   });
 });
 

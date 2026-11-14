@@ -1,9 +1,10 @@
+import { Link } from "react-router";
 import type { CurriculumStatusResponse, DimensionStatus } from "../../shared/api";
 import type { ItemType } from "../../shared/curriculum";
 import { AsyncStatus } from "../components/AsyncStatus";
 import { CurriculumImportNotice } from "../components/CurriculumImportNotice";
 import { PageHeader } from "../components/PageHeader";
-import { NotBuiltYet, Section } from "../components/Section";
+import { Section } from "../components/Section";
 import { useCurriculumStatus } from "../hooks/queries";
 
 const numberFormat = new Intl.NumberFormat("en-US");
@@ -32,6 +33,7 @@ function BandTable({ status }: { status: CurriculumStatusResponse }) {
       <table className="w-full border-collapse text-left tabular-nums">
         <caption className="mb-2 text-left text-sm text-mist">
           Numbered syllabus entries first introduced at each band. Homographs count separately.
+          Choose a band to browse its entries.
         </caption>
         <thead>
           <tr className="border-b border-ink text-sm">
@@ -53,7 +55,9 @@ function BandTable({ status }: { status: CurriculumStatusResponse }) {
           {status.vocabByBand.map((row) => (
             <tr key={row.band} className="border-b border-line">
               <th scope="row" className="py-2 pr-3 font-medium">
-                {bandName(row.band)}
+                <Link to={`/curriculum/${row.band}`} className="text-cobalt underline">
+                  {bandName(row.band)}
+                </Link>
               </th>
               <td className="py-2 pr-3 text-right">{numberFormat.format(row.importedNew)}</td>
               <td className="py-2 pr-3 text-right">{numberFormat.format(row.expectedNew)}</td>
@@ -145,11 +149,6 @@ export function CurriculumPage() {
             </Section>
             <Section title="Sources">
               <SourceList status={curriculum.data} />
-            </Section>
-            <Section title="Browse entries">
-              <NotBuiltYet phase={1}>
-                Browsing, filtering and opening individual entries needs imported data.
-              </NotBuiltYet>
             </Section>
           </>
         ) : null}

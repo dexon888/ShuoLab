@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState } from "react";
 import { BrowserRouter, Route, Routes } from "react-router";
 import { ApiRequestError } from "../lib/api";
+import { CurriculumBandPage } from "../pages/CurriculumBandPage";
 import { CurriculumItemPage } from "../pages/CurriculumItemPage";
 import { CurriculumPage } from "../pages/CurriculumPage";
 import { DashboardPage } from "../pages/DashboardPage";
@@ -37,7 +38,7 @@ export function AppRoutes() {
         <Route path="onboarding" element={<OnboardingPage />} />
         <Route path="session/:sessionId" element={<SessionPage />} />
         <Route path="curriculum" element={<CurriculumPage />} />
-        <Route path="curriculum/:band" element={<CurriculumPage />} />
+        <Route path="curriculum/:band" element={<CurriculumBandPage />} />
         <Route path="curriculum/item/:itemId" element={<CurriculumItemPage />} />
         <Route path="review" element={<ReviewPage />} />
         <Route path="progress" element={<ProgressPage />} />
