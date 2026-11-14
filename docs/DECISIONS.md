@@ -112,4 +112,30 @@ future learner evidence cannot be orphaned.
 ## 17. Browser tests have their own database
 
 `pnpm test:e2e` recreates `.wrangler/e2e-state` each run, so results do not
-depend on what the developer has imported or seeded.
+depend on what the developer has imported or seeded. Since PR 3 there are
+two: an empty one and one seeded with synthetic entries
+(`.wrangler/e2e-seeded`), each behind its own preview server.
+
+## 18. Entries are paged by keyset on the syllabus number
+
+`GET /curriculum/items` returns at most 100 rows and an opaque cursor built
+from the last `source_id`. The client never holds the whole vocabulary and
+loads another page only when asked. No offset paging, so deep pages cost the
+same as the first.
+
+## 19. No definitions or pinyin are generated for entries
+
+The entry page shows what the source file holds. The syllabus has no English
+glosses, so the page says so; a definition is shown only when it was imported
+with a named source. Nothing is filled in by a model.
+
+## 20. Learner state is a real filter with an honest answer
+
+The API accepts `state`, as the SPEC contract requires, but no practice
+evidence exists before Phase 4, so every entry is `unseen` and other states
+return nothing. The UI does not offer the filter until it means something.
+
+## 21. Part of speech is matched per tag
+
+The syllabus joins tags (`数、（副）`). Filtering matches one whole tag, so 数
+does not match 数量, and the brackets are ignored.

@@ -1,9 +1,6 @@
-import { QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, within } from "@testing-library/react";
+import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter } from "react-router";
-import { describe, expect, it, vi } from "vitest";
-import { AppRoutes, createQueryClient } from "../../src/client/app/App";
+import { describe, expect, it } from "vitest";
 import type { CurriculumStatusResponse, MeResponse } from "../../src/shared/api";
 import {
   HSK_BANDS,
@@ -11,6 +8,7 @@ import {
   VOCAB_NEW_ENTRIES_BY_BAND,
   cumulativeVocabEntries,
 } from "../../src/shared/curriculum";
+import { json, renderApp } from "./render";
 
 const me: MeResponse = {
   owner: { email: null, authMode: "dev-bypass" },
@@ -39,33 +37,6 @@ function curriculumStatus(importedBand1 = 0): CurriculumStatusResponse {
     })),
     manifests: [],
   };
-}
-
-type Responder = () => Response;
-
-function json(body: unknown, status = 200): Response {
-  return new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
-}
-
-function renderApp(path: string, routes: Record<string, Responder>) {
-  const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
-    const url = typeof input === "string" ? input : input.toString();
-    const responder = routes[url];
-    if (!responder) throw new Error(`Unexpected request: ${url}`);
-    return responder();
-  });
-  vi.stubGlobal("fetch", fetchMock);
-
-  const client = createQueryClient();
-  client.setDefaultOptions({ queries: { retry: false } });
-  render(
-    <QueryClientProvider client={client}>
-      <MemoryRouter initialEntries={[path]}>
-        <AppRoutes />
-      </MemoryRouter>
-    </QueryClientProvider>,
-  );
-  return fetchMock;
 }
 
 const okRoutes = {
