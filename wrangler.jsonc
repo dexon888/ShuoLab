@@ -1,0 +1,39 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "shuolab",
+  "main": "src/server/index.ts",
+  "compatibility_date": "2026-11-01",
+
+  // SPA + API in one deployment (SPEC §3). The Worker runs first for /api/*,
+  // everything else is served from the built client with an SPA fallback.
+  "assets": {
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*"]
+  },
+
+  // Preview URLs are a second public hostname; keep them off so there is only
+  // one hostname to put behind Cloudflare Access (SPEC §4.1, SEC-01).
+  "preview_urls": false,
+
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "shuolab",
+      // Replace with the id printed by `wrangler d1 create shuolab` (README).
+      // `pnpm deploy` refuses to run while this placeholder is present.
+      "database_id": "00000000-0000-0000-0000-000000000000",
+      "migrations_dir": "src/server/db/migrations"
+    }
+  ],
+
+  // Non-secret configuration only. Secrets go through `wrangler secret put`.
+  // DEV_AUTH_BYPASS must never appear here.
+  "vars": {
+    "APP_ENV": "production",
+    "OPENAI_MODEL": "gpt-6-luna"
+  },
+
+  "observability": {
+    "enabled": true
+  }
+}

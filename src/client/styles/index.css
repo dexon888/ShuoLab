@@ -1,0 +1,77 @@
+@import "tailwindcss";
+
+/*
+ * Design tokens. The palette comes from blue-and-white porcelain (青花):
+ * cool white ground, cobalt for structure and action, and one seal red that
+ * is reserved for recording and for problems that need attention.
+ * Chinese page titles are set in a Kai (brush-regular) face; everything else
+ * uses the device's own UI and CJK fonts, so no font files are downloaded.
+ */
+@theme {
+  --color-porcelain: #f5f7fa;
+  --color-glaze: #ffffff;
+  --color-wash: #e3eaf6;
+  --color-line: #c9d3e6;
+  --color-cobalt: #1b3a8c;
+  --color-cobalt-deep: #10255e;
+  --color-ink: #131c2e;
+  --color-mist: #55617a;
+  --color-seal: #c4261d;
+  --color-seal-wash: #fbeceb;
+  --color-jade: #1f6f54;
+  --color-jade-wash: #e6f3ee;
+
+  --font-sans:
+    system-ui, -apple-system, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei",
+    "Noto Sans CJK SC", "Noto Sans SC", sans-serif;
+  --font-kai:
+    "Kaiti SC", "STKaiti", "KaiTi", "KaiTi_GB2312", "AR PL UKai CN", "Noto Serif CJK SC", "Songti SC",
+    serif;
+
+  --text-title: 2.75rem;
+  --text-title--line-height: 1.1;
+}
+
+@layer base {
+  html {
+    background-color: var(--color-porcelain);
+    color: var(--color-ink);
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    min-height: 100dvh;
+    font-family: var(--font-sans);
+    line-height: 1.55;
+  }
+
+  :focus-visible {
+    outline: 3px solid var(--color-cobalt);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  a {
+    text-underline-offset: 0.18em;
+  }
+
+  code {
+    font-size: 0.9em;
+    overflow-wrap: anywhere;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+@utility pb-safe {
+  padding-bottom: env(safe-area-inset-bottom);
+}
