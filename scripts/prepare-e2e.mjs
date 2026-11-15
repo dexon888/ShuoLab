@@ -6,7 +6,7 @@
 //   .wrangler/e2e-flow-mobile   whole-session tests: a day has one session, so
 //                               each screen size gets a database to itself
 import { spawnSync } from "node:child_process";
-import { rmSync } from "node:fs";
+import { readFileSync, rmSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -38,3 +38,17 @@ for (const dir of SEEDED_STATE_DIRS) {
 
 // Every preview server serves this one build.
 run(vite, ["build"]);
+
+// The Cloudflare plugin copies the project's .dev.vars into the build, and
+// the preview servers read it from there. If the owner has put a real
+// provider key in .dev.vars, the tests would call the real provider and be
+// billed. Replace it with test-only values: stand-in providers, local
+// sign-in bypass, nothing else.
+const builtVars = join(root, "dist", "shuolab", ".dev.vars");
+writeFileSync(builtVars, "APP_ENV=development\nDEV_AUTH_BYPASS=true\n");
+const leaked = readFileSync(builtVars, "utf8").match(/^(OPENAI_API_KEY|AZURE_SPEECH_KEY)\s*=/m);
+if (leaked) {
+  console.error(`Refusing to run the browser tests: ${leaked[1]} is in the test build.`);
+  process.exit(1);
+}
+console.log("Test build uses stand-in providers only (provider keys removed from dist/shuolab/.dev.vars).");

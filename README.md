@@ -16,10 +16,11 @@ entries work locally with no accounts or secrets. Phase 2 has started: your
 preferences (onboarding and Settings) are saved in the database, and Today
 plans a session: a situation, the words to practise and a time budget. You
 can then run the session as a typed conversation: send messages, pause and
-resume, reload without losing anything, and finish to a summary. Locally the
-replies come from a stand-in tutor that returns prepared sentences; the real
-tutor needs your OpenAI key and **has not been run yet**. Speech and review
-are **not built yet**.
+resume, reload without losing anything, and finish to a summary. Without a
+key the replies come from a stand-in tutor that returns prepared sentences;
+with `OPENAI_API_KEY` in `.dev.vars` the real tutor answers. One live open
+conversation has been run locally (2026-11-15). Speech and review are **not
+built yet**.
 
 | Area | State |
 |---|---|
@@ -31,12 +32,12 @@ are **not built yet**.
 | Colloquial expressions (separate from HSK) | Working and tested with generated placeholder rows; not yet run on the real dataset file |
 | Preferences (onboarding, Settings) | Working locally; saved in the database, so they follow you across devices once deployed |
 | Session planning | Working locally and tested with generated placeholder data: one saved plan per study day for 15, 20, 25 or 30 minutes, or a labelled open conversation when no vocabulary is imported |
-| Tutor turns (API) | Working locally with the stand-in tutor: validated replies, each message saved once, spending recorded and capped. The OpenAI adapter is written and unit-tested against recorded response shapes; **no real OpenAI call has been made** |
+| Tutor turns (API) | Working locally with the stand-in tutor: validated replies, each message saved once, spending recorded and capped. One live open conversation with `gpt-6-luna` run locally: Mandarin replies, a correction, an injection attempt declined, pinyin and English returned, usage recorded |
 | Session conversation screen | Working locally with the stand-in tutor: typed turns, pause, resume, finish, summary, recovery after a reload or a dropped connection. Typed only; listening and speaking arrive in Phase 3 |
 | Speech | Phase 3 — only a local fake token issuer exists |
 | Review, progress, export | Phase 4 |
 
-Nothing has been deployed, and no real OpenAI or Azure call has been made.
+Nothing has been deployed. OpenAI has been called only from a local run; no Azure call has been made.
 
 ## Requirements
 

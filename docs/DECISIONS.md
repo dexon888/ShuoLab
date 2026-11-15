@@ -344,3 +344,28 @@ unless the setting asks for English as well.
 
 A day has one session, so the desktop and 320px runs would fight over it in a
 shared database. Each gets its own seeded database and preview server.
+
+## 54. An empty OpenAI account is not "busy"
+
+OpenAI answers HTTP 429 both for rate limits and for an account with no
+credit. The first live call hit the second case and the app said "busy, wait
+and try again", which could never work. On 429 the adapter now reads the
+error's machine-readable type and code (never its message) and reports
+`insufficient_quota`, `credit_balance_exhausted` and
+`billing_hard_limit_reached` as a non-retryable "no credit" error that names
+OpenAI billing and says it is separate from ShuoLab's own amounts.
+
+## 55. The tutor always returns pinyin and English; the app decides what to show
+
+The first live run showed the model leaving both optional fields empty, so
+the reading-help setting had nothing to show. The instructions now ask for
+both on every reply. It adds a few output tokens per turn.
+
+## 56. Browser tests never see a provider key
+
+The Cloudflare Vite plugin copies `.dev.vars` into the build, and the preview
+servers that run the browser tests read it from there. With a real key in
+`.dev.vars`, the tests called OpenAI. `scripts/prepare-e2e.mjs` now replaces
+the built vars with test-only values after building and refuses to continue
+if a provider key remains. The tests also assert the stand-in tutor, so a
+regression shows up as failures rather than as charges.

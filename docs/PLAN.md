@@ -36,7 +36,7 @@ Gate: deterministic tests for every count, homograph identity and bad-data rejec
 | 7 | `phase-2/tutor-turns` | OpenAI Responses adapter and fake, Zod output contract with one retry and safe fallback, curriculum-ID validation, idempotent turns, `usage_events`, budget gate, rate limits |
 | 8 | `phase-2/session-ui` | Typed conversation end to end, pause/resume/complete, refresh recovery, debrief |
 
-Gate: a full typed session against the imported curriculum; invalid IDs cannot reach progress tables; works with the fake provider. **Open until the owner adds a key:** one live OpenAI session.
+Gate: a full typed session against the imported curriculum; invalid IDs cannot reach progress tables; works with the fake provider. One live open conversation ran locally on 2026-11-15. **Open until the real vocabulary is imported:** a live HSK session on it.
 
 ## Phase 3 — Speech and listen-first
 

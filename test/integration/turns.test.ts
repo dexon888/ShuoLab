@@ -375,6 +375,29 @@ describe("when the tutor cannot be reached (SPEC §9.1, REL-02)", () => {
   });
 });
 
+describe("when the OpenAI account has no credit", () => {
+  it("says to add credit at OpenAI, does not offer a retry, and keeps the message for later", async () => {
+    const session = await newSession();
+    const body = turnBody();
+    useTutor({
+      respond: () => {
+        throw new ProviderError("quota");
+      },
+    });
+    const error = await failed(await turn(session.id, body), 503);
+    expect(error).toMatchObject({ code: "PROVIDER_UNAVAILABLE", retryable: false });
+    expect(error.message).toMatch(/no credit left/);
+    expect(error.message).toMatch(/separate from ShuoLab's own monthly amounts/);
+    expect(error.message).not.toMatch(/busy|wait a moment/i);
+    expect(tutor.requests).toHaveLength(1);
+    expect(await turnRows(session.id)).toBe(0);
+
+    // Once credit is added, the same message goes through.
+    useTutor();
+    expect((await turn(session.id, body)).status).toBe(201);
+  });
+});
+
 describe("spending and request limits (SPEC §4.3, §16)", () => {
   // 1,000 tokens a call at US$0.00001 a token: one cent per call.
   const paid = (): FakeTutorOptions => ({ usage: { tokensIn: 800, tokensOut: 200 }, usdPerToken: 0.00001 });

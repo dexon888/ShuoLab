@@ -59,6 +59,19 @@ export function readResponseUsage(body: unknown): TokenUsage {
   return { tokensIn: asCount(usage.input_tokens), tokensOut: asCount(usage.output_tokens) };
 }
 
+/**
+ * OpenAI answers 429 both for "too many requests" and for "no credit left".
+ * The two need different advice, so the error's machine-readable type and
+ * code are read. Its free-text message is never read or passed on.
+ */
+const QUOTA_CODES = new Set(["insufficient_quota", "credit_balance_exhausted", "billing_hard_limit_reached"]);
+
+export function isQuotaError(body: unknown): boolean {
+  if (!isRecord(body) || !isRecord(body.error)) return false;
+  const { type, code } = body.error;
+  return (typeof type === "string" && QUOTA_CODES.has(type)) || (typeof code === "string" && QUOTA_CODES.has(code));
+}
+
 function kindForStatus(status: number): ProviderError["kind"] {
   if (status === 401 || status === 403) return "auth";
   if (status === 429) return "rate_limited";
@@ -107,7 +120,11 @@ export class OpenAiTutorProvider implements TutorProvider {
     }
 
     if (!response.ok) {
-      // The body may describe the request; it is dropped unread.
+      if (response.status === 429) {
+        const body: unknown = await response.json().catch(() => null);
+        throw new ProviderError(isQuotaError(body) ? "quota" : "rate_limited");
+      }
+      // Other error bodies may describe the request; they are dropped unread.
       await response.body?.cancel().catch(() => undefined);
       throw new ProviderError(kindForStatus(response.status));
     }
