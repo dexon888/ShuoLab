@@ -37,7 +37,8 @@ export interface TutorRawResult {
   usage: TokenUsage;
 }
 
-export type ProviderErrorKind = "timeout" | "network" | "rate_limited" | "auth" | "http" | "malformed";
+/** `quota`: the provider account has no credit or has hit its own spending limit. Waiting does not help. */
+export type ProviderErrorKind = "timeout" | "network" | "rate_limited" | "quota" | "auth" | "http" | "malformed";
 
 /**
  * A provider call that produced no answer. Carries a category only: never the

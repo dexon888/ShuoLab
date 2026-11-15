@@ -125,6 +125,11 @@ function providerFailure(error: ProviderError): ApiError {
       return new ApiError("PROVIDER_UNAVAILABLE", "The tutor took too long to answer. Your message is kept; try sending it again.", true);
     case "rate_limited":
       return new ApiError("PROVIDER_UNAVAILABLE", "The tutor service is busy or over its own limit. Wait a moment and try again.", true);
+    case "quota":
+      return new ApiError(
+        "PROVIDER_UNAVAILABLE",
+        "The OpenAI account has no credit left, or has reached a spending limit set at OpenAI. Add credit or raise the limit in the OpenAI billing settings, then send the message again. Your message is kept. This is separate from ShuoLab's own monthly amounts.",
+      );
     case "auth":
       return new ApiError("PROVIDER_UNAVAILABLE", "The tutor service refused the configured key. Check the OPENAI_API_KEY secret.");
     default:

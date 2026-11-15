@@ -56,6 +56,7 @@ export function buildInstructions(input: PromptInput): string {
     "- Stay on the situation below. Use the listed words when they fit naturally; do not force them in.",
     "- Do not correct every sentence. Recast naturally in your reply; list at most 3 corrections, and only for real errors.",
     "- English belongs only in optional_translation_en and in correction notes.",
+    "- Always fill optional_pinyin with tone-marked pinyin for all of spoken_reply_zh, and optional_translation_en with a natural English translation of it. The app decides whether to show them.",
     "",
     `Situation (written for this app, not an HSK topic): ${plan.situation.titleZh} / ${plan.situation.titleEn}.`,
     `Goal: ${plan.situation.communicativeGoal}`,

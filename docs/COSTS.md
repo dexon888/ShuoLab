@@ -7,19 +7,22 @@ Check the linked pages before going live.
 ## Today
 
 Local development and tests use the stand-in tutor: no paid calls. The tutor
-route calls OpenAI only when `OPENAI_API_KEY` is set as a Worker secret. No
-real OpenAI call has been made yet, so the figures below are estimates from
-list prices, not measurements.
+route calls OpenAI only when `OPENAI_API_KEY` is set (in `.dev.vars` locally,
+as a Worker secret when deployed).
 
 ## What a tutor turn costs (estimate)
 
 The default model is `gpt-6-luna`: US$0.10 per million input tokens and
 US$0.50 per million output tokens (standard tier, read from the pricing page
 on 2026-11-14). A turn sends the instructions, up to eight earlier turns and
-the new message, and gets back a short JSON reply. At roughly 1,000 input and
-150 output tokens that is about US$0.0002 a turn; a retry after a rejected
-answer doubles it. Check the first real session's figures in Settings against
-the OpenAI usage page.
+the new message, and gets back a short JSON reply with pinyin and an English
+translation. A retry after a rejected answer doubles a turn's cost.
+
+Measured on the first live run (2026-11-15, open conversation, 5 turns):
+3,199 input and 1,171 output tokens, US$0.0009 by ShuoLab's estimate, about
+US$0.0002 a turn. Turns grow as the conversation does, since up to eight
+earlier turns are resent. Compare Settings with the OpenAI usage page once
+OpenAI's own figures have caught up.
 
 ## Free-tier limits to know
 
