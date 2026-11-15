@@ -294,3 +294,53 @@ infrastructure and costs one indexed query per turn.
 It shares status 429 with `RATE_LIMITED` but is not retryable and needs a
 different message, so the client can tell "wait a moment" from "raise the
 amount or wait for next month".
+
+## 46. Practice time is measured on the server from gaps between actions
+
+The client does not report durations, so they cannot be inflated or counted
+twice. Each turn, pause and completion adds the time since the last action,
+capped at three minutes; paused time adds nothing. This undercounts long
+thinking pauses and counts nothing before the first message. It is labelled
+as practice time between actions, not as time spent.
+
+## 47. Corrections are shown in the summary, not during the conversation
+
+SPEC §5.3 asks for recasts while speaking and coaching in the debrief. The
+conversation shows the tutor's reply only; the summary shows at most three
+corrections, newest first, without repeats.
+
+## 48. The summary reports use, never knowledge
+
+It says whether the learner wrote a planned word and whether the tutor used
+it, by looking for the word in the saved text. It has no score, level or
+percentage and changes no progress table. "Worth meeting again" is the list
+of planned words the learner did not write, excluding stretch words.
+
+## 49. A paused session refuses turns
+
+Accepting a turn while paused would silently resume the clock. The learner
+resumes first. A turn that was already answered can still be read back.
+
+## 50. Completing needs at least one turn; abandoning does not
+
+A plan with no conversation has nothing to summarise, so it can be abandoned
+(or replaced from Today) but not completed. Abandoned sessions keep their
+turns, have no summary, and free the day for a new plan.
+
+## 51. One message id per message, kept across retries and reloads
+
+The client makes the `clientTurnId` when a message is sent and stores it with
+the text until the server confirms it. "Send again" reuses it; "Edit message"
+first asks the server whether the message arrived, and only if it did not
+puts the text back for a new message with a new id.
+
+## 52. English is shown on request
+
+The tutor's reply shows characters, and pinyin unless the reading-help
+setting is "characters only". The translation sits behind "Show English"
+unless the setting asks for English as well.
+
+## 53. Whole-session browser tests get their own databases
+
+A day has one session, so the desktop and 320px runs would fight over it in a
+shared database. Each gets its own seeded database and preview server.

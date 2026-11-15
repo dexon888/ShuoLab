@@ -1,0 +1,158 @@
+import { expect, test, type Page } from "@playwright/test";
+
+// A whole typed session on the real Worker runtime, with SYNTHETIC placeholder
+// vocabulary and the local stand-in tutor: no model is called and nothing is
+// charged. Each screen size has its own database (playwright.config.ts), and
+// the tests run in order because a day has one session.
+test.describe.configure({ mode: "serial" });
+
+function trackErrors(page: Page): string[] {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(`pageerror: ${error.message}`));
+  page.on("console", (message) => {
+    if (message.type() === "error") errors.push(`console: ${message.text()}`);
+  });
+  return errors;
+}
+
+async function expectNoSidewaysScroll(page: Page, where: string) {
+  const overflow = await page.evaluate(
+    () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+  );
+  expect(overflow, `horizontal overflow ${where}`).toBeLessThanOrEqual(0);
+}
+
+const turns = (page: Page) => page.getByRole("list", { name: "Conversation so far" }).getByRole("listitem");
+const box = (page: Page) => page.getByLabel("Your reply in Chinese");
+
+async function say(page: Page, text: string, expectedTurns: number) {
+  await box(page).fill(text);
+  await box(page).press("Enter");
+  await expect(turns(page)).toHaveCount(expectedTurns);
+  await expect(turns(page).nth(expectedTurns - 1)).toContainText(text);
+  await expect(box(page)).toHaveValue("");
+}
+
+test("a typed session from Today to the summary, surviving reloads (FR-010, FR-013)", async ({ page }) => {
+  const errors = trackErrors(page);
+  await page.goto("/");
+  await page.getByRole("button", { name: "Start today's session" }).click();
+  await expect(page).toHaveURL(/\/session\/[0-9a-f-]{36}$/);
+  const url = page.url();
+
+  await expect(page.getByText("Practice stand-in tutor.")).toBeVisible();
+  await expect(page.getByText(/Planned, not started/)).toBeVisible();
+  await expect(page.getByRole("button", { name: "Finish session" })).toHaveCount(0);
+
+  await say(page, "你好！我今天很好。", 1);
+  await expect(page.getByText(/In progress/)).toBeVisible();
+  await expect(turns(page).first()).toContainText("Tutor");
+  await say(page, "我周末想跟朋友去吃火锅。", 2);
+  await expectNoSidewaysScroll(page, "during the conversation");
+
+  // A reload shows the same two turns, once each.
+  await page.reload();
+  await expect(turns(page)).toHaveCount(2);
+  await expect(page.getByText("你好！我今天很好。")).toHaveCount(1);
+  await expect(page.getByRole("alert")).toHaveCount(0);
+
+  // Half-typed text survives a reload too.
+  await box(page).fill("写到一半");
+  await page.reload();
+  await expect(box(page)).toHaveValue("写到一半");
+  await box(page).fill("");
+
+  // Pause, reload, resume.
+  await page.getByRole("button", { name: "Pause" }).click();
+  await expect(page.getByText("Paused time is not counted as practice. Your conversation is saved.")).toBeVisible();
+  await expect(box(page)).toHaveCount(0);
+  await page.reload();
+  await expect(page.getByRole("button", { name: "Resume" })).toBeVisible();
+  await page.goto("/");
+  await page.getByRole("link", { name: "Resume today's session" }).click();
+  await expect(page).toHaveURL(url);
+  await page.getByRole("button", { name: "Resume" }).click();
+  await say(page, "我们去哪儿吃？", 3);
+
+  // Finish, with a confirmation step.
+  await page.getByRole("button", { name: "Finish session" }).click();
+  await page.getByRole("button", { name: "Keep going" }).click();
+  await expect(box(page)).toBeVisible();
+  await page.getByRole("button", { name: "Finish session" }).click();
+  await page.getByRole("button", { name: "Yes, finish" }).click();
+
+  const summary = page.getByRole("region", { name: "Session summary" });
+  await expect(summary).toContainText("3 turns: 3 typed, 0 spoken.");
+  await expect(summary).toContainText("Typed turns are writing practice. They are not counted as speaking.");
+  await expect(page.getByRole("region", { name: "Today's words" })).toContainText("Using a word once is not evidence that you know it");
+  await expect(page.getByRole("region", { name: "Corrections worth keeping" })).toBeVisible();
+  await expect(box(page)).toHaveCount(0);
+  await expect(turns(page)).toHaveCount(3);
+  await expectNoSidewaysScroll(page, "on the summary");
+
+  // The summary is the same after a reload, and Today is free for a new session.
+  await page.reload();
+  await expect(page.getByRole("region", { name: "Session summary" })).toContainText("3 turns: 3 typed, 0 spoken.");
+  await expect(page.getByText(/· Complete/)).toBeVisible();
+  await page.getByRole("link", { name: "Back to Today" }).click();
+  await expect(page.getByRole("button", { name: "Start today's session" })).toBeVisible();
+  await expect(page.getByText("Recent sessions")).toBeVisible();
+  expect(errors).toEqual([]);
+});
+
+test("a message that fails to send is kept and saved once when sent again (REL-01)", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "Start today's session" }).click();
+  await expect(page).toHaveURL(/\/session\/[0-9a-f-]{36}$/);
+
+  // The connection drops for the first attempt only.
+  const ids: string[] = [];
+  let dropped = false;
+  await page.route("**/api/v1/sessions/*/turn", async (route) => {
+    ids.push(route.request().postDataJSON().clientTurnId);
+    if (!dropped) {
+      dropped = true;
+      await route.abort("connectionfailed");
+    } else {
+      await route.continue();
+    }
+  });
+
+  await box(page).fill("我想喝茶。");
+  await page.getByRole("button", { name: "Send" }).click();
+  const alert = page.getByRole("alert");
+  await expect(alert).toContainText("That message was not answered.");
+  await expect(alert).toContainText("Can't reach ShuoLab.");
+  await expect(page.getByText("我想喝茶。")).toBeVisible();
+
+  // Even a reload keeps it, and says it may not have been sent.
+  await page.reload();
+  await expect(page.getByRole("alert")).toContainText("This message may not have been sent.");
+  await page.getByRole("button", { name: "Send again" }).click();
+
+  await expect(turns(page)).toHaveCount(1);
+  await expect(page.getByText("我想喝茶。")).toHaveCount(1);
+  await expect(page.getByRole("alert")).toHaveCount(0);
+  expect(ids).toHaveLength(2);
+  expect(ids[1]).toBe(ids[0]);
+
+  await page.reload();
+  await expect(turns(page)).toHaveCount(1);
+});
+
+test("the message box and controls are large enough to tap and work from the keyboard", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("link", { name: /Resume today's session|Open today's plan/ }).click();
+
+  for (const name of ["Send", "Pause", "Finish session"]) {
+    const size = await page.getByRole("button", { name, exact: true }).boundingBox();
+    expect(size?.height ?? 0, `${name} button height`).toBeGreaterThanOrEqual(44);
+  }
+  await box(page).focus();
+  await page.keyboard.type("好的。");
+  await page.keyboard.press("Tab");
+  await expect(page.getByRole("button", { name: "Send" })).toBeFocused();
+  await page.keyboard.press("Enter");
+  await expect(turns(page)).toHaveCount(2);
+  await expectNoSidewaysScroll(page, "after a keyboard-only turn");
+});

@@ -188,6 +188,8 @@ export const sessions = sqliteTable(
     createdAt: text("created_at").notNull(),
     startedAt: text("started_at"),
     endedAt: text("ended_at"),
+    /** When the learner last did something in the session. Practice time is counted between these moments. */
+    lastActivityAt: text("last_activity_at"),
   },
   (t) => [
     index("sessions_date_idx").on(t.localStudyDate),

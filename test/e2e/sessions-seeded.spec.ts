@@ -40,7 +40,7 @@ test.describe("planning today's session (SPEC §5.2, §5.3, FR-005, FR-006)", ()
     const plan = page.getByRole("region", { name: "Plan" });
     await expect(plan.getByRole("listitem")).toHaveCount(6);
     await expect(plan).toContainText(/\d+% of the time is listening and speaking\./);
-    await expect(page.getByRole("region", { name: "Conversation" })).toContainText("Not built yet");
+    await expect(page.getByRole("region", { name: "Conversation" }).getByLabel("Your reply in Chinese")).toBeVisible();
 
     const overflow = await page.evaluate(
       () => document.documentElement.scrollWidth - document.documentElement.clientWidth,

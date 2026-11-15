@@ -1,13 +1,15 @@
 import { Hono } from "hono";
 import { z } from "zod";
-import { planRequestSchema, type SessionResponse } from "../../shared/session";
+import { sessionActionSchema } from "../../shared/debrief";
+import { planRequestSchema } from "../../shared/session";
 import { MAX_TRANSCRIPT_CHARS, turnRequestSchema } from "../../shared/tutor";
 import type { AppBindings } from "../auth/access";
 import type { Env } from "../env";
 import { selectTutorProvider } from "../providers/select";
 import type { TutorProvider } from "../providers/types";
-import { getSession, listSessions, planSession } from "../services/sessions";
-import { listTurns, takeTurn } from "../services/turns";
+import { listSessions, planSession } from "../services/sessions";
+import { applySessionAction, completeSession, getSessionState } from "../services/session-state";
+import { takeTurn } from "../services/turns";
 import { readJsonBody } from "../validation/body";
 import { ApiError } from "../validation/errors";
 import { parseQuery } from "../validation/query";
@@ -41,11 +43,16 @@ export function createSessionRoutes(deps: SessionRouteDeps = {}) {
       const result = await planSession(c.env.DB, parsed.data);
       return c.json(result, result.reused ? 200 : 201);
     })
-    .get("/:id", async (c) => {
-      const session = await getSession(c.env.DB, c.req.param("id"));
-      const body: SessionResponse = { session, turns: await listTurns(c.env.DB, session.id) };
-      return c.json(body);
+    .get("/:id", async (c) => c.json(await getSessionState(c.env.DB, c.req.param("id"))))
+    .patch("/:id", async (c) => {
+      const parsed = sessionActionSchema.safeParse(await readJsonBody(c.req.raw));
+      if (!parsed.success) {
+        throw new ApiError("BAD_REQUEST", 'Send {"action": "pause"}, "resume" or "abandon".');
+      }
+      return c.json(await applySessionAction(c.env.DB, c.req.param("id"), parsed.data.action));
     })
+    // Idempotent: completing a complete session returns the same summary.
+    .post("/:id/complete", async (c) => c.json(await completeSession(c.env.DB, c.req.param("id"))))
     .post("/:id/turn", async (c) => {
       const parsed = turnRequestSchema.safeParse(await readJsonBody(c.req.raw));
       if (!parsed.success) {

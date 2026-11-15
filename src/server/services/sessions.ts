@@ -1,6 +1,7 @@
 import type { D1Database } from "@cloudflare/workers-types";
 import { usageWarnings, getColloquialSource, type ColloquialChannel, type ColloquialRegister, type CurrencyStatus } from "../../shared/colloquial";
 import { getEdition, isHskBand, type HskBand } from "../../shared/curriculum";
+import { ACTIVITY_GAP_CAP_SECONDS } from "../../shared/debrief";
 import type { SessionMinutes, SessionStatus } from "../../shared/learning";
 import {
   TARGET_COUNTS,
@@ -29,6 +30,15 @@ import { FREE_CHAT_SITUATION, situationFor } from "./situations";
 
 const UNFINISHED: readonly SessionStatus[] = ["planned", "active", "paused"];
 const SESSION_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+
+/**
+ * SQL that adds the time since the learner's last action to `actual_seconds`,
+ * capped, so a tab left open does not count as practice. `nowParam` is the
+ * bind placeholder holding the current time as an ISO string.
+ */
+export function accrueSql(nowParam: string): string {
+  return `actual_seconds = actual_seconds + MIN(${ACTIVITY_GAP_CAP_SECONDS}, MAX(0, CAST(ROUND((julianday(${nowParam}) - julianday(COALESCE(last_activity_at, ${nowParam}))) * 86400) AS INTEGER)))`;
+}
 
 interface SessionRow {
   id: string;

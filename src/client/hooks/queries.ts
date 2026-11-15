@@ -10,14 +10,10 @@ import {
 import type { MeResponse } from "../../shared/api";
 import type { HskBand } from "../../shared/curriculum";
 import { settingsResponseSchema, type SettingsUpdate } from "../../shared/settings";
-import {
-  planResponseSchema,
-  sessionListResponseSchema,
-  sessionResponseSchema,
-  type PlanRequest,
-} from "../../shared/session";
-import { monthlyUsageResponseSchema } from "../../shared/tutor";
-import { apiGet, apiPost, apiPut } from "../lib/api";
+import { sessionStateResponseSchema, type SessionAction, type SessionStateResponse } from "../../shared/debrief";
+import { planResponseSchema, sessionListResponseSchema, type PlanRequest } from "../../shared/session";
+import { monthlyUsageResponseSchema, turnResponseSchema } from "../../shared/tutor";
+import { apiGet, apiPatch, apiPost, apiPut } from "../lib/api";
 
 export function useMe() {
   return useQuery({ queryKey: ["me"], queryFn: () => apiGet("/me", meResponseSchema) });
@@ -126,10 +122,66 @@ export function useSessions() {
   });
 }
 
+const sessionKey = (id: string) => ["sessions", "detail", id] as const;
+
+/** One session with its plan, its saved turns and, once complete, its summary. */
 export function useSession(id: string) {
   return useQuery({
-    queryKey: ["sessions", "detail", id],
-    queryFn: () => apiGet(`/sessions/${encodeURIComponent(id)}`, sessionResponseSchema),
+    queryKey: sessionKey(id),
+    queryFn: () => apiGet(`/sessions/${encodeURIComponent(id)}`, sessionStateResponseSchema),
+  });
+}
+
+export interface OutgoingTurn {
+  /** Made once per message and reused on every retry, so the message is saved once. */
+  clientTurnId: string;
+  transcript: string;
+}
+
+/** Sends a typed message to the tutor. Never retried automatically: the learner decides. */
+export function useSendTurn(sessionId: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (turn: OutgoingTurn) =>
+      apiPost(`/sessions/${encodeURIComponent(sessionId)}/turn`, { ...turn, sourceMode: "typed" }, turnResponseSchema),
+    onSuccess: (result) => {
+      client.setQueryData<SessionStateResponse>(sessionKey(sessionId), (state) => {
+        if (!state) return state;
+        const known = state.turns.some((t) => t.turnId === result.turn.turnId);
+        return {
+          ...state,
+          session: { ...state.session, status: result.sessionStatus },
+          turns: known ? state.turns : [...state.turns, result.turn],
+        };
+      });
+      void client.invalidateQueries({ queryKey: ["sessions", "list"] });
+      void client.invalidateQueries({ queryKey: ["usage"] });
+    },
+  });
+}
+
+/** Pauses, resumes or abandons a session. */
+export function useSessionAction(sessionId: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (action: SessionAction) =>
+      apiPatch(`/sessions/${encodeURIComponent(sessionId)}`, { action }, sessionStateResponseSchema),
+    onSuccess: (state) => {
+      client.setQueryData(sessionKey(sessionId), state);
+      void client.invalidateQueries({ queryKey: ["sessions", "list"] });
+    },
+  });
+}
+
+/** Finishes a session. Safe to repeat: the server returns the same summary. */
+export function useCompleteSession(sessionId: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: () => apiPost(`/sessions/${encodeURIComponent(sessionId)}/complete`, {}, sessionStateResponseSchema),
+    onSuccess: (state) => {
+      client.setQueryData(sessionKey(sessionId), state);
+      void client.invalidateQueries({ queryKey: ["sessions", "list"] });
+    },
   });
 }
 
@@ -139,7 +191,7 @@ export function usePlanSession() {
   return useMutation({
     mutationFn: (request: PlanRequest) => apiPost("/sessions/plan", request, planResponseSchema),
     onSuccess: ({ session }) => {
-      client.setQueryData(["sessions", "detail", session.id], { session, turns: [] });
+      client.setQueryData<SessionStateResponse>(sessionKey(session.id), { session, turns: [], debrief: null });
       void client.invalidateQueries({ queryKey: ["sessions", "list"] });
     },
   });
