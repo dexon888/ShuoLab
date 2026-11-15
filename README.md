@@ -34,7 +34,8 @@ built yet**.
 | Session planning | Working locally and tested with generated placeholder data: one saved plan per study day for 15, 20, 25 or 30 minutes, or a labelled open conversation when no vocabulary is imported |
 | Tutor turns (API) | Working locally with the stand-in tutor: validated replies, each message saved once, spending recorded and capped. One live open conversation with `gpt-6-luna` run locally: Mandarin replies, a correction, an injection attempt declined, pinyin and English returned, usage recorded |
 | Session conversation screen | Working locally with the stand-in tutor: typed turns, pause, resume, finish, summary, recovery after a reload or a dropped connection. Typed only; listening and speaking arrive in Phase 3 |
-| Speech | Phase 3 — only a local fake token issuer exists |
+| Speech tokens and free-tier count | Working locally with a stand-in token issuer: `POST /speech/token`, usage reports, the Azure F0 allowance enforced and shown in Settings. The Azure issuer is written and unit-tested; **no real Azure call has been made** |
+| Speaking and listening in a session | Phase 3 — not built |
 | Review, progress, export | Phase 4 |
 
 Nothing has been deployed. OpenAI has been called only from a local run; no Azure call has been made.
@@ -124,7 +125,9 @@ private-data/    Your HSK source files — git-ignored, never committed
 | `ACCESS_AUD` | secret | Audience tag of the Access application |
 | `OPENAI_API_KEY` | secret | Tutor (Phase 2). Paid third-party account |
 | `OPENAI_MODEL` | `wrangler.jsonc` | Defaults to `gpt-6-luna` |
-| `AZURE_SPEECH_KEY`, `AZURE_SPEECH_REGION` | secret | Speech (Phase 3). Third-party account; free tier available |
+| `AZURE_SPEECH_KEY` | secret | Speech (Phase 3). Third-party account; free tier available |
+| `AZURE_SPEECH_REGION` | secret or `wrangler.jsonc` | The resource's region name, such as `eastus` |
+| `AZURE_RECOGNITION_SECONDS_PER_MONTH`, `AZURE_SYNTHESIS_CHARS_PER_MONTH` | `wrangler.jsonc` or `.dev.vars` (optional) | Lower speech limits than the free allowance (18,000 seconds and 500,000 characters). Higher values are ignored |
 
 Never put a secret in `wrangler.jsonc`, in a `VITE_*` variable, or in a commit.
 
@@ -209,8 +212,21 @@ monthly budget limit in the OpenAI console, then:
 pnpm exec wrangler secret put OPENAI_API_KEY
 ```
 
-Azure Speech (Phase 3): in the Azure portal create a **Speech** resource on
-the **F0 (free)** tier, note its key and region, then:
+Azure Speech (Phase 3):
+
+1. Sign in at <https://portal.azure.com/>. A free Azure account needs a card
+   for identity checks; the F0 tier itself is not billed.
+2. Create a resource of type **Speech** (under Azure AI services). Choose a
+   region close to you, for example `eastasia` or `westus2`, and the
+   **Free F0** pricing tier. Only one F0 Speech resource is allowed per
+   subscription.
+3. Open the resource's **Keys and Endpoint** page and note **KEY 1** and the
+   **Location/Region** (a plain name such as `eastasia`).
+4. Do not upgrade the resource to S0. ShuoLab stops speech at the F0
+   allowance (5 hours of recognition and 500,000 voice characters a month)
+   and falls back to typing; it never moves to a paid tier.
+
+Then:
 
 ```bash
 pnpm exec wrangler secret put AZURE_SPEECH_KEY
@@ -220,7 +236,9 @@ pnpm exec wrangler secret put AZURE_SPEECH_KEY
 pnpm exec wrangler secret put AZURE_SPEECH_REGION
 ```
 
-For local testing with real providers, add the same names to `.dev.vars`.
+For local testing with real providers, add the same names to `.dev.vars`,
+one per line as `NAME=value`, without a leading `#`. The browser tests never
+use them: they replace the build's copy of `.dev.vars` with stand-in values.
 
 ## Installing on a phone
 

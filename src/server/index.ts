@@ -8,8 +8,10 @@ import { colloquialRoutes } from "./routes/colloquial";
 import { curriculumRoutes } from "./routes/curriculum";
 import { createSessionRoutes, type SessionRouteDeps } from "./routes/sessions";
 import { settingsRoutes } from "./routes/settings";
+import { createSpeechRoutes, type SpeechRouteDeps } from "./routes/speech";
 import { getCurriculumStatus, isVocabVerified } from "./services/curriculum-status";
 import { getSettings } from "./services/settings";
+import { speechLimits } from "./services/speech";
 import { getMonthlyUsage } from "./services/usage";
 import { sameOriginWrites } from "./validation/body";
 import { ApiError } from "./validation/errors";
@@ -17,6 +19,7 @@ import { ApiError } from "./validation/errors";
 export interface AppDeps {
   auth?: AuthDeps;
   tutor?: SessionRouteDeps["tutor"];
+  speech?: SpeechRouteDeps["speech"];
 }
 
 export function createApp(deps: AppDeps = {}) {
@@ -71,7 +74,9 @@ export function createApp(deps: AppDeps = {}) {
   api.route("/settings", settingsRoutes);
   api.route("/sessions", createSessionRoutes({ tutor: deps.tutor }));
   // This app's own estimate of the month's spending; not a provider bill.
-  api.get("/usage/monthly", async (c) => c.json(await getMonthlyUsage(c.env.DB)));
+  api.get("/usage/monthly", async (c) => c.json(await getMonthlyUsage(c.env.DB, new Date(), speechLimits(c.env))));
+  // Short-lived Azure tokens and the free-tier count. The resource key never leaves the Worker.
+  api.route("/speech", createSpeechRoutes({ speech: deps.speech }));
   api.route("/curriculum", curriculumRoutes);
   // Separate from the syllabus: never part of an HSK count.
   api.route("/colloquial", colloquialRoutes);

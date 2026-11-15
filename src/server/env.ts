@@ -22,6 +22,9 @@ export interface Env {
   OPENAI_OUTPUT_USD_PER_MTOK?: string;
   AZURE_SPEECH_KEY?: string;
   AZURE_SPEECH_REGION?: string;
+  /** Optional lower monthly limits for speech, below the Azure free allowance. */
+  AZURE_RECOGNITION_SECONDS_PER_MONTH?: string;
+  AZURE_SYNTHESIS_CHARS_PER_MONTH?: string;
 }
 
 declare const __APP_VERSION__: string | undefined;

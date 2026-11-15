@@ -34,7 +34,7 @@ unexpected error, never a prompt, a reply, a provider response or a key.
 |---|---|---|
 | Cloudflare | All requests; the D1 database | Always |
 | OpenAI | The instructions (situation, the session's target words), up to eight earlier turns and your new message. Sent with `store: false`. | On each tutor turn, only if a key is configured |
-| Azure AI Speech | Microphone audio for transcription; reply text for speech | Phase 3 onward, only if a key is configured |
+| Azure AI Speech | Microphone audio for transcription and the tutor's reply text for its voice, sent from your browser directly to Azure with a short-lived token. ShuoLab receives only the transcript, and the length and character counts it records for the free-tier limit | Phase 3 onward, only if a key is configured |
 
 No transcript is sent to any other vendor. Payment details, contacts and
 location are never collected.

@@ -75,5 +75,7 @@ export interface SpeechToken {
 
 export interface SpeechTokenProvider {
   readonly vendor: string;
+  /** True for the local stand-in: its token does not work with Azure. */
+  readonly mock: boolean;
   issueToken(now: Date): Promise<SpeechToken>;
 }

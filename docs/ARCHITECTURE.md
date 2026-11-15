@@ -47,7 +47,9 @@ produced it from.
 | `PATCH /api/v1/sessions/:id` | owner | `{action: "pause" \| "resume" \| "abandon"}`; repeating an action is a no-op; 409 when the session has not started or has ended |
 | `POST /api/v1/sessions/:id/complete` | owner | finishes the session and returns its summary; repeating it returns the same summary; 409 with no turns or after abandon |
 | `POST /api/v1/sessions/:id/turn` | owner | `{clientTurnId, transcript, sourceMode, asrUncertain}`; 201 with the tutor's validated reply, 200 with `replayed: true` when that `clientTurnId` was already answered; 409 while the same message is still being answered or when the session has ended; 429 `BUDGET_EXCEEDED` or `RATE_LIMITED`; 503 when the tutor is unreachable or not set up |
-| `GET /api/v1/usage/monthly` | owner | this UTC month's estimated spending, the warning and stop amounts, tutor request and token counts, and a disclaimer |
+| `GET /api/v1/usage/monthly` | owner | this UTC month's estimated spending, the warning and stop amounts, tutor request and token counts, this month's speech use against the free allowance, and a disclaimer |
+| `POST /api/v1/speech/token` | owner | a short-lived Azure token, the region, when to refresh (nine minutes), whether it is the stand-in, and the month's speech allowance; 429 `BUDGET_EXCEEDED` once both recognition and voice allowances are used up; 429 `RATE_LIMITED` over 6 a minute or 300 a day; 503 when speech is not set up |
+| `POST /api/v1/speech/usage` | owner | `{clientEventId, kind: "recognition", audioSeconds}` (at most 60) or `{clientEventId, kind: "synthesis", characters}` (at most 2,000); 201 when counted, 200 when that event was already counted |
 | `GET /api/v1/sessions` | owner | the most recent sessions (`limit` 1–50, default 10) and today's resumable one, if any |
 | `GET /api/v1/colloquial` | owner | one page of colloquial expressions with `register`, `channel`, `status`, `q` filters, plus the sources to credit; reads only `colloquial_expressions` |
 
@@ -97,6 +99,22 @@ be sent again. Providers implement `TutorProvider`
 API with a strict JSON schema, `store: false` and a 20-second timeout;
 `FakeTutorProvider` is the local stand-in. `selectTutorProvider` picks one per
 request from the Worker environment; tests inject one through `createApp`.
+
+## Speech tokens and the free-tier count
+
+The browser will talk to Azure AI Speech directly with a token from
+`POST /speech/token` (`src/server/services/speech.ts`). The Worker exchanges
+`AZURE_SPEECH_KEY` for a 10-minute token at
+`https://<region>.api.cognitive.microsoft.com/sts/v1.0/issueToken`
+(`src/server/providers/azure.ts`) and tells the browser to refresh after nine.
+The key never leaves the Worker; the token is never stored or logged.
+
+Audio never reaches ShuoLab, so the browser reports each recognition's length
+and each spoken reply's character count to `POST /speech/usage`. Reports are
+stored in `usage_events` with a unique `client_event_id`, so a resent report
+counts once. The month's totals are compared with the Azure F0 allowance
+(lowerable by configuration, never raisable). Speech on F0 costs nothing, so
+it adds nothing to the spending estimate.
 
 ## Session state, practice time and the summary
 

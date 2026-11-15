@@ -297,10 +297,13 @@ export const usageEvents = sqliteTable(
     status: text("status").notNull(),
     /** Not a foreign key: the ledger outlives the session. */
     sessionId: text("session_id"),
+    /** Set for usage the browser reports, so a resent report is counted once. */
+    clientEventId: text("client_event_id"),
     recordedAt: text("recorded_at").notNull(),
   },
   (t) => [
     index("usage_events_recorded_idx").on(t.recordedAt, t.provider),
+    uniqueIndex("usage_events_client_event_idx").on(t.clientEventId),
     check("usage_events_status_check", sql`${t.status} IN ('ok','invalid','error')`),
     check("usage_events_amounts_check", sql`${t.tokensIn} >= 0 AND ${t.tokensOut} >= 0 AND ${t.estimatedUsd} >= 0`),
   ],

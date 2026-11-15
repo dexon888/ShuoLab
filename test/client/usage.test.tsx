@@ -22,6 +22,15 @@ function usage(over: Partial<MonthlyUsageResponse> = {}): MonthlyUsageResponse {
     softLimitReached: false,
     hardLimitReached: false,
     tutor: { requests: 37, tokensIn: 30000, tokensOut: 4000, estimatedUsd: 0.42 },
+    speech: {
+      month: "2026-03",
+      recognitionSeconds: 754,
+      recognitionLimitSeconds: 18000,
+      synthesisChars: 12345,
+      synthesisLimitChars: 500000,
+      recognitionAvailable: true,
+      synthesisAvailable: true,
+    },
     disclaimer: USAGE_DISCLAIMER,
     ...over,
   };
@@ -61,6 +70,26 @@ describe("spending this month (SPEC §4.3)", () => {
     renderSettings(usage({ estimatedUsd: 10.01, remainingUsd: 0, softLimitReached: true, hardLimitReached: true }));
     expect(await screen.findByText(/The stop amount of US\$10\.00 has been reached\. Paid tutor requests are paused/)).toBeInTheDocument();
     expect(screen.queryByText(/The warning amount/)).not.toBeInTheDocument();
+  });
+
+  it("shows this month's free speech use against the Azure allowance", async () => {
+    renderSettings(usage());
+    const region = await screen.findByRole("region", { name: "Spending this month" });
+    expect(await within(region).findByText("Speech (Azure free tier)")).toBeInTheDocument();
+    expect(region).toHaveTextContent("Speech recognition: 12 min of 300 min.");
+    expect(region).toHaveTextContent("Spoken replies: 12,345 of 500,000 characters.");
+    expect(region).toHaveTextContent("never moves to a paid tier");
+    expect(region).not.toHaveTextContent(/used up/);
+  });
+
+  it.each([
+    [false, true, "free speech recognition is used up. Answer by typing"],
+    [true, false, "free spoken replies are used up. Replies are shown as text"],
+    [false, false, "free speech allowance is used up. Typed answers and written replies still work."],
+  ])("says which part of the speech allowance is used up (recognition %s, voice %s)", async (recognitionAvailable, synthesisAvailable, text) => {
+    const base = usage();
+    renderSettings({ ...base, speech: { ...base.speech, recognitionAvailable, synthesisAvailable } });
+    expect(await screen.findByText((content) => content.includes(text))).toBeInTheDocument();
   });
 
   it("says the estimate is unavailable without hiding the rest of Settings", async () => {

@@ -52,10 +52,22 @@ OpenAI's own figures have caught up.
 - A failed call (timeout, network) is logged with zero tokens because the
   provider reported none; it may still have been billed.
 
-## Controls arriving with the features that spend money
+## Speech (Azure F0)
 
-- Phase 3: speech token rate limit; separate tracking of Azure free-tier
-  minutes and characters; no automatic move to a paid tier.
+- Speech runs on Azure's free F0 tier: 5 hours of real-time recognition and
+  500,000 neural voice characters a month (Azure pricing page, read
+  2026-11-15). F0 also allows only one recognition at a time.
+- ShuoLab counts what the browser reports after each recognition and each
+  spoken reply, per UTC month. Azure's own month may not line up with UTC.
+- With recognition used up, the token still comes with `recognitionAvailable:
+  false` and the session falls back to typing; with voice used up, replies are
+  shown as text. With both used up, no token is issued.
+- `AZURE_RECOGNITION_SECONDS_PER_MONTH` and `AZURE_SYNTHESIS_CHARS_PER_MONTH`
+  can lower the limits, for example to keep a margin; higher values are
+  ignored.
+- At most 6 speech tokens a minute and 300 a day.
+- ShuoLab never moves the resource to a paid tier. Keep it on F0 in the Azure
+  portal.
 
 The in-app figure is an estimate. Also set budget alerts or hard limits in the
 OpenAI and Azure consoles.

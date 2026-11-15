@@ -7,6 +7,7 @@
  */
 import { z } from "zod";
 import { SESSION_STATUSES } from "./learning";
+import { speechAllowanceSchema } from "./speech";
 
 export const SOURCE_MODES = ["speech", "typed"] as const;
 export type SourceMode = (typeof SOURCE_MODES)[number];
@@ -210,6 +211,8 @@ export const monthlyUsageResponseSchema = z.object({
     tokensOut: z.number().int().nonnegative(),
     estimatedUsd: z.number().nonnegative(),
   }),
+  /** Azure free-tier use this month. Counted from what the browser reports. */
+  speech: speechAllowanceSchema,
   disclaimer: z.string(),
 });
 export type MonthlyUsageResponse = z.infer<typeof monthlyUsageResponseSchema>;
