@@ -1,7 +1,7 @@
 import type { ProviderMode, ProviderStatus } from "../../shared/api";
 import { hasValue, isProduction, type Env } from "../env";
 
-const DEFAULT_OPENAI_MODEL = "gpt-6-luna";
+import { DEFAULT_OPENAI_MODEL } from "./select";
 
 function mode(configured: boolean, env: Env): ProviderMode {
   if (configured) return "live";

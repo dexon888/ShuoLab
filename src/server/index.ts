@@ -6,15 +6,17 @@ import { APP_VERSION } from "./env";
 import { getProviderStatuses } from "./providers/status";
 import { colloquialRoutes } from "./routes/colloquial";
 import { curriculumRoutes } from "./routes/curriculum";
-import { sessionRoutes } from "./routes/sessions";
+import { createSessionRoutes, type SessionRouteDeps } from "./routes/sessions";
 import { settingsRoutes } from "./routes/settings";
 import { getCurriculumStatus, isVocabVerified } from "./services/curriculum-status";
 import { getSettings } from "./services/settings";
+import { getMonthlyUsage } from "./services/usage";
 import { sameOriginWrites } from "./validation/body";
 import { ApiError } from "./validation/errors";
 
 export interface AppDeps {
   auth?: AuthDeps;
+  tutor?: SessionRouteDeps["tutor"];
 }
 
 export function createApp(deps: AppDeps = {}) {
@@ -67,7 +69,9 @@ export function createApp(deps: AppDeps = {}) {
   });
 
   api.route("/settings", settingsRoutes);
-  api.route("/sessions", sessionRoutes);
+  api.route("/sessions", createSessionRoutes({ tutor: deps.tutor }));
+  // This app's own estimate of the month's spending; not a provider bill.
+  api.get("/usage/monthly", async (c) => c.json(await getMonthlyUsage(c.env.DB)));
   api.route("/curriculum", curriculumRoutes);
   // Separate from the syllabus: never part of an HSK count.
   api.route("/colloquial", colloquialRoutes);

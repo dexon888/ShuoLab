@@ -15,7 +15,9 @@ authentication, the import tools and browsing, searching and opening imported
 entries work locally with no accounts or secrets. Phase 2 has started: your
 preferences (onboarding and Settings) are saved in the database, and Today
 plans a session: a situation, the words to practise and a time budget. The
-conversation that runs the plan, the tutor, speech and review are **not built
+server can now take tutor turns for a session (validated replies, each message
+saved once, spending recorded and capped), tested with a local stand-in tutor.
+The conversation screen that uses it, speech and review are **not built
 yet**.
 
 | Area | State |
@@ -28,7 +30,8 @@ yet**.
 | Colloquial expressions (separate from HSK) | Working and tested with generated placeholder rows; not yet run on the real dataset file |
 | Preferences (onboarding, Settings) | Working locally; saved in the database, so they follow you across devices once deployed |
 | Session planning | Working locally and tested with generated placeholder data: one saved plan per study day for 15, 20, 25 or 30 minutes, or a labelled open conversation when no vocabulary is imported |
-| Session conversation and tutor | Phase 2 — not built; only a local fake tutor exists |
+| Tutor turns (API) | Working locally with the stand-in tutor: validated replies, each message saved once, spending recorded and capped. The OpenAI adapter is written and unit-tested against recorded response shapes; **no real OpenAI call has been made** |
+| Session conversation screen | Phase 2 — not built |
 | Speech | Phase 3 — only a local fake token issuer exists |
 | Review, progress, export | Phase 4 |
 
@@ -362,9 +365,17 @@ The page is at `/curriculum/colloquial`.
 ## Budget limits, backup and export
 
 The monthly warning and stop amounts can be set in Settings (defaults US$5
-and US$10). They are stored but not yet enforced: enforcement arrives with the
-tutor later in Phase 2. They are ShuoLab's own estimate, not a cap at OpenAI or
-Azure, so set limits in those accounts too. JSON/CSV export arrives with
+and US$10). They are enforced for the tutor: every tutor call is
+recorded with its token counts and an estimated cost, and once the month's
+estimate (UTC month) reaches the stop amount, paid tutor requests are refused
+until the month ends or you raise the amount. Settings shows the month's
+estimate. It is ShuoLab's own estimate from list prices, not a cap at OpenAI
+or Azure and not your bill, so set limits in those accounts too. The built-in
+price is for the default model `gpt-6-luna` (US$0.10 per million input tokens
+and US$0.50 per million output tokens, read from OpenAI's pricing page on
+2026-11-14). If you change `OPENAI_MODEL` or prices change, set
+`OPENAI_INPUT_USD_PER_MTOK` and `OPENAI_OUTPUT_USD_PER_MTOK`; a model with no
+known price is refused rather than run untracked. JSON/CSV export arrives with
 Phase 4. See `docs/COSTS.md` and `docs/PRIVACY.md`.
 
 ## Troubleshooting

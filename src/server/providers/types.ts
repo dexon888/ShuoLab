@@ -1,25 +1,68 @@
 /**
- * Provider boundaries (SPEC §3 "vendor boundary"). Phase 0 ships the
- * interfaces and local fakes only; the OpenAI and Azure adapters are added in
- * Phases 2 and 3 and are selected at runtime from environment secrets.
+ * Provider boundaries (SPEC §3 "vendor boundary"). The tutor adapter only
+ * moves text: it sends authored instructions and the conversation, and hands
+ * back whatever the model produced. Validating that output, retrying and
+ * falling back happen in the turn service, the same way for every provider.
  */
 
-export interface TutorTurnInput {
-  learnerText: string;
-  /** Real words from imported curriculum rows, chosen by the planner. */
-  targetWords: readonly { id: string; hanzi: string }[];
+export interface TutorMessage {
+  role: "user" | "assistant";
+  content: string;
 }
 
-export interface TutorTurnOutput {
-  spokenReplyZh: string;
-  referencedCurriculumItemIds: string[];
-  usage: { tokensIn: number; tokensOut: number };
+export interface TutorRequest {
+  /** Authored by the server. Never contains learner text. */
+  instructions: string;
+  /** Earlier turns, then the learner's new message last. Learner text is untrusted. */
+  messages: readonly TutorMessage[];
+  /** The same facts the instructions describe, as data. Used by the local stand-in. */
+  context: {
+    targets: readonly { id: string; hanzi: string }[];
+    colloquial: readonly { id: string; term: string }[];
+    /** 0 for the first turn of the session. */
+    turnIndex: number;
+    /** 1 for the first try, 2 for the retry after a rejected answer. */
+    attempt: number;
+  };
+}
+
+export interface TokenUsage {
+  tokensIn: number;
+  tokensOut: number;
+}
+
+export interface TutorRawResult {
+  /** The model's text, expected to be JSON. Null when it refused or produced nothing usable. */
+  text: string | null;
+  usage: TokenUsage;
+}
+
+export type ProviderErrorKind = "timeout" | "network" | "rate_limited" | "auth" | "http" | "malformed";
+
+/**
+ * A provider call that produced no answer. Carries a category only: never the
+ * provider's message, a key, or any part of the prompt (SPEC §9.1).
+ */
+export class ProviderError extends Error {
+  readonly kind: ProviderErrorKind;
+
+  constructor(kind: ProviderErrorKind) {
+    super(`Provider call failed (${kind}).`);
+    this.name = "ProviderError";
+    this.kind = kind;
+  }
 }
 
 export interface TutorProvider {
   readonly vendor: string;
   readonly model: string;
-  generateTurn(input: TutorTurnInput): Promise<TutorTurnOutput>;
+  /** True for the local stand-in: no model is called. */
+  readonly mock: boolean;
+  /** True when calls cost money, so the monthly stop amount applies. */
+  readonly paid: boolean;
+  generate(request: TutorRequest): Promise<TutorRawResult>;
+  /** This app's estimate of what a call cost, in US dollars. */
+  estimateUsd(usage: TokenUsage): number;
 }
 
 export interface SpeechToken {

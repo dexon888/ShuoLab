@@ -43,7 +43,9 @@ produced it from.
 | `GET /api/v1/settings` | owner | saved preferences, or the defaults when nothing is saved (also included in `/me`) |
 | `PUT /api/v1/settings` | owner | partial update of whitelisted preference fields; unknown fields are rejected; returns the full settings |
 | `POST /api/v1/sessions/plan` | owner | plans today's session from the saved settings (optional `durationMinutes`, `studyBand`, `freeChat`); 201 for a new plan, 200 with `reused: true` when today's unfinished session is returned; 503 `CURRICULUM_MISSING` for an HSK plan with no verified vocabulary |
-| `GET /api/v1/sessions/:id` | owner | one session with its saved plan |
+| `GET /api/v1/sessions/:id` | owner | one session with its saved plan and its finished turns, oldest first |
+| `POST /api/v1/sessions/:id/turn` | owner | `{clientTurnId, transcript, sourceMode, asrUncertain}`; 201 with the tutor's validated reply, 200 with `replayed: true` when that `clientTurnId` was already answered; 409 while the same message is still being answered or when the session has ended; 429 `BUDGET_EXCEEDED` or `RATE_LIMITED`; 503 when the tutor is unreachable or not set up |
+| `GET /api/v1/usage/monthly` | owner | this UTC month's estimated spending, the warning and stop amounts, tutor request and token counts, and a disclaimer |
 | `GET /api/v1/sessions` | owner | the most recent sessions (`limit` 1–50, default 10) and today's resumable one, if any |
 | `GET /api/v1/colloquial` | owner | one page of colloquial expressions with `register`, `channel`, `status`, `q` filters, plus the sources to credit; reads only `colloquial_expressions` |
 
@@ -57,13 +59,42 @@ or reopen today's session) and `/session/:sessionId` (the saved plan).
 Tables: `curriculum_editions`, `source_manifests`, `curriculum_items`,
 `colloquial_expressions`, `owner_settings` (at most one row), `sessions`
 (the plan is stored as validated JSON in `plan_json`) and `session_targets`
-(which curriculum entries a session targets, and in what role).
+(which curriculum entries a session targets, and in what role),
+`conversation_turns` and `usage_events`.
 
 Session planning is plain code with no model call. `src/server/services/planner.ts`
 is pure: given candidates it returns a plan. `src/server/services/sessions.ts`
 reads the candidates from D1, checks every target id and band against
 `curriculum_items` before saving, and writes the session and its targets in
 one batch. The plan contract is `src/shared/session.ts`.
+
+## Tutor turns
+
+`conversation_turns` holds one row per learner message and its answer;
+`usage_events` holds one row per provider call. The order of work in
+`src/server/services/turns.ts`:
+
+1. Load the session; refuse if it has ended.
+2. If this `clientTurnId` is already answered, return the saved turn.
+3. Check the per-session turn cap, the request rate and the month's budget.
+4. Reserve the turn row as `pending` (the unique index makes this the lock).
+5. Build the instructions from the saved plan and from `session_targets`
+   joined to `curriculum_items`. Learner text is sent only as conversation
+   messages, never inside the instructions.
+6. Call the provider, at most twice. Each call is written to `usage_events`.
+   The answer must be JSON matching `tutorOutputSchema` (`src/shared/tutor.ts`)
+   with a Mandarin reply; a rejected answer is retried once with the reason.
+7. Keep a referenced id only if it is one of this session's targets and its
+   word is in the reply. After two rejected answers, use a prepared reply
+   with no feedback.
+8. In one batch, mark the turn `complete` and the session `active`.
+
+A provider failure marks the row `failed`; the same `clientTurnId` can then
+be sent again. Providers implement `TutorProvider`
+(`src/server/providers/types.ts`): `OpenAiTutorProvider` calls the Responses
+API with a strict JSON schema, `store: false` and a 20-second timeout;
+`FakeTutorProvider` is the local stand-in. `selectTutorProvider` picks one per
+request from the Worker environment; tests inject one through `createApp`.
 
 Writes: a JSON body of at most 16 KB, validated by a strict Zod schema shared
 with the client. A write whose `Origin` header names another host is refused

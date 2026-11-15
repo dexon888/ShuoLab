@@ -4,9 +4,22 @@ Target: no infrastructure cost within free tiers, and a small, capped provider
 spend. None of this is guaranteed; provider prices and free allowances change.
 Check the linked pages before going live.
 
-## Today (Phase 0)
+## Today
 
-The app makes no paid calls. Local development uses fake providers.
+Local development and tests use the stand-in tutor: no paid calls. The tutor
+route calls OpenAI only when `OPENAI_API_KEY` is set as a Worker secret. No
+real OpenAI call has been made yet, so the figures below are estimates from
+list prices, not measurements.
+
+## What a tutor turn costs (estimate)
+
+The default model is `gpt-6-luna`: US$0.10 per million input tokens and
+US$0.50 per million output tokens (standard tier, read from the pricing page
+on 2026-11-14). A turn sends the instructions, up to eight earlier turns and
+the new message, and gets back a short JSON reply. At roughly 1,000 input and
+150 output tokens that is about US$0.0002 a turn; a retry after a rejected
+answer doubles it. Check the first real session's figures in Settings against
+the OpenAI usage page.
 
 ## Free-tier limits to know
 
@@ -22,12 +35,22 @@ The app makes no paid calls. Local development uses fake providers.
 - No background polling: the client fetches on navigation and on request only.
 - No audio storage.
 - No scheduled jobs.
+- Every tutor call is written to `usage_events` with its token counts, an
+  estimated cost and whether the answer was used, rejected or failed.
+- Warning at US$5 and stop at US$10 of estimated spending per UTC month, both
+  editable in Settings. At the stop amount paid tutor requests get
+  `429 BUDGET_EXCEEDED`. Already-saved turns can still be read.
+- The gate fails closed: if the month's total cannot be read, or the model has
+  no known price, the paid call is refused.
+- Cached input tokens are counted at the full input price, so the estimate
+  errs high.
+- At most 20 tutor calls a minute, 600 a day and 80 turns a session; replies
+  are capped at 900 output tokens.
+- A failed call (timeout, network) is logged with zero tokens because the
+  provider reported none; it may still have been billed.
 
 ## Controls arriving with the features that spend money
 
-- Phase 2: `usage_events` ledger per provider call; soft warning at US$5 and a
-  stop at US$10 of estimated monthly usage, both editable; the gate fails
-  closed if usage cannot be calculated; rate limits on tutor turns.
 - Phase 3: speech token rate limit; separate tracking of Azure free-tier
   minutes and characters; no automatic move to a paid tier.
 

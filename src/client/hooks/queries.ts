@@ -16,6 +16,7 @@ import {
   sessionResponseSchema,
   type PlanRequest,
 } from "../../shared/session";
+import { monthlyUsageResponseSchema } from "../../shared/tutor";
 import { apiGet, apiPost, apiPut } from "../lib/api";
 
 export function useMe() {
@@ -102,7 +103,18 @@ export function useUpdateSettings() {
     mutationFn: (patch: SettingsUpdate) => apiPut("/settings", patch, settingsResponseSchema),
     onSuccess: ({ settings }) => {
       client.setQueryData<MeResponse>(["me"], (me) => (me ? { ...me, settings } : me));
+      // The spending display compares against the amounts just saved.
+      void client.invalidateQueries({ queryKey: ["usage"] });
     },
+  });
+}
+
+/** This month's estimated spending. An estimate, not a provider bill. */
+export function useMonthlyUsage() {
+  return useQuery({
+    queryKey: ["usage", "monthly"],
+    queryFn: () => apiGet("/usage/monthly", monthlyUsageResponseSchema),
+    retry: false,
   });
 }
 
@@ -127,7 +139,7 @@ export function usePlanSession() {
   return useMutation({
     mutationFn: (request: PlanRequest) => apiPost("/sessions/plan", request, planResponseSchema),
     onSuccess: ({ session }) => {
-      client.setQueryData(["sessions", "detail", session.id], { session });
+      client.setQueryData(["sessions", "detail", session.id], { session, turns: [] });
       void client.invalidateQueries({ queryKey: ["sessions", "list"] });
     },
   });
