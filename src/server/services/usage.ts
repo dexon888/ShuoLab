@@ -8,6 +8,7 @@ import { USAGE_DISCLAIMER, type MonthlyUsageResponse } from "../../shared/tutor"
 import type { TokenUsage } from "../providers/types";
 import { ApiError } from "../validation/errors";
 import { getSettings } from "./settings";
+import { getSpeechAllowance, speechLimits, type SpeechLimits } from "./speech";
 
 export const TUTOR_OPERATION = "tutor_turn";
 
@@ -63,7 +64,11 @@ export function utcMonthBounds(now: Date): { month: string; start: string; end: 
   };
 }
 
-export async function getMonthlyUsage(d1: D1Database, now: Date = new Date()): Promise<MonthlyUsageResponse> {
+export async function getMonthlyUsage(
+  d1: D1Database,
+  now: Date = new Date(),
+  limits: SpeechLimits = speechLimits({}),
+): Promise<MonthlyUsageResponse> {
   const settings = await getSettings(d1);
   const { month, start, end } = utcMonthBounds(now);
   const [all, tutor] = await d1.batch<{ n: number; tin: number | null; tout: number | null; usd: number | null }>([
@@ -95,6 +100,7 @@ export async function getMonthlyUsage(d1: D1Database, now: Date = new Date()): P
       tokensOut: tutorRow.tout ?? 0,
       estimatedUsd: roundUsd(tutorRow.usd ?? 0),
     },
+    speech: await getSpeechAllowance(d1, limits, now),
     disclaimer: USAGE_DISCLAIMER,
   };
 }

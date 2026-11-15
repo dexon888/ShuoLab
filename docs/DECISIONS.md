@@ -369,3 +369,37 @@ servers that run the browser tests read it from there. With a real key in
 the built vars with test-only values after building and refuses to continue
 if a provider key remains. The tests also assert the stand-in tutor, so a
 regression shows up as failures rather than as charges.
+
+## 57. Speech is limited by the free allowance, not by dollars
+
+SPEC §4.3 says never to move to a paid Azure tier. The gate is therefore the
+F0 allowance: seconds of recognition and characters of voice per month.
+Configuration may lower the limits but not raise them, so a typo cannot
+open the way to a paid tier's worth of use.
+
+## 58. The browser reports speech use
+
+Audio goes from the browser to Azure and never through the Worker, so only
+the browser knows how long an utterance was. Reports are capped per event
+(60 seconds, the short-audio limit; 2,000 characters) and counted once per
+`clientEventId`. A browser that under-reports could exceed the allowance;
+Azure's own F0 limit is the backstop, and Azure's count is the one to trust.
+
+## 59. Half an allowance still gets a token
+
+The token serves both recognition and voice. When only one is used up, the
+token is issued and the allowance says which half is unavailable, so a
+session can still speak replies aloud after recognition runs out, or the
+other way round.
+
+## 60. The token is a POST, refreshed at nine minutes
+
+A GET could be fetched by a link or kept by a cache. Azure tokens last ten
+minutes and Microsoft recommends reusing one for nine, so `expiresAt` is
+nine minutes out. The token is never written to the database or logs; only
+the fact that one was issued is.
+
+## 61. The region is checked before it becomes part of a URL
+
+`AZURE_SPEECH_REGION` is placed in the STS hostname, so only a plain region
+name is accepted.

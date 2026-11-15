@@ -1,8 +1,9 @@
 import { hasValue, isProduction, type Env } from "../env";
 import { ApiError } from "../validation/errors";
-import { FakeTutorProvider } from "./fake";
+import { AzureSpeechTokenProvider, isValidAzureRegion } from "./azure";
+import { FakeSpeechTokenProvider, FakeTutorProvider } from "./fake";
 import { OpenAiTutorProvider, type TokenPrices } from "./openai";
-import type { TutorProvider } from "./types";
+import type { SpeechTokenProvider, TutorProvider } from "./types";
 
 export const DEFAULT_OPENAI_MODEL = "gpt-6-luna";
 
@@ -52,4 +53,29 @@ export function selectTutorProvider(env: Env): TutorProvider {
     throw new ApiError("PROVIDER_UNAVAILABLE", "The tutor is not set up. Add the OPENAI_API_KEY secret.");
   }
   return new FakeTutorProvider();
+}
+
+/**
+ * Chooses the speech token issuer at request time. With a key and region:
+ * Azure. Without: the local stand-in in development and tests, and nothing in
+ * production, where typed answers still work.
+ */
+export function selectSpeechProvider(env: Env): SpeechTokenProvider {
+  if (hasValue(env.AZURE_SPEECH_KEY) && hasValue(env.AZURE_SPEECH_REGION)) {
+    const region = env.AZURE_SPEECH_REGION.trim().toLowerCase();
+    if (!isValidAzureRegion(region)) {
+      throw new ApiError(
+        "PROVIDER_UNAVAILABLE",
+        "AZURE_SPEECH_REGION is not a region name such as eastus. Typed answers still work.",
+      );
+    }
+    return new AzureSpeechTokenProvider({ key: env.AZURE_SPEECH_KEY.trim(), region });
+  }
+  if (isProduction(env)) {
+    throw new ApiError(
+      "PROVIDER_UNAVAILABLE",
+      "Speech is not set up. Add the AZURE_SPEECH_KEY secret and set AZURE_SPEECH_REGION. Typed answers still work.",
+    );
+  }
+  return new FakeSpeechTokenProvider();
 }

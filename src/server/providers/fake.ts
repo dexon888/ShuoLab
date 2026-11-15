@@ -2,6 +2,7 @@
  * Fake providers for local development and tests. They make no network calls,
  * cost nothing, and are deterministic. They are never used in production.
  */
+import { SPEECH_TOKEN_REUSE_SECONDS } from "../../shared/speech";
 import type { TutorOutput } from "../../shared/tutor";
 import type {
   SpeechToken,
@@ -68,13 +69,23 @@ export class FakeTutorProvider implements TutorProvider {
 }
 
 export class FakeSpeechTokenProvider implements SpeechTokenProvider {
-  readonly vendor = "fake";
+  readonly vendor = "Local fake speech";
+  readonly mock = true;
+  /** How many tokens were issued, for tests. */
+  issued = 0;
+  private readonly fail: (() => never) | undefined;
+
+  constructor(options: { fail?: () => never } = {}) {
+    this.fail = options.fail;
+  }
 
   async issueToken(now: Date): Promise<SpeechToken> {
+    if (this.fail) this.fail();
+    this.issued += 1;
     return {
       token: "fake-speech-token",
       region: "local",
-      expiresAt: new Date(now.getTime() + 9 * 60_000).toISOString(),
+      expiresAt: new Date(now.getTime() + SPEECH_TOKEN_REUSE_SECONDS * 1000).toISOString(),
     };
   }
 }
