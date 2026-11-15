@@ -231,3 +231,66 @@ very informal. It is shown apart from the HSK words with its usage warnings.
 With no verified vocabulary an HSK plan is refused. An open conversation has
 no edition, no band and no targets, enforced by a table CHECK, and is
 labelled as not an HSK lesson so it can never count toward HSK coverage.
+
+## 36. Validation lives in the turn service, not in the provider adapter
+
+An adapter moves text and reports token counts. Parsing, schema checks, the
+Mandarin check, the retry and the fallback are done once in the turn service,
+so every provider, including the stand-in, goes through the same checks.
+
+## 37. An id from the model is dropped, not trusted and not fatal
+
+SPEC §6.4 says to reject invented ids and §9 says to remove a non-matching
+reference. A reply with a bad id is still a usable reply, so the id is
+removed and the reply kept. An id survives only if it is one of the session's
+targets in `session_targets` and that target's word appears in the reply.
+The model's claim that it "used" a word is not evidence.
+
+## 38. The turn row is reserved before the tutor is called
+
+Looking up `clientTurnId` after the call would let two simultaneous copies of
+a message both call the tutor. The row is inserted as `pending` first; the
+unique index decides the winner and the other request gets a retryable 409.
+A `pending` row older than a minute, or a `failed` one, can be taken over
+with the same id.
+
+## 39. A reused clientTurnId with different text is a conflict
+
+Returning the saved turn for different text would silently drop what the
+learner wrote. It gets 409 instead.
+
+## 40. Two unusable answers give a prepared reply
+
+After one retry the turn is completed with one of three authored Mandarin
+replies, marked `fallback`, with no corrections, no "understood" flag and no
+ids. The learner can keep talking and nothing false is recorded.
+
+## 41. Unsure speech recognition means no corrections
+
+When `asrUncertain` is set on a speech turn the instructions ask for no
+corrections and the service removes any that come back. A typed turn is
+never treated as unsure.
+
+## 42. The budget is a sum over a ledger, in UTC months
+
+There is no running counter to drift. Rejected answers count, because they
+were billed. The stop applies only to providers that cost money, so the
+stand-in keeps working at a zero budget. This supersedes decision 28: the
+amounts are now enforced for the tutor.
+
+## 43. Prices are data with a date, and an unknown price is refused
+
+The built-in price is for the default model and is dated. Any other model
+needs both price variables. Running a model whose cost cannot be estimated
+would make the stop amount meaningless, so the request is refused.
+
+## 44. Rate limits use the ledger too
+
+Counting `usage_events` rows in the last minute and day needs no extra
+infrastructure and costs one indexed query per turn.
+
+## 45. BUDGET_EXCEEDED is its own error code
+
+It shares status 429 with `RATE_LIMITED` but is not retryable and needs a
+different message, so the client can tell "wait a moment" from "raise the
+amount or wait for next month".

@@ -3,10 +3,16 @@
 ShuoLab is for one person. It has no analytics, advertising, social features
 or third-party tracking scripts.
 
-## What is stored today (Phase 0)
+## What is stored today
 
-Nothing about the learner. The database holds only curriculum reference
-tables, and they are empty until the owner imports data.
+- Settings, session plans, and for each turn: the text you typed, the tutor's
+  validated reply, and which of the session's words it used.
+- A usage ledger: provider, model, token counts, estimated cost and status
+  per tutor call. It holds no message text.
+
+Deleting a session deletes its turns. Deletion and export from the app
+arrive in Phase 4. Nothing is logged: the Worker logs only the name of an
+unexpected error, never a prompt, a reply, a provider response or a key.
 
 ## What later phases will store
 
@@ -23,7 +29,7 @@ tables, and they are empty until the owner imports data.
 | Processor | Receives | When |
 |---|---|---|
 | Cloudflare | All requests; the D1 database | Always |
-| OpenAI | Text of the conversation and a short list of target words | Phase 2 onward, only if a key is configured |
+| OpenAI | The instructions (situation, the session's target words), up to eight earlier turns and your new message. Sent with `store: false`. | On each tutor turn, only if a key is configured |
 | Azure AI Speech | Microphone audio for transcription; reply text for speech | Phase 3 onward, only if a key is configured |
 
 No transcript is sent to any other vendor. Payment details, contacts and

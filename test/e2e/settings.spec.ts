@@ -118,3 +118,23 @@ test.describe("settings API", () => {
     expect(res.headers()["cache-control"]).toBe("no-store");
   });
 });
+
+test.describe("spending this month (SPEC §4.3)", () => {
+  test("Settings shows the estimate and says it is not a bill", async ({ page }) => {
+    await page.goto("/settings");
+    const region = page.getByRole("region", { name: "Spending this month" });
+    await expect(region).toContainText(/US\$\d+\.\d+ estimated in \d{4}-\d{2} \(UTC\)/);
+    await expect(region).toContainText("Your provider's bill may differ");
+    await expectNoSidewaysScroll(page, "/settings");
+  });
+
+  test("the usage API reports the month, the amounts and a disclaimer", async ({ request }) => {
+    const res = await request.get("/api/v1/usage/monthly");
+    expect(res.status()).toBe(200);
+    expect(res.headers()["cache-control"]).toBe("no-store");
+    const usage = await res.json();
+    expect(usage.month).toMatch(/^\d{4}-\d{2}$/);
+    expect(usage.estimatedUsd).toBeGreaterThanOrEqual(0);
+    expect(usage.disclaimer).toContain("bill may differ");
+  });
+});

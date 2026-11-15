@@ -255,9 +255,9 @@ export function PreferencesForm({ settings, mode, onSaved }: PreferencesFormProp
         <fieldset className="space-y-5">
           <legend className="mb-3 text-xl font-semibold text-cobalt-deep">Monthly spending limits</legend>
           <p className="text-mist">
-            ShuoLab's own estimate of tutor and speech costs, in US dollars. They take effect when
-            the tutor is built. They are not a cap at OpenAI or Azure, so set limits in those
-            accounts too.
+            ShuoLab's own estimate of tutor costs, in US dollars. When the month's estimate
+            reaches the stop amount, paid tutor requests are refused. They are not a cap at OpenAI
+            or Azure, so set limits in those accounts too.
           </p>
           <Field label="Warn me at (US$)">
             {({ id }) => (

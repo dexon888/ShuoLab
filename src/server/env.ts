@@ -17,6 +17,9 @@ export interface Env {
 
   OPENAI_API_KEY?: string;
   OPENAI_MODEL?: string;
+  /** Optional price overrides, US dollars per million tokens. Set both or neither. */
+  OPENAI_INPUT_USD_PER_MTOK?: string;
+  OPENAI_OUTPUT_USD_PER_MTOK?: string;
   AZURE_SPEECH_KEY?: string;
   AZURE_SPEECH_REGION?: string;
 }

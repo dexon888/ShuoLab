@@ -1,5 +1,6 @@
 import { Link } from "react-router";
 import { AsyncStatus } from "../components/AsyncStatus";
+import { MonthlyUsage } from "../components/MonthlyUsage";
 import { PageHeader } from "../components/PageHeader";
 import { PreferencesForm } from "../components/PreferencesForm";
 import { ProviderStatusList } from "../components/ProviderStatusList";
@@ -33,6 +34,9 @@ export function SettingsPage() {
                 The real tutor and speech services need your own OpenAI and Azure accounts, which
                 may charge for use.
               </p>
+            </Section>
+            <Section title="Spending this month">
+              <MonthlyUsage />
             </Section>
             <div className="border-t border-line py-6">
               <PreferencesForm settings={me.data.settings} mode="settings" />

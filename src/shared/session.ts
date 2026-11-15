@@ -6,6 +6,7 @@
 import { z } from "zod";
 import { HSK_BANDS } from "./curriculum";
 import { SESSION_MINUTE_OPTIONS, SESSION_STATUSES, SKILLS, type SessionMinutes } from "./learning";
+import { turnSchema } from "./tutor";
 
 export const SESSION_PLAN_VERSION = 1;
 
@@ -143,7 +144,11 @@ export const planResponseSchema = z.object({
 });
 export type PlanResponse = z.infer<typeof planResponseSchema>;
 
-export const sessionResponseSchema = z.object({ session: sessionDetailSchema });
+export const sessionResponseSchema = z.object({
+  session: sessionDetailSchema,
+  /** The finished turns of the conversation, oldest first. */
+  turns: z.array(turnSchema).default([]),
+});
 export type SessionResponse = z.infer<typeof sessionResponseSchema>;
 
 export const sessionListResponseSchema = z.object({

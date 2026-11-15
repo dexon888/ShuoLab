@@ -229,3 +229,77 @@ export const sessionTargets = sqliteTable(
     check("session_targets_role_check", sql`${t.role} IN ('active','review','stretch')`),
   ],
 );
+
+/**
+ * One row per learner message and the tutor's answer to it (SPEC §8.2). The
+ * unique (session_id, client_turn_id) pair is what makes a resent message
+ * land on the same row instead of creating a second turn. No audio is stored.
+ *
+ * A row is written as `pending` before the tutor is called and becomes
+ * `complete` when the answer is saved, or `failed` when the call did not
+ * produce one. Only `complete` rows are part of the conversation.
+ */
+export const conversationTurns = sqliteTable(
+  "conversation_turns",
+  {
+    id: text("id").primaryKey(),
+    sessionId: text("session_id")
+      .notNull()
+      .references(() => sessions.id, { onDelete: "cascade" }),
+    clientTurnId: text("client_turn_id").notNull(),
+    /** `speech` or `typed`. A typed turn is never counted as speaking practice. */
+    sourceMode: text("source_mode").notNull(),
+    /** The learner's words: the recognized transcript for speech, the typed text otherwise. */
+    asrText: text("asr_text").notNull(),
+    asrUncertain: integer("asr_uncertain", { mode: "boolean" }).notNull().default(false),
+    status: text("status").notNull().default("pending"),
+    aiReplyZh: text("ai_reply_zh"),
+    /** The validated reply as returned to the client. Never the raw model output. */
+    aiReplyJson: text("ai_reply_json"),
+    isFallback: integer("is_fallback", { mode: "boolean" }).notNull().default(false),
+    model: text("model"),
+    createdAt: text("created_at").notNull(),
+    completedAt: text("completed_at"),
+  },
+  (t) => [
+    uniqueIndex("conversation_turns_client_idx").on(t.sessionId, t.clientTurnId),
+    index("conversation_turns_session_idx").on(t.sessionId, t.createdAt),
+    check("conversation_turns_mode_check", sql`${t.sourceMode} IN ('speech','typed')`),
+    check("conversation_turns_status_check", sql`${t.status} IN ('pending','complete','failed')`),
+    // A finished turn always has its reply.
+    check(
+      "conversation_turns_complete_check",
+      sql`${t.status} <> 'complete' OR (${t.aiReplyZh} IS NOT NULL AND ${t.aiReplyJson} IS NOT NULL)`,
+    ),
+  ],
+);
+
+/**
+ * The spend ledger (SPEC §4.3, §8.2): one row per provider call, including
+ * calls whose answer was rejected. Amounts are this app's estimates. Rows are
+ * kept when a session is deleted, so the month's total stays true.
+ */
+export const usageEvents = sqliteTable(
+  "usage_events",
+  {
+    id: text("id").primaryKey(),
+    provider: text("provider").notNull(),
+    operation: text("operation").notNull(),
+    model: text("model"),
+    tokensIn: integer("tokens_in").notNull().default(0),
+    tokensOut: integer("tokens_out").notNull().default(0),
+    audioSeconds: real("audio_seconds").notNull().default(0),
+    ttsChars: integer("tts_chars").notNull().default(0),
+    estimatedUsd: real("estimated_usd").notNull().default(0),
+    /** `ok`: used. `invalid`: answered but rejected by validation. `error`: the call failed. */
+    status: text("status").notNull(),
+    /** Not a foreign key: the ledger outlives the session. */
+    sessionId: text("session_id"),
+    recordedAt: text("recorded_at").notNull(),
+  },
+  (t) => [
+    index("usage_events_recorded_idx").on(t.recordedAt, t.provider),
+    check("usage_events_status_check", sql`${t.status} IN ('ok','invalid','error')`),
+    check("usage_events_amounts_check", sql`${t.tokensIn} >= 0 AND ${t.tokensOut} >= 0 AND ${t.estimatedUsd} >= 0`),
+  ],
+);
