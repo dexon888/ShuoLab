@@ -1,9 +1,13 @@
 import { Link, useParams } from "react-router";
-import { TARGET_ROLE_LABELS, listeningSpeakingShare, type SessionDetail } from "../../shared/session";
+import type { SessionStateResponse } from "../../shared/debrief";
+import { TARGET_ROLE_LABELS, listeningSpeakingShare, type SessionDetail, type SessionPlan } from "../../shared/session";
+import { defaultSettings } from "../../shared/settings";
 import { AsyncStatus } from "../components/AsyncStatus";
-import { NotBuiltYet, Section } from "../components/Section";
+import { Conversation } from "../components/Conversation";
+import { Section } from "../components/Section";
+import { SessionDebrief } from "../components/SessionDebrief";
 import { SyntheticDataNotice } from "../components/SyntheticDataNotice";
-import { useSession } from "../hooks/queries";
+import { useMe, useSession } from "../hooks/queries";
 import { NotFoundPage } from "./NotFoundPage";
 
 const STATUS_LABELS: Readonly<Record<SessionDetail["status"], string>> = {
@@ -11,7 +15,7 @@ const STATUS_LABELS: Readonly<Record<SessionDetail["status"], string>> = {
   active: "In progress",
   paused: "Paused",
   complete: "Complete",
-  abandoned: "Replaced by a newer plan",
+  abandoned: "Ended without finishing",
 };
 
 const SKILL_LABELS = { listening: "Listening", speaking: "Speaking", reading: "Reading", writing: "Writing" } as const;
@@ -20,40 +24,13 @@ function bandName(band: string): string {
   return band === "7-9" ? "HSK 7–9" : `HSK ${band}`;
 }
 
-function SessionPlanView({ session }: { session: SessionDetail }) {
-  const { plan } = session;
+/** The saved plan: words, an optional colloquial expression, and the time budget. */
+function PlanSections({ plan }: { plan: SessionPlan }) {
   const oralShare = Math.round(listeningSpeakingShare(plan.activities) * 100);
 
   return (
     <>
-      <header className="mb-6">
-        <p className="text-mist">
-          {session.localStudyDate} · {plan.durationMinutes} minutes · {STATUS_LABELS[session.status]}
-        </p>
-        <h1 className="mt-1 flex flex-wrap items-baseline gap-x-4 gap-y-1">
-          <span lang="zh-Hans" className="font-kai text-title text-cobalt-deep">
-            {plan.situation.titleZh}
-          </span>{" "}
-          <span className="text-lg text-mist">{plan.situation.titleEn}</span>
-        </h1>
-        <p className="mt-3 max-w-[60ch]">{plan.situation.communicativeGoal}</p>
-        <p className="mt-1 text-sm text-mist">
-          This situation was written for ShuoLab. It is not an HSK topic or task.
-        </p>
-      </header>
-
-      {plan.synthetic ? (
-        <div className="mb-6">
-          <SyntheticDataNotice />
-        </div>
-      ) : null}
-
-      {plan.kind === "free_chat" ? (
-        <p className="mb-6 border-l-4 border-cobalt bg-wash px-4 py-3">
-          <span className="font-semibold">Open conversation, not an HSK lesson.</span> Nothing here
-          is tied to the syllabus, and it does not count toward HSK coverage.
-        </p>
-      ) : (
+      {plan.kind === "free_chat" ? null : (
         <Section title="Words for this session">
           <p className="mb-3 text-mist">
             {plan.targetBand ? `${bandName(plan.targetBand)}, ` : ""}
@@ -120,9 +97,7 @@ function SessionPlanView({ session }: { session: SessionDetail }) {
         <ol className="border-t border-line">
           {plan.activities.map((activity) => (
             <li key={activity.kind} className="flex flex-wrap items-baseline gap-x-4 border-b border-line py-3">
-              <span className="w-20 shrink-0 font-medium tabular-nums">
-                {activity.minutes} min
-              </span>
+              <span className="w-20 shrink-0 font-medium tabular-nums">{activity.minutes} min</span>
               <span className="min-w-0 flex-1">
                 <span className="font-medium">{activity.title}</span>
                 <span className="block text-mist">{activity.description}</span>
@@ -133,15 +108,83 @@ function SessionPlanView({ session }: { session: SessionDetail }) {
         </ol>
         <p className="mt-3 text-sm text-mist">
           {oralShare}% of the time is listening and speaking. Times are a guide, not a cut-off.
+          Listening and speaking aloud arrive with speech in Phase 3; until then the conversation
+          is typed.
         </p>
       </Section>
+    </>
+  );
+}
 
-      <Section title="Conversation">
-        <NotBuiltYet phase={2}>
-          The plan is saved and ready. The typed conversation with the tutor that runs it is the
-          next part of the build.
-        </NotBuiltYet>
-      </Section>
+function SessionView({ state }: { state: SessionStateResponse }) {
+  const { session, turns, debrief } = state;
+  const { plan } = session;
+  const me = useMe();
+  const displayMode = (me.data?.settings ?? defaultSettings()).displayMode;
+  const tutor = me.data?.providers.find((p) => p.id === "tutor") ?? null;
+  const started = session.status !== "planned";
+
+  const conversation = (
+    <Section key="conversation" title="Conversation">
+      <Conversation session={session} turns={turns} displayMode={displayMode} tutor={tutor} />
+    </Section>
+  );
+
+  return (
+    <>
+      <header className="mb-6">
+        <p className="text-mist">
+          {session.localStudyDate} · {plan.durationMinutes} minutes · {STATUS_LABELS[session.status]}
+        </p>
+        <h1 className="mt-1 flex flex-wrap items-baseline gap-x-4 gap-y-1">
+          <span lang="zh-Hans" className="font-kai text-title text-cobalt-deep">
+            {plan.situation.titleZh}
+          </span>{" "}
+          <span className="text-lg text-mist">{plan.situation.titleEn}</span>
+        </h1>
+        <p className="mt-3 max-w-[60ch]">{plan.situation.communicativeGoal}</p>
+        <p className="mt-1 text-sm text-mist">
+          This situation was written for ShuoLab. It is not an HSK topic or task.
+        </p>
+      </header>
+
+      {plan.synthetic ? (
+        <div className="mb-6">
+          <SyntheticDataNotice />
+        </div>
+      ) : null}
+
+      {plan.kind === "free_chat" ? (
+        <p className="mb-6 border-l-4 border-cobalt bg-wash px-4 py-3">
+          <span className="font-semibold">Open conversation, not an HSK lesson.</span> Nothing here
+          is tied to the syllabus, and it does not count toward HSK coverage.
+        </p>
+      ) : null}
+
+      {session.status === "abandoned" ? (
+        <p className="mb-6 border-l-4 border-line bg-wash px-4 py-3">
+          This session was ended without finishing, so it has no summary.{" "}
+          <Link to="/" className="font-medium text-cobalt underline">
+            Start a new one from Today
+          </Link>
+        </p>
+      ) : null}
+
+      {debrief ? (
+        <>
+          <SessionDebrief debrief={debrief} />
+          <p className="mb-6">
+            <Link to="/" className="font-medium text-cobalt underline">
+              Back to Today
+            </Link>
+          </p>
+        </>
+      ) : null}
+
+      {/* Before the first message the plan comes first; once talking, the conversation does. */}
+      {started
+        ? [conversation, <PlanSections key="plan" plan={plan} />]
+        : [<PlanSections key="plan" plan={plan} />, conversation]}
     </>
   );
 }
@@ -155,7 +198,7 @@ function SessionLoader({ id }: { id: string }) {
       onRetry={() => void session.refetch()}
       label="this session"
     >
-      {session.data ? <SessionPlanView session={session.data.session} /> : null}
+      {session.data ? <SessionView state={session.data} /> : null}
     </AsyncStatus>
   );
 }

@@ -10,6 +10,10 @@ or third-party tracking scripts.
 - A usage ledger: provider, model, token counts, estimated cost and status
   per tutor call. It holds no message text.
 
+- In your browser only (`localStorage`): the text you are typing in a
+  session and a message that was sent but not yet confirmed. It is removed
+  once the server has the message, and it is never sent anywhere else.
+
 Deleting a session deletes its turns. Deletion and export from the app
 arrive in Phase 4. Nothing is logged: the Worker logs only the name of an
 unexpected error, never a prompt, a reply, a provider response or a key.

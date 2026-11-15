@@ -16,7 +16,7 @@ import {
 } from "../../shared/tutor";
 import { ProviderError, type TutorMessage, type TutorProvider } from "../providers/types";
 import { ApiError } from "../validation/errors";
-import { getSession } from "./sessions";
+import { accrueSql, getSession } from "./sessions";
 import {
   buildInstructions,
   checkReferences,
@@ -212,6 +212,9 @@ export async function takeTurn(
     }
     return replay(d1, sessionId, existing, provider, now);
   }
+  if (session.status === "paused") {
+    throw new ApiError("CONFLICT", "This session is paused. Resume it to continue.");
+  }
 
   const done = await d1
     .prepare("SELECT COUNT(*) AS n FROM conversation_turns WHERE session_id = ?1 AND status = 'complete'")
@@ -327,8 +330,8 @@ WHERE id = ?1 AND status = 'pending'`,
         .bind(turnId, stored.reply.spokenZh, JSON.stringify(stored), stored.fallback ? 1 : 0, provider.model, completedAt),
       d1
         .prepare(
-          `UPDATE sessions SET status = 'active', started_at = COALESCE(started_at, ?2), model = ?3
-WHERE id = ?1 AND status IN ('planned','active','paused')`,
+          `UPDATE sessions SET status = 'active', started_at = COALESCE(started_at, ?2), model = ?3, ${accrueSql("?2")}, last_activity_at = ?2
+WHERE id = ?1 AND status IN ('planned','active')`,
         )
         .bind(sessionId, completedAt, provider.model),
     ]);

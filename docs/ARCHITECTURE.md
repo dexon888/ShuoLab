@@ -43,7 +43,9 @@ produced it from.
 | `GET /api/v1/settings` | owner | saved preferences, or the defaults when nothing is saved (also included in `/me`) |
 | `PUT /api/v1/settings` | owner | partial update of whitelisted preference fields; unknown fields are rejected; returns the full settings |
 | `POST /api/v1/sessions/plan` | owner | plans today's session from the saved settings (optional `durationMinutes`, `studyBand`, `freeChat`); 201 for a new plan, 200 with `reused: true` when today's unfinished session is returned; 503 `CURRICULUM_MISSING` for an HSK plan with no verified vocabulary |
-| `GET /api/v1/sessions/:id` | owner | one session with its saved plan and its finished turns, oldest first |
+| `GET /api/v1/sessions/:id` | owner | one session with its saved plan, its finished turns oldest first and, once complete, its summary |
+| `PATCH /api/v1/sessions/:id` | owner | `{action: "pause" \| "resume" \| "abandon"}`; repeating an action is a no-op; 409 when the session has not started or has ended |
+| `POST /api/v1/sessions/:id/complete` | owner | finishes the session and returns its summary; repeating it returns the same summary; 409 with no turns or after abandon |
 | `POST /api/v1/sessions/:id/turn` | owner | `{clientTurnId, transcript, sourceMode, asrUncertain}`; 201 with the tutor's validated reply, 200 with `replayed: true` when that `clientTurnId` was already answered; 409 while the same message is still being answered or when the session has ended; 429 `BUDGET_EXCEEDED` or `RATE_LIMITED`; 503 when the tutor is unreachable or not set up |
 | `GET /api/v1/usage/monthly` | owner | this UTC month's estimated spending, the warning and stop amounts, tutor request and token counts, and a disclaimer |
 | `GET /api/v1/sessions` | owner | the most recent sessions (`limit` 1–50, default 10) and today's resumable one, if any |
@@ -95,6 +97,27 @@ be sent again. Providers implement `TutorProvider`
 API with a strict JSON schema, `store: false` and a 20-second timeout;
 `FakeTutorProvider` is the local stand-in. `selectTutorProvider` picks one per
 request from the Worker environment; tests inject one through `createApp`.
+
+## Session state, practice time and the summary
+
+`src/server/services/session-state.ts`. A session moves
+`planned → active ⇄ paused → complete`, or to `abandoned` from any unfinished
+state. The first turn makes it `active`; a paused session refuses turns until
+resumed. Each transition is one `UPDATE ... WHERE status IN (...)`.
+
+Practice time (`sessions.actual_seconds`) is counted on the server: each turn,
+pause and completion adds the time since `last_activity_at`, capped at 180
+seconds, and resume restarts the clock. The client never reports a duration.
+
+The summary is computed from the saved turns each time it is read
+(`buildDebrief`): turn counts by typed and spoken, which planned words the
+learner wrote and which only the tutor used, up to three recent corrections,
+and the planned words the learner did not use. It writes nothing to mastery.
+
+On the client, `src/client/components/Conversation.tsx` makes one
+`clientTurnId` per message and reuses it on every retry. The text being typed
+and a sent-but-unconfirmed message are kept in `localStorage`
+(`src/client/lib/draft.ts`) and removed once the server has the message.
 
 Writes: a JSON body of at most 16 KB, validated by a strict Zod schema shared
 with the client. A write whose `Origin` header names another host is refused

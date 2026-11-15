@@ -14,11 +14,12 @@ browsing and the separate colloquial track) are in place. The app shell, owner
 authentication, the import tools and browsing, searching and opening imported
 entries work locally with no accounts or secrets. Phase 2 has started: your
 preferences (onboarding and Settings) are saved in the database, and Today
-plans a session: a situation, the words to practise and a time budget. The
-server can now take tutor turns for a session (validated replies, each message
-saved once, spending recorded and capped), tested with a local stand-in tutor.
-The conversation screen that uses it, speech and review are **not built
-yet**.
+plans a session: a situation, the words to practise and a time budget. You
+can then run the session as a typed conversation: send messages, pause and
+resume, reload without losing anything, and finish to a summary. Locally the
+replies come from a stand-in tutor that returns prepared sentences; the real
+tutor needs your OpenAI key and **has not been run yet**. Speech and review
+are **not built yet**.
 
 | Area | State |
 |---|---|
@@ -31,7 +32,7 @@ yet**.
 | Preferences (onboarding, Settings) | Working locally; saved in the database, so they follow you across devices once deployed |
 | Session planning | Working locally and tested with generated placeholder data: one saved plan per study day for 15, 20, 25 or 30 minutes, or a labelled open conversation when no vocabulary is imported |
 | Tutor turns (API) | Working locally with the stand-in tutor: validated replies, each message saved once, spending recorded and capped. The OpenAI adapter is written and unit-tested against recorded response shapes; **no real OpenAI call has been made** |
-| Session conversation screen | Phase 2 — not built |
+| Session conversation screen | Working locally with the stand-in tutor: typed turns, pause, resume, finish, summary, recovery after a reload or a dropped connection. Typed only; listening and speaking arrive in Phase 3 |
 | Speech | Phase 3 — only a local fake token issuer exists |
 | Review, progress, export | Phase 4 |
 

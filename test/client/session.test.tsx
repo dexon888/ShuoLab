@@ -224,10 +224,14 @@ describe("session plan page (SPEC §5.3, FR-006)", () => {
     expect(planRegion).toHaveTextContent("70% of the time is listening and speaking.");
   });
 
-  it("labels synthetic data and says the conversation is not built yet", async () => {
+  it("labels synthetic data and offers the conversation below the plan before it starts", async () => {
     renderApp(`/session/${ID}`, { "/api/v1/me": () => json(me()), [url]: () => json({ session: detail() }) });
     expect(await screen.findByText("Test data, not HSK content.")).toBeInTheDocument();
-    expect(screen.getByRole("region", { name: "Conversation" })).toHaveTextContent("Not built yet");
+    const regions = screen.getAllByRole("region").map((r) => r.getAttribute("aria-labelledby"));
+    const conversation = screen.getByRole("region", { name: "Conversation" });
+    expect(regions.at(-1)).toBe(conversation.getAttribute("aria-labelledby"));
+    expect(within(conversation).getByLabelText("Your reply in Chinese")).toBeInTheDocument();
+    expect(conversation).not.toHaveTextContent("Not built yet");
   });
 
   it("says a suggested band is a suggestion", async () => {

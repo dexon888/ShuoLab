@@ -35,8 +35,13 @@ export function apiPost<S extends z.ZodType>(path: string, body: unknown, schema
   return apiRequest("POST", path, schema, body);
 }
 
+/** PATCHes a JSON body to a same-origin API route and validates the response. */
+export function apiPatch<S extends z.ZodType>(path: string, body: unknown, schema: S): Promise<z.infer<S>> {
+  return apiRequest("PATCH", path, schema, body);
+}
+
 async function apiRequest<S extends z.ZodType>(
-  method: "GET" | "PUT" | "POST",
+  method: "GET" | "PUT" | "POST" | "PATCH",
   path: string,
   schema: S,
   payload?: unknown,
