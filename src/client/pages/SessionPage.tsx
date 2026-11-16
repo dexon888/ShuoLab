@@ -108,8 +108,8 @@ function PlanSections({ plan }: { plan: SessionPlan }) {
         </ol>
         <p className="mt-3 text-sm text-mist">
           {oralShare}% of the time is listening and speaking. Times are a guide, not a cut-off.
-          Listening and speaking aloud arrive with speech in Phase 3; until then the conversation
-          is typed.
+          For now every part happens in the conversation below; separate listening, reading and
+          writing exercises are not built yet.
         </p>
       </Section>
     </>
@@ -120,13 +120,14 @@ function SessionView({ state }: { state: SessionStateResponse }) {
   const { session, turns, debrief } = state;
   const { plan } = session;
   const me = useMe();
-  const displayMode = (me.data?.settings ?? defaultSettings()).displayMode;
+  const { displayMode, speechRate } = me.data?.settings ?? defaultSettings();
   const tutor = me.data?.providers.find((p) => p.id === "tutor") ?? null;
+  const speech = me.data?.providers.find((p) => p.id === "speech") ?? null;
   const started = session.status !== "planned";
 
   const conversation = (
     <Section key="conversation" title="Conversation">
-      <Conversation session={session} turns={turns} displayMode={displayMode} tutor={tutor} />
+      <Conversation session={session} turns={turns} displayMode={displayMode} speechRate={speechRate} tutor={tutor} speech={speech} />
     </Section>
   );
 

@@ -8,7 +8,9 @@ export interface SessionDraft {
   /** Text in the box. */
   text: string;
   /** A message that was sent and has not been confirmed as saved. */
-  pending: { clientTurnId: string; transcript: string } | null;
+  pending: { clientTurnId: string; transcript: string; sourceMode?: "speech" | "typed"; asrUncertain?: boolean } | null;
+  /** The text in the box came from speech recognition that was unsure of it. */
+  fromSpeech?: boolean;
 }
 
 const EMPTY: SessionDraft = { text: "", pending: null };

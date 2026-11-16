@@ -151,8 +151,77 @@ test("the message box and controls are large enough to tap and work from the key
   await box(page).focus();
   await page.keyboard.type("好的。");
   await page.keyboard.press("Tab");
+  await expect(page.getByRole("button", { name: "Speak", exact: true })).toBeFocused();
+  await page.keyboard.press("Tab");
   await expect(page.getByRole("button", { name: "Send" })).toBeFocused();
   await page.keyboard.press("Enter");
   await expect(turns(page)).toHaveCount(2);
   await expectNoSidewaysScroll(page, "after a keyboard-only turn");
+});
+
+test("speaking with the stand-in: a spoken turn, an unsure transcript to check, and listen-first (SPEC §7.1, §7.4)", async ({ page }) => {
+  const errors = trackErrors(page);
+  // The stand-in hears what this script says, in order. It never opens the microphone.
+  await page.addInitScript(() => {
+    (window as unknown as { __shuolabFakeSpeech: unknown }).__shuolabFakeSpeech = {
+      recognitions: [
+        { text: "我周末喜欢去公园。", confidence: 0.93, seconds: 2.5 },
+        { text: "我想喝差。", confidence: 0.35, seconds: 1.8 },
+        { noSpeech: true },
+      ],
+    };
+  });
+  await page.goto("/");
+  await page.getByRole("link", { name: /Resume today's session|Open today's plan/ }).click();
+  // The earlier tests left two turns in today's session; wait for them before counting.
+  await expect(turns(page).first()).toBeVisible();
+  const before = await turns(page).count();
+
+  await expect(page.getByText("Practice stand-in speech.")).toBeVisible();
+  await page.getByRole("button", { name: "Speak", exact: true }).click();
+  await expect(turns(page)).toHaveCount(before + 1);
+  const spoken = turns(page).last();
+  await expect(spoken).toContainText("我周末喜欢去公园。");
+  await expect(spoken).toContainText("(spoken)");
+
+  // An unsure transcript waits in the box to be checked.
+  await page.getByRole("button", { name: "Speak", exact: true }).click();
+  await expect(page.getByText(/Speech recognition wasn't sure it heard this right/)).toBeVisible();
+  await expect(box(page)).toHaveValue("我想喝差。");
+  await box(page).press("End");
+  await box(page).press("Backspace");
+  await box(page).press("Backspace");
+  await box(page).pressSequentially("茶。");
+  await box(page).press("Enter");
+  await expect(turns(page)).toHaveCount(before + 2);
+  await expect(turns(page).last()).toContainText("我想喝茶。");
+  await expect(turns(page).last()).toContainText("(spoken)");
+
+  // Nothing heard: a message, and nothing sent.
+  await page.getByRole("button", { name: "Speak", exact: true }).click();
+  await expect(page.getByRole("alert")).toContainText("Didn't hear anything.");
+  await expect(turns(page)).toHaveCount(before + 2);
+
+  // Listen first hides the newest reply's text until asked.
+  await page.getByLabel(/Listen first/).check();
+  await expect(page.getByText("Text hidden so you can listen first.")).toBeVisible();
+  await page.getByRole("button", { name: "Show text" }).click();
+  await expect(page.getByText("Text hidden so you can listen first.")).toHaveCount(0);
+
+  // Both spoken turns, and the reveal, are on the server.
+  const sessionId = page.url().split("/").pop();
+  const saved = await (await page.request.get(`/api/v1/sessions/${sessionId}`)).json();
+  const last = saved.turns.slice(-2);
+  expect(last.map((t: { sourceMode: string }) => t.sourceMode)).toEqual(["speech", "speech"]);
+  expect(saved.turns.at(-1).listening.revealedAt).not.toBeNull();
+  // The stand-in is not counted against the free allowance.
+  const usage = await (await page.request.get("/api/v1/usage/monthly")).json();
+  expect(usage.speech.recognitionSeconds).toBe(0);
+
+  for (const name of ["Speak", "Send"]) {
+    const size = await page.getByRole("button", { name, exact: true }).boundingBox();
+    expect(size?.height ?? 0, `${name} button height`).toBeGreaterThanOrEqual(44);
+  }
+  await expectNoSidewaysScroll(page, "with the voice controls");
+  expect(errors).toEqual([]);
 });

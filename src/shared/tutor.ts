@@ -168,8 +168,28 @@ export const turnSchema = z.object({
   /** True when the tutor's answer could not be used and a prepared reply was shown instead. */
   fallback: z.boolean(),
   createdAt: z.string(),
+  /**
+   * Listening record for the reply (SPEC §10): when it was first heard and
+   * when its text was first revealed. Heard before any reveal means it was
+   * listened to without reading.
+   */
+  listening: z
+    .object({ playedAt: z.string().nullable(), revealedAt: z.string().nullable() })
+    .default({ playedAt: null, revealedAt: null }),
 });
 export type Turn = z.infer<typeof turnSchema>;
+
+export const TURN_EVENTS = ["played", "revealed"] as const;
+export type TurnEvent = (typeof TURN_EVENTS)[number];
+
+/** Body of POST /sessions/:id/turns/:turnId/events. Only the first of each is kept. */
+export const turnEventRequestSchema = z.object({ event: z.enum(TURN_EVENTS) }).strict();
+
+export const turnEventResponseSchema = z.object({
+  turnId: z.string(),
+  listening: z.object({ playedAt: z.string().nullable(), revealedAt: z.string().nullable() }),
+});
+export type TurnEventResponse = z.infer<typeof turnEventResponseSchema>;
 
 export const turnUsageSchema = z.object({
   /** Estimate for this turn, including a retry. Zero when replayed or when the local stand-in answered. */

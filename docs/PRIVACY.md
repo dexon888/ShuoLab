@@ -13,6 +13,13 @@ or third-party tracking scripts.
 - In your browser only (`localStorage`): the text you are typing in a
   session and a message that was sent but not yet confirmed. It is removed
   once the server has the message, and it is never sent anywhere else.
+  Also two listening choices: whether replies are read aloud, and listen first.
+- When you speak, audio goes from your browser to Azure while the microphone
+  is open (one utterance, up to 60 seconds) and is not recorded or kept by
+  ShuoLab. The microphone is released after each utterance, and when you
+  stop, pause, leave the page or switch away.
+- For each reply you hear, when it was first played and when its text was
+  first shown, if it was hidden.
 
 Deleting a session deletes its turns. Deletion and export from the app
 arrive in Phase 4. Nothing is logged: the Worker logs only the name of an

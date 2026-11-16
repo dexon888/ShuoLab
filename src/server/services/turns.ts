@@ -11,6 +11,8 @@ import {
   MAX_TURNS_PER_SESSION,
   turnSchema,
   type Turn,
+  type TurnEvent,
+  type TurnEventResponse,
   type TurnRequest,
   type TurnResponse,
 } from "../../shared/tutor";
@@ -43,9 +45,12 @@ interface TurnRow {
   status: string;
   ai_reply_json: string | null;
   created_at: string;
+  reply_played_at: string | null;
+  transcript_revealed_at: string | null;
 }
 
-const TURN_COLUMNS = "id, client_turn_id, source_mode, asr_text, asr_uncertain, status, ai_reply_json, created_at";
+const TURN_COLUMNS =
+  "id, client_turn_id, source_mode, asr_text, asr_uncertain, status, ai_reply_json, created_at, reply_played_at, transcript_revealed_at";
 
 /** What is stored in `ai_reply_json`: the validated reply, never raw model text. */
 type StoredReply = Pick<Turn, "reply" | "referencedCurriculumItemIds" | "referencedColloquialIds" | "feedback" | "fallback">;
@@ -65,6 +70,7 @@ function toTurn(row: TurnRow, position: number): Turn {
     sourceMode: row.source_mode,
     learnerText: row.asr_text,
     createdAt: row.created_at,
+    listening: { playedAt: row.reply_played_at, revealedAt: row.transcript_revealed_at },
   });
   if (!parsed.success) {
     throw new ApiError("INTERNAL", "A saved turn could not be read.", false);
@@ -79,6 +85,37 @@ export async function listTurns(d1: D1Database, sessionId: string): Promise<Turn
     .bind(sessionId)
     .all<TurnRow>();
   return rows.results.map((row, position) => toTurn(row, position));
+}
+
+/**
+ * Records that a reply was heard, or that its text was revealed. Only the
+ * first time counts, so repeating it changes nothing. Works after the
+ * session ends too, since a reply can be replayed from the summary.
+ */
+export async function recordTurnEvent(
+  d1: D1Database,
+  sessionId: string,
+  turnId: string,
+  event: TurnEvent,
+  now: Date = new Date(),
+): Promise<TurnEventResponse> {
+  if (!/^[0-9a-f-]{36}$/.test(turnId)) throw new ApiError("BAD_REQUEST", "That is not a turn id.");
+  const column = event === "played" ? "reply_played_at" : "transcript_revealed_at";
+  await d1
+    .prepare(
+      `UPDATE conversation_turns SET ${column} = COALESCE(${column}, ?3)
+WHERE id = ?1 AND session_id = ?2 AND status = 'complete'`,
+    )
+    .bind(turnId, sessionId, now.toISOString())
+    .run();
+  const row = await d1
+    .prepare(
+      "SELECT reply_played_at, transcript_revealed_at FROM conversation_turns WHERE id = ?1 AND session_id = ?2 AND status = 'complete'",
+    )
+    .bind(turnId, sessionId)
+    .first<{ reply_played_at: string | null; transcript_revealed_at: string | null }>();
+  if (!row) throw new ApiError("NOT_FOUND", "No such turn in this session.");
+  return { turnId, listening: { playedAt: row.reply_played_at, revealedAt: row.transcript_revealed_at } };
 }
 
 async function findTurn(d1: D1Database, sessionId: string, clientTurnId: string): Promise<TurnRow | null> {

@@ -19,8 +19,11 @@ can then run the session as a typed conversation: send messages, pause and
 resume, reload without losing anything, and finish to a summary. Without a
 key the replies come from a stand-in tutor that returns prepared sentences;
 with `OPENAI_API_KEY` in `.dev.vars` the real tutor answers. One live open
-conversation has been run locally (2026-11-15). Speech and review are **not
-built yet**.
+conversation has been run locally (2026-11-15). You can also speak your
+replies and hear the tutor's (Azure AI Speech, free tier); without Azure
+settings a stand-in pretends to hear a fixed sentence and plays nothing.
+**Real speech has not been tried yet**: it needs your Azure key and a phone.
+Review and progress are **not built yet**.
 
 | Area | State |
 |---|---|
@@ -35,7 +38,8 @@ built yet**.
 | Tutor turns (API) | Working locally with the stand-in tutor: validated replies, each message saved once, spending recorded and capped. One live open conversation with `gpt-6-luna` run locally: Mandarin replies, a correction, an injection attempt declined, pinyin and English returned, usage recorded |
 | Session conversation screen | Working locally with the stand-in tutor: typed turns, pause, resume, finish, summary, recovery after a reload or a dropped connection. Typed only; listening and speaking arrive in Phase 3 |
 | Speech tokens and free-tier count | Working locally with a stand-in token issuer: `POST /speech/token`, usage reports, the Azure F0 allowance enforced and shown in Settings. The Azure issuer is written and unit-tested; **no real Azure call has been made** |
-| Speaking and listening in a session | Phase 3 — not built |
+| Speaking and listening in a session | Working locally with the stand-in: Speak, read replies aloud, Play, listen first with recorded reveals, unsure transcripts checked before sending, typed fallback for every failure. The Azure path is written against the SDK's documented API; **not yet tried with a real microphone or voice** |
+| Separate listen-first exercise | Phase 3 — not built |
 | Review, progress, export | Phase 4 |
 
 Nothing has been deployed. OpenAI has been called only from a local run; no Azure call has been made.

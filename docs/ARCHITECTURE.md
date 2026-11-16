@@ -46,6 +46,7 @@ produced it from.
 | `GET /api/v1/sessions/:id` | owner | one session with its saved plan, its finished turns oldest first and, once complete, its summary |
 | `PATCH /api/v1/sessions/:id` | owner | `{action: "pause" \| "resume" \| "abandon"}`; repeating an action is a no-op; 409 when the session has not started or has ended |
 | `POST /api/v1/sessions/:id/complete` | owner | finishes the session and returns its summary; repeating it returns the same summary; 409 with no turns or after abandon |
+| `POST /api/v1/sessions/:id/turns/:turnId/events` | owner | `{event: "played" \| "revealed"}`: records the first time a reply was heard or its hidden text was shown; repeating keeps the first time; works after the session ends |
 | `POST /api/v1/sessions/:id/turn` | owner | `{clientTurnId, transcript, sourceMode, asrUncertain}`; 201 with the tutor's validated reply, 200 with `replayed: true` when that `clientTurnId` was already answered; 409 while the same message is still being answered or when the session has ended; 429 `BUDGET_EXCEEDED` or `RATE_LIMITED`; 503 when the tutor is unreachable or not set up |
 | `GET /api/v1/usage/monthly` | owner | this UTC month's estimated spending, the warning and stop amounts, tutor request and token counts, this month's speech use against the free allowance, and a disclaimer |
 | `POST /api/v1/speech/token` | owner | a short-lived Azure token, the region, when to refresh (nine minutes), whether it is the stand-in, and the month's speech allowance; 429 `BUDGET_EXCEEDED` once both recognition and voice allowances are used up; 429 `RATE_LIMITED` over 6 a minute or 300 a day; 503 when speech is not set up |
@@ -115,6 +116,31 @@ stored in `usage_events` with a unique `client_event_id`, so a resent report
 counts once. The month's totals are compared with the Azure F0 allowance
 (lowerable by configuration, never raisable). Speech on F0 costs nothing, so
 it adds nothing to the spending estimate.
+
+## Speaking and listening in the browser
+
+`src/client/speech/`. `useVoice` asks for a token only when the learner taps
+Speak or a reply is about to be read, and keeps it in memory until shortly
+before it expires. A stand-in token gets `FakeSpeechEngine` (no microphone,
+no sound); a real one gets `AzureSpeechEngine`, which loads the Azure SDK on
+first use, checks microphone permission itself so a refusal can be named,
+recognises one utterance in `zh-CN` (it stops at a pause), and speaks
+replies with `zh-CN-XiaoxiaoNeural` at the Settings speech rate. Replies go
+into SSML escaped, never as markup.
+
+A transcript with confidence under 0.6 is put in the message box for
+checking and sent as spoken and unsure. After a real recognition or spoken
+reply the hook reports seconds or characters to `/speech/usage`, and after
+a real playback records `played`. Listen first hides the newest reply's
+text until "Show text", which records `revealed`. Recognition and playback
+stop on Stop, pause, finish, leaving the page, and when the page is hidden.
+
+If Azure's voice fails, the browser's own `speechSynthesis` can read the
+reply, labelled as varying in quality. Every failure leaves typing working.
+
+The SDK's audio worklet is loaded from a `blob:` URL, which the
+Content-Security-Policy does not allow; the SDK falls back to its
+ScriptProcessor path. This is unverified on real devices.
 
 ## Session state, practice time and the summary
 

@@ -12,7 +12,7 @@ import type { HskBand } from "../../shared/curriculum";
 import { settingsResponseSchema, type SettingsUpdate } from "../../shared/settings";
 import { sessionStateResponseSchema, type SessionAction, type SessionStateResponse } from "../../shared/debrief";
 import { planResponseSchema, sessionListResponseSchema, type PlanRequest } from "../../shared/session";
-import { monthlyUsageResponseSchema, turnResponseSchema } from "../../shared/tutor";
+import { monthlyUsageResponseSchema, turnResponseSchema, type SourceMode } from "../../shared/tutor";
 import { apiGet, apiPatch, apiPost, apiPut } from "../lib/api";
 
 export function useMe() {
@@ -136,6 +136,10 @@ export interface OutgoingTurn {
   /** Made once per message and reused on every retry, so the message is saved once. */
   clientTurnId: string;
   transcript: string;
+  /** `speech` when the words came from speech recognition, even if checked or corrected by hand. */
+  sourceMode?: SourceMode;
+  /** Speech recognition was unsure of what it heard. */
+  asrUncertain?: boolean;
 }
 
 /** Sends a typed message to the tutor. Never retried automatically: the learner decides. */
@@ -143,7 +147,16 @@ export function useSendTurn(sessionId: string) {
   const client = useQueryClient();
   return useMutation({
     mutationFn: (turn: OutgoingTurn) =>
-      apiPost(`/sessions/${encodeURIComponent(sessionId)}/turn`, { ...turn, sourceMode: "typed" }, turnResponseSchema),
+      apiPost(
+        `/sessions/${encodeURIComponent(sessionId)}/turn`,
+        {
+          clientTurnId: turn.clientTurnId,
+          transcript: turn.transcript,
+          sourceMode: turn.sourceMode ?? "typed",
+          asrUncertain: turn.sourceMode === "speech" ? (turn.asrUncertain ?? false) : false,
+        },
+        turnResponseSchema,
+      ),
     onSuccess: (result) => {
       client.setQueryData<SessionStateResponse>(sessionKey(sessionId), (state) => {
         if (!state) return state;
