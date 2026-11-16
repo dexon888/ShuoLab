@@ -29,6 +29,8 @@ export default defineConfig({
       manifest: false,
       workbox: {
         globPatterns: ["**/*.{js,css,html,svg,png,webmanifest}"],
+        // Speech needs the network anyway, so its SDK is not downloaded at install.
+        globIgnores: ["**/microsoft.cognitiveservices.speech.sdk-*.js"],
         navigateFallback: "/index.html",
         // Authenticated API responses are never cached or served offline (SPEC §4.2).
         navigateFallbackDenylist: [/^\/api\//, /^\/cdn-cgi\//],

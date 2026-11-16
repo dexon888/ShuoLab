@@ -403,3 +403,43 @@ the fact that one was issued is.
 
 `AZURE_SPEECH_REGION` is placed in the STS hostname, so only a plain region
 name is accepted.
+
+## 62. Tap to talk, one utterance at a time
+
+SPEC §7.4 says not to stream continuously when push-to-talk will do. Speak
+listens for one utterance and stops at a pause, which also suits F0's limit
+of one recognition at a time. Stop cancels.
+
+## 63. Unsure transcripts are checked, not sent
+
+Below Azure's 0.6 confidence the transcript goes into the box with a note,
+and is sent as spoken and unsure, so the tutor gives no corrections for it
+(decision 41). Clearing the box completely makes the next message typed.
+
+## 64. The microphone count errs high
+
+Azure counts the audio it receives, silence included, so the seconds
+reported are the longer of the recognised speech and the time the microphone
+was open. Synthesis is counted as the whole SSML document.
+
+## 65. Listen first applies to the newest reply
+
+Hiding every earlier reply would make the conversation hard to follow.
+Only the newest reply is hidden, and only while replies are read aloud. The
+first reveal is stored on the turn so later phases can tell listening
+without reading from listening with the text.
+
+## 66. The Azure SDK is loaded on first use
+
+It is large and only needed for speech. Typing-only sessions never load it.
+
+## 67. The separate listening exercise is its own PR
+
+The plan's "Listen first" activity needs a generated exchange and
+comprehension questions answered before the transcript, which is a feature
+of its own. This PR covers listening to the tutor's replies.
+
+## 68. The stand-in is never counted
+
+It opens no microphone and plays nothing, so nothing is reported to the
+speech allowance and no reply is recorded as heard.

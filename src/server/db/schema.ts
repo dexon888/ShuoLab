@@ -262,6 +262,10 @@ export const conversationTurns = sqliteTable(
     model: text("model"),
     createdAt: text("created_at").notNull(),
     completedAt: text("completed_at"),
+    /** When the tutor's reply was first played aloud. */
+    replyPlayedAt: text("reply_played_at"),
+    /** When the reply's text was first shown after being hidden for listening. */
+    transcriptRevealedAt: text("transcript_revealed_at"),
   },
   (t) => [
     uniqueIndex("conversation_turns_client_idx").on(t.sessionId, t.clientTurnId),

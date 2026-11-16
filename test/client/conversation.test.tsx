@@ -74,6 +74,7 @@ function turn(n: number, over: Partial<Turn> = {}): Turn {
     feedback: { understoodIntent: true, corrections: [], encouragementZh: null, transcriptUncertain: false },
     fallback: false,
     createdAt: "2026-03-04T10:02:00.000Z",
+    listening: { playedAt: null, revealedAt: null },
     ...over,
   };
 }
@@ -326,7 +327,7 @@ describe("a reload or a failed request never loses or doubles a message (FR-010,
     expect(alert).toHaveTextContent("This message may not have been sent.");
     await userEvent.click(within(alert).getByRole("button", { name: "Send again" }));
     expect(await screen.findByText("你周末喜欢做什么？（0）")).toBeInTheDocument();
-    expect(sent).toEqual([{ ...pending, sourceMode: "typed" }]);
+    expect(sent).toEqual([{ ...pending, sourceMode: "typed", asrUncertain: false }]);
   });
 
   it("after a reload, quietly forgets a stored message the server already has", async () => {

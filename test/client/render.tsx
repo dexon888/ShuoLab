@@ -3,7 +3,11 @@ import { render } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { vi } from "vitest";
 import { AppRoutes, createQueryClient } from "../../src/client/app/App";
+import { SpeechEnvironmentContext, defaultSpeechEnvironment, type SpeechEnvironment } from "../../src/client/speech/useVoice";
 import { defaultSettings, type OwnerSettings } from "../../src/shared/settings";
+
+/** jsdom has no microphone: by default the app sees a browser that cannot record. */
+const noSpeech: SpeechEnvironment = { ...defaultSpeechEnvironment, canRecord: () => false };
 
 export type Responder = (init?: RequestInit) => Response;
 
@@ -22,7 +26,7 @@ export function json(body: unknown, status = 200): Response {
 }
 
 /** Renders the whole app at `path`; any request not listed in `routes` fails the test. */
-export function renderApp(path: string, routes: Record<string, Responder>) {
+export function renderApp(path: string, routes: Record<string, Responder>, options: { speech?: SpeechEnvironment } = {}) {
   const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = typeof input === "string" ? input : input.toString();
     const method = init?.method ?? "GET";
@@ -37,9 +41,11 @@ export function renderApp(path: string, routes: Record<string, Responder>) {
   client.setDefaultOptions({ queries: { retry: false } });
   render(
     <QueryClientProvider client={client}>
-      <MemoryRouter initialEntries={[path]}>
-        <AppRoutes />
-      </MemoryRouter>
+      <SpeechEnvironmentContext.Provider value={options.speech ?? noSpeech}>
+        <MemoryRouter initialEntries={[path]}>
+          <AppRoutes />
+        </MemoryRouter>
+      </SpeechEnvironmentContext.Provider>
     </QueryClientProvider>,
   );
   return fetchMock;

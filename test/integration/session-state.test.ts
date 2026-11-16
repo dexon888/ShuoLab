@@ -297,3 +297,48 @@ describe("the summary reports what happened, not what was learned", () => {
     expect(debrief).toMatchObject({ words: [], recommendedReviewItemIds: [], plannedMinutes: 15 });
   });
 });
+
+describe("listening record (SPEC §10)", () => {
+  it("keeps the first time a reply was heard and the first time its text was shown", async () => {
+    const { id } = await newSession();
+    const res = await send("POST", `/sessions/${id}/turn`, message());
+    const { turn } = (await res.json()) as { turn: { turnId: string; listening: unknown } };
+    expect(turn.listening).toEqual({ playedAt: null, revealedAt: null });
+
+    const event = (body: unknown, turnId = turn.turnId, sessionId = id) => send("POST", `/sessions/${sessionId}/turns/${turnId}/events`, body);
+    const played = (await (await event({ event: "played" })).json()) as { listening: { playedAt: string | null; revealedAt: string | null } };
+    expect(played.listening.playedAt).not.toBeNull();
+    expect(played.listening.revealedAt).toBeNull();
+
+    // Repeating changes nothing: the first time is what matters.
+    const again = (await (await event({ event: "played" })).json()) as { listening: { playedAt: string | null } };
+    expect(again.listening.playedAt).toBe(played.listening.playedAt);
+
+    await event({ event: "revealed" });
+    const saved = sessionStateResponseSchema.parse(await (await api(`/sessions/${id}`)).json());
+    expect(saved.turns[0]?.listening.playedAt).toBe(played.listening.playedAt);
+    expect(saved.turns[0]?.listening.revealedAt).not.toBeNull();
+  });
+
+  it("can be recorded after the session ends, since replies can be replayed from the summary", async () => {
+    const { id } = await newSession();
+    const { turn } = (await (await send("POST", `/sessions/${id}/turn`, message())).json()) as { turn: { turnId: string } };
+    await send("POST", `/sessions/${id}/complete`);
+    expect((await send("POST", `/sessions/${id}/turns/${turn.turnId}/events`, { event: "played" })).status).toBe(200);
+  });
+
+  it("refuses unknown events, turns from other sessions, and other sites", async () => {
+    const first = await newSession();
+    const { turn } = (await (await send("POST", `/sessions/${first.id}/turn`, message())).json()) as { turn: { turnId: string } };
+    const other = await newSession();
+
+    const url = `/sessions/${first.id}/turns/${turn.turnId}/events`;
+    expect((await send("POST", url, { event: "understood" })).status).toBe(400);
+    expect((await send("POST", url, { event: "played", at: "2020-01-01" })).status).toBe(400);
+    expect((await send("POST", `/sessions/${other.id}/turns/${turn.turnId}/events`, { event: "played" })).status).toBe(404);
+    expect((await send("POST", `/sessions/${first.id}/turns/not-a-turn/events`, { event: "played" })).status).toBe(400);
+    expect((await send("POST", url, { event: "played" }, { Origin: "https://evil.example" })).status).toBe(403);
+    const row = await database.db.prepare("SELECT reply_played_at FROM conversation_turns WHERE id = ?1").bind(turn.turnId).first<{ reply_played_at: string | null }>();
+    expect(row?.reply_played_at).toBeNull();
+  });
+});

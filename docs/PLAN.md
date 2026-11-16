@@ -43,7 +43,8 @@ Gate: a full typed session against the imported curriculum; invalid IDs cannot r
 | PR | Branch | Contents |
 |---|---|---|
 | 9 | `phase-3/speech-token` | Azure token issuer and fake, `POST /speech/token` with auth, quota and rate limit, usage metering |
-| 10 | `phase-3/voice-ui` | Push-to-talk recognition, neural TTS playback, status cues, listen-first activity, transcript reveal tracking, typed fallback, resource cleanup |
+| 10 | `phase-3/voice-ui` | Tap-to-talk recognition, neural TTS playback, status cues, listen-first for tutor replies, transcript reveal tracking, typed fallback, resource cleanup |
+| 11 | `phase-3/listening-activity` | The plan's separate "Listen first" exercise: a short generated exchange heard before any text, with comprehension questions answered before the transcript is shown |
 
 Gate: mocked voice test passes. **Open until credentials and a phone test:** live Azure recognition and speech, token refresh, iOS and Android microphones.
 
