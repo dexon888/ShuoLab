@@ -572,3 +572,29 @@ changes, so there is no background job.
 Deleting is a second, explicit step there, and the review history for its
 words is kept, because it schedules future reviews and is evidence about
 the words rather than about that session.
+
+## 89. Accessibility is checked by axe in the browser tests
+
+Every page is scanned for WCAG 2.1 A and AA problems at 320 px and desktop
+against the real Worker with placeholder vocabulary, so a regression fails
+CI. axe cannot judge everything, so keyboard reach, visible focus and
+reduced motion have their own checks, and a screen-reader pass stays with
+the owner. `@axe-core/playwright` is pinned to 4.14.0, released more than a
+month before it was added.
+
+## 90. The budget meter is a bar plus a sentence
+
+The bar shows the estimate as a share of the stop amount, capped at full,
+with a tick at the warning amount. It is hidden from screen readers because
+the sentence beside it says the same thing with the dollar amounts, and the
+warning is stated in words rather than by the bar turning red. It is the
+only percentage on Today, and its denominator is printed next to it.
+
+## 91. Access is verified from outside, anonymously
+
+`pnpm check:access` asks a deployment for the page, the owner API and the
+export without signing in, and again with a forged identity header and a
+forged token. A redirect to a `cloudflareaccess.com` sign-in page or a
+401/403 passes; anything answered normally fails. It refuses http and local
+addresses, sends no cookies and uses a placeholder email, so it can be run
+by anyone and tells nothing about the owner.

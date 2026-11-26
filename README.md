@@ -86,6 +86,7 @@ no secrets and costs nothing.
 | `pnpm data:import` | Load a JSON export into the local database (local only; see "Backup and export") |
 | `pnpm seed:dev` | Load generated placeholder vocabulary and colloquial rows into the local database |
 | `pnpm deploy` | Safety checks, build, then `wrangler deploy` |
+| `pnpm check:access <https-address>` | Check from outside that Access stops anonymous requests to a deployment |
 | `pnpm icons` | Regenerate the app icons |
 
 Before the first `pnpm test:e2e`, install the test browser once:
@@ -202,12 +203,18 @@ Reference: <https://developers.cloudflare.com/workers/configuration/cloudflare-a
 
 ### 4. Verify Access
 
-- In a private browser window, the site must show the Access sign-in page.
-- This must not return your data (expect a redirect or an error):
+- From your computer, without signing in:
 
 ```bash
-curl -i https://<your-hostname>/api/v1/me
+pnpm check:access https://<your-hostname>
 ```
+
+  It makes five anonymous requests: the app page, `/api/v1/me`, the data
+  export, and `/api/v1/me` with a forged identity header and a forged Access
+  token. Each must be sent to your `cloudflareaccess.com` sign-in page or
+  refused with 401/403; any request that is answered normally fails the check.
+  It sends no cookies and no real email address.
+- In a private browser window, the site must show the Access sign-in page.
 
 - After signing in, **Settings** must show "Signed in as" your email.
 
@@ -396,8 +403,8 @@ The monthly warning and stop amounts can be set in Settings (defaults US$5
 and US$10). They are enforced for the tutor: every tutor call is
 recorded with its token counts and an estimated cost, and once the month's
 estimate (UTC month) reaches the stop amount, paid tutor requests are refused
-until the month ends or you raise the amount. Settings shows the month's
-estimate. It is ShuoLab's own estimate from list prices, not a cap at OpenAI
+until the month ends or you raise the amount. Today and Settings show the
+month's estimate as a bar against the stop amount, with the figures in words. It is ShuoLab's own estimate from list prices, not a cap at OpenAI
 or Azure and not your bill, so set limits in those accounts too. The built-in
 price is for the default model `gpt-6-luna` (US$0.10 per million input tokens
 and US$0.50 per million output tokens, read from OpenAI's pricing page on

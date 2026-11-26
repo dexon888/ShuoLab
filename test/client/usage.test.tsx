@@ -61,6 +61,34 @@ describe("spending this month (SPEC §4.3)", () => {
     expect(region).toHaveTextContent("from 1 tutor request.");
   });
 
+  it("draws the estimate as a share of the stop amount, with the same facts in words", async () => {
+    renderSettings(usage({ estimatedUsd: 2.5 }));
+    const region = await screen.findByRole("region", { name: "Spending this month" });
+    expect(await within(region).findByText("US$2.50 of US$10.00 this month (25%). Warning at US$5.00.")).toBeInTheDocument();
+    const bar = within(region).getByTestId("budget-bar");
+    expect(bar).toHaveAttribute("aria-hidden", "true");
+    expect((bar.firstElementChild as HTMLElement).style.width).toBe("25%");
+  });
+
+  it("caps the bar at the stop amount", async () => {
+    renderSettings(usage({ estimatedUsd: 12, remainingUsd: 0, softLimitReached: true, hardLimitReached: true }));
+    const bar = await screen.findByTestId("budget-bar");
+    expect((bar.firstElementChild as HTMLElement).style.width).toBe("100%");
+    expect(screen.getByText("US$12.00 of US$10.00 this month (100%). Warning at US$5.00.")).toBeInTheDocument();
+  });
+
+  it("shows the meter on Today, with a warning in words once it is reached", async () => {
+    renderApp("/", {
+      "/api/v1/me": () => json(me),
+      "/api/v1/sessions?limit=5": () => json({ sessions: [], resumable: null }),
+      "/api/v1/curriculum/status": () => json({ edition: null, dimensions: [], vocabByBand: [], manifests: [] }),
+      "/api/v1/usage/monthly": () => json(usage({ estimatedUsd: 6, softLimitReached: true })),
+    });
+    expect(await screen.findByText("AI spending this month (estimate)")).toBeInTheDocument();
+    expect(screen.getByText("Warning amount reached.")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Change the amounts in Settings" })).toHaveAttribute("href", "/settings");
+  });
+
   it("says when the warning amount is reached", async () => {
     renderSettings(usage({ estimatedUsd: 5.2, softLimitReached: true }));
     expect(await screen.findByText(/The warning amount of US\$5\.00 has been reached\. Paid requests stop at US\$10\.00\./)).toBeInTheDocument();

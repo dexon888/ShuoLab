@@ -30,7 +30,8 @@
     "check:deploy": "node scripts/check-deploy-config.mjs",
     "deploy": "pnpm check:deploy && pnpm build && wrangler deploy",
     "verify": "pnpm typecheck && pnpm lint && pnpm test && pnpm build",
-    "data:import": "tsx scripts/import-owner-data.ts"
+    "data:import": "tsx scripts/import-owner-data.ts",
+    "check:access": "node scripts/check-access.mjs"
   },
   "dependencies": {
     "@tanstack/react-query": "5.107.1",
@@ -45,6 +46,7 @@
     "zod": "4.6.7"
   },
   "devDependencies": {
+    "@axe-core/playwright": "4.14.0",
     "@cloudflare/vite-plugin": "1.69.1",
     "@cloudflare/workers-types": "5.20261113.1",
     "@eslint/js": "10.0.1",

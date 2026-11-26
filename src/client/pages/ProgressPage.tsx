@@ -103,7 +103,9 @@ function Summary({ s }: { s: ProgressSummary }) {
               {hsk.synthetic ? "Generated placeholder words for testing, not HSK content. " : null}
               Each band counts its own new entries; mastered means recalled on three different days by this app's rule.
             </p>
-            <div className="overflow-x-auto">
+            {/* A table that scrolls sideways must be reachable by keyboard (axe scrollable-region-focusable). */}
+            {/* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex */}
+            <div className="overflow-x-auto" tabIndex={0} role="region" aria-label="Entries per band by evidence state, scrolls sideways">
               <table className="w-full min-w-[36rem] text-sm">
                 <caption className="sr-only">Entries per band by evidence state</caption>
                 <thead>

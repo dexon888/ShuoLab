@@ -53,7 +53,10 @@ describe("dashboard", () => {
     renderApp("/", okRoutes);
 
     expect(await screen.findByText("Curriculum not imported")).toBeInTheDocument();
-    expect(document.body.textContent).not.toMatch(/\d\s?%/);
+    // Only the budget meter may show a percentage, with its dollar amounts beside it.
+    for (const name of ["Today's session", "HSK curriculum", "Communication progress"]) {
+      expect(screen.getByRole("region", { name }).textContent).not.toMatch(/\d\s?%/);
+    }
 
     const start = screen.getByRole("button", { name: "Start today's session" });
     expect(start).toHaveAttribute("aria-disabled", "true");
