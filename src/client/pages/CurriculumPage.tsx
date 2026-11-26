@@ -102,7 +102,12 @@ function SourceList({ status }: { status: CurriculumStatusResponse }) {
     <ul className="space-y-3">
       {status.manifests.map((manifest) => (
         <li key={`${manifest.datasetKind}-${manifest.sha256}`}>
-          <p className="font-medium">{manifest.datasetKind}</p>
+          <p className="font-medium">
+            {manifest.datasetKind === "vocab-crosscheck"
+              ? "Vocabulary file used only to check the edition"
+              : `${DIMENSION_NAMES[manifest.datasetKind as ItemType] ?? manifest.datasetKind} file`}
+            {manifest.verificationStatus === "unverified" ? <span className="font-normal text-mist">, not verified</span> : null}
+          </p>
           <p className="text-sm text-mist">
             {numberFormat.format(manifest.recordCount)} rows from <code>{manifest.sourceUrl}</code>
             {manifest.commitSha ? (
@@ -148,6 +153,14 @@ export function CurriculumPage() {
               <p className="mt-3 text-sm text-mist">
                 A section counts toward HSK coverage only after its data is imported and verified.
               </p>
+              {curriculum.data.dimensions.some((d) => d.itemType !== "vocab" && d.status === "imported") &&
+              !curriculum.data.activeEdition?.synthetic ? (
+                <p className="mt-2 text-sm text-mist">
+                  Grammar, characters, topics and tasks come from a second-hand transcription of the syllabus, credited
+                  under Sources. Its vocabulary matched this edition entry for entry, but the sections themselves have
+                  not been checked against the official document.
+                </p>
+              ) : null}
             </Section>
             <Section title="Outside the syllabus">
               <p>

@@ -206,6 +206,31 @@ describe("curriculum page", () => {
     expect(sources).toHaveTextContent("Imported locally for personal use.");
   });
 
+  it("labels sections from a second-hand transcription as imported, not verified, and credits the source", async () => {
+    const base = fullImport(false);
+    const second = { sourceUrl: "https://example.test/sections", commitSha: "f".repeat(40), rightsNote: "Licensed CC BY 4.0.", fieldMappingVersion: "sections-v1", verificationStatus: "unverified" as const, importedAt: "2026-11-26T00:00:00.000Z" };
+    renderApp("/curriculum", {
+      ...okRoutes,
+      "/api/v1/curriculum/status": () =>
+        json({
+          ...base,
+          dimensions: base.dimensions.map((d) => (d.itemType === "grammar" ? { ...d, status: "imported" as const, importedCount: 593 } : d)),
+          manifests: [
+            ...base.manifests,
+            { ...second, datasetKind: "grammar", sha256: "b".repeat(64), recordCount: 593 },
+            { ...second, datasetKind: "vocab-crosscheck", sha256: "c".repeat(64), recordCount: 0 },
+          ],
+        }),
+    });
+    expect(await screen.findByText("Grammar")).toBeInTheDocument();
+    expect(screen.getByText("Grammar").closest("li")).toHaveTextContent("Imported, not verified, 593 rows");
+    expect(screen.getByText(/second-hand transcription of the syllabus/)).toBeInTheDocument();
+    const sources = screen.getByRole("region", { name: "Sources" });
+    expect(sources).toHaveTextContent("Grammar file, not verified");
+    expect(sources).toHaveTextContent("Vocabulary file used only to check the edition");
+    expect(sources).toHaveTextContent("Licensed CC BY 4.0.");
+  });
+
   it("never presents synthetic test data as HSK content, even when it verifies", async () => {
     renderApp("/curriculum", {
       ...okRoutes,

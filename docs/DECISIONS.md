@@ -598,3 +598,27 @@ forged token. A redirect to a `cloudflareaccess.com` sign-in page or a
 401/403 passes; anything answered normally fails. It refuses http and local
 addresses, sends no cookies and uses a placeholder email, so it can be run
 by anyone and tells nothing about the owner.
+
+## 92. Grammar, characters, topics and tasks come from a second source, unverified
+
+The vocabulary source has none of these, and there are no published totals
+for them that ShuoLab can check. profesorm/hsk30 (CC BY 4.0) has all four. It
+is used only after its own vocabulary list matches the stored, verified
+edition entry for entry, which is strong evidence it is the same syllabus.
+Even then the rows are stored as unverified, are credited on the Curriculum
+page, and stay out of coverage figures and lesson planning (SPEC §2.2, §8.1).
+
+## 93. Section rows are numbered by position in their file
+
+The source has no ids. A row's `source_id` is its 1-based position among the
+data rows of its file, which is stable for a pinned commit; the commit and
+each file's checksum are stored, so a later source change is visible as a new
+manifest rather than silently renumbering items.
+
+## 94. Section details are kept as JSON on the item
+
+Grammar type, category, detail and example sentences; the character's skill
+(recognise or write); a topic's area, subject and details; a task's can-do
+statement. These go in `metadata_json` rather than new columns, because no
+feature reads them yet and the schema already allows it.
+

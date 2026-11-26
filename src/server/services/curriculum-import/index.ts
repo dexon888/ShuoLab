@@ -90,3 +90,14 @@ export function prepareVocabImport(input: PrepareImportInput): PrepareImportResu
     },
   };
 }
+export {
+  prepareSectionsImport,
+  SECTION_FILES,
+  SECTION_TYPES,
+  SECTIONS_FIELD_MAPPING_VERSION,
+  VOCAB_CROSSCHECK_FILE,
+  type SectionIssue,
+  type SectionType,
+  type SectionsSummary,
+  type StoredVocab,
+} from "./sections";

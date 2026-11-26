@@ -31,7 +31,8 @@ is summarised with sample sizes; export is **not built yet**.
 | App shell, navigation, PWA manifest and service worker | Working, tested locally |
 | Owner authentication (Cloudflare Access JWT) | Working against locally signed test tokens; not yet verified on a deployment |
 | Curriculum status | Working on local D1 |
-| HSK vocabulary import | Working and tested with generated placeholder data; not yet run on the real dataset |
+| HSK vocabulary import | Working: the real 11,000-entry list imported and verified locally on 2026-11-26; not yet run against a deployed database |
+| Grammar, characters, topics and tasks | Imported locally from a second-hand transcription (CC BY 4.0) after its vocabulary matched entry for entry; shown as not verified and not used for coverage or planning |
 | Browsing entries | Working and tested with generated placeholder data |
 | Colloquial expressions (separate from HSK) | Working and tested with generated placeholder rows; not yet run on the real dataset file |
 | Preferences (onboarding, Settings) | Working locally; saved in the database, so they follow you across devices once deployed |
@@ -81,6 +82,7 @@ no secrets and costs nothing.
 | `pnpm db:migrate:local` | Apply migrations to the local database |
 | `pnpm db:migrate:remote` | Apply migrations to the deployed database |
 | `pnpm curriculum:import` | Validate and import your HSK vocabulary files (see below) |
+| `pnpm curriculum:import-sections` | Import grammar, characters, topics and tasks after the vocabulary (see below) |
 | `pnpm curriculum:verify` | Check the stored curriculum against the edition's published totals |
 | `pnpm colloquial:import` | Validate and import the optional colloquial-expression dataset (see below) |
 | `pnpm data:import` | Load a JSON export into the local database (local only; see "Backup and export") |
@@ -271,9 +273,10 @@ ShuoLab never invents HSK words or levels. You import the November 2025 HSK
 `private-data/`, which is git-ignored, and are never committed or bundled into
 the app. Until the import passes, the app says "Curriculum not imported".
 
-The importer has been tested with generated placeholder data only. **It has
-not yet been run on the real dataset**; the first real run is the check that
-the field mapping below matches every row.
+The first real import ran locally on 2026-11-26 from commit
+`6859875bf3ba3b7209dee3b23171f893f7493776` of the source below: all 11,000
+entries passed with the published band counts and no change to the field
+mapping. It has not been run against a deployed database yet.
 
 ### 1. Get the files
 
@@ -348,6 +351,44 @@ imported; the syllabus has none.
 
 Grammar, characters, topics and tasks have no importer yet and show as
 "Not imported".
+
+### Grammar, characters, topics and tasks
+
+These come from a second source, imported after the vocabulary:
+<https://github.com/profesorm/hsk30>, licensed CC BY 4.0. It is a
+second-hand transcription of the syllabus, so ShuoLab stores it as
+**imported, not verified**: it is shown and credited on the Curriculum page
+but never counted as verified HSK coverage, and lesson plans do not pick
+grammar from it.
+
+Download these five files from the repository's `data/` folder at a pinned
+commit into `private-data/hsk-sections/`: `hsk_grammar.csv`,
+`hsk_hanzi.csv`, `hsk_topic.csv`, `hsk_task.csv` and
+`hsk_vocabulary.csv`. Then check, and import:
+
+```bash
+pnpm curriculum:import-sections --source ./private-data/hsk-sections --commit <the 40-character commit> --dry-run
+```
+
+```bash
+pnpm curriculum:import-sections --source ./private-data/hsk-sections --commit <the 40-character commit>
+```
+
+What it checks before writing anything:
+
+- The vocabulary is already imported and verified, and the source's own
+  vocabulary list matches it entry for entry (same number, characters and
+  pinyin). Otherwise it may be a different syllabus, and nothing is imported.
+- All five files are present, valid UTF-8 and have the expected columns.
+- Every row has a known level (`HSK1`…`HSK6`, `HSK7-9`) and its required
+  fields; every band has rows; no row is repeated; a character row is one
+  Chinese character marked 1 (recognise) or 2 (write).
+
+The source has no row numbers, so each row's id is its position in its file.
+The commit and each file's checksum are stored with the import. Re-running the
+same files changes nothing. First run locally on 2026-11-26 from commit
+`f3163ca6edff5d6b1e81afb1cd716bb78f5a958a`: 593 grammar points, 4,288
+character rows (3,088 to recognise, 1,200 to write), 427 topics and 678 tasks.
 
 ### Placeholder data for development
 
