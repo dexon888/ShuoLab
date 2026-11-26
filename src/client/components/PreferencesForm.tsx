@@ -203,7 +203,7 @@ export function PreferencesForm({ settings, mode, onSaved }: PreferencesFormProp
             </select>
           )}
         </Field>
-        <Field label="Speech rate" hint="1.00× is natural speed. Applies to spoken audio once speech is built.">
+        <Field label="Speech rate" hint="1.00× is natural speed. Used when replies and listening exercises are read aloud.">
           {({ id, hintId }) => (
             <div className="flex items-center gap-4">
               <input

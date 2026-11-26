@@ -3,6 +3,7 @@
  * cost nothing, and are deterministic. They are never used in production.
  */
 import { SPEECH_TOKEN_REUSE_SECONDS } from "../../shared/speech";
+import { LISTENING_FORMAT_NAME, type ListeningOutput } from "../../shared/listening";
 import type { TutorOutput } from "../../shared/tutor";
 import type {
   SpeechToken,
@@ -42,6 +43,31 @@ export function fakeTutorOutput(request: TutorRequest): TutorOutput {
   };
 }
 
+/**
+ * A canned listening exchange that mentions the session's first target word.
+ * Not a language model, and its answers are always the first option before
+ * the server shuffles them.
+ */
+export function fakeListeningOutput(request: TutorRequest): ListeningOutput {
+  const word = request.context.targets[0]?.hanzi;
+  return {
+    lines: [
+      { speaker: "A", zh: "你周末有空吗？", pinyin: "Nǐ zhōumò yǒu kòng ma?", en: "Are you free this weekend?" },
+      { speaker: "B", zh: "星期六下午有空。", pinyin: "Xīngqīliù xiàwǔ yǒu kòng.", en: "I'm free on Saturday afternoon." },
+      {
+        speaker: "A",
+        zh: word ? `我们一起去吧，我想说说“${word}”。` : "我们一起去喝茶吧。",
+        pinyin: word ? "Wǒmen yìqǐ qù ba, wǒ xiǎng shuōshuo …" : "Wǒmen yìqǐ qù hē chá ba.",
+        en: word ? "Let's go together; I want to talk about this word. (Practice stand-in.)" : "Let's go for tea together. (Practice stand-in.)",
+      },
+    ],
+    questions: [
+      { question_en: "When is the second speaker free?", options_en: ["Saturday afternoon", "Sunday morning", "Friday evening"], answer_index: 0 },
+      { question_en: "What does the first speaker suggest?", options_en: ["Doing something together", "Staying at home", "Working late"], answer_index: 0 },
+    ],
+  };
+}
+
 export class FakeTutorProvider implements TutorProvider {
   readonly vendor = "Local fake tutor";
   readonly model = "fake-tutor-1";
@@ -59,7 +85,8 @@ export class FakeTutorProvider implements TutorProvider {
   async generate(request: TutorRequest): Promise<TutorRawResult> {
     this.requests.push(request);
     const usage = this.options.usage ?? { tokensIn: 0, tokensOut: 0 };
-    const text = this.options.respond ? this.options.respond(request) : JSON.stringify(fakeTutorOutput(request));
+    const builtIn = request.format?.name === LISTENING_FORMAT_NAME ? fakeListeningOutput(request) : fakeTutorOutput(request);
+    const text = this.options.respond ? this.options.respond(request) : JSON.stringify(builtIn);
     return { text, usage };
   }
 

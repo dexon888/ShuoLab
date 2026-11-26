@@ -10,14 +10,16 @@ import {
   type SessionAction,
   type SessionStateResponse,
 } from "../../shared/debrief";
+import type { ListeningExercise } from "../../shared/listening";
 import type { SessionDetail } from "../../shared/session";
 import type { Turn, TurnCorrection } from "../../shared/tutor";
 import { ApiError } from "../validation/errors";
+import { getListening } from "./listening";
 import { accrueSql, getSession } from "./sessions";
 import { listTurns } from "./turns";
 
 /** What the session and its turns show happened. No judgement of ability. */
-export function buildDebrief(session: SessionDetail, turns: readonly Turn[]): Debrief {
+export function buildDebrief(session: SessionDetail, turns: readonly Turn[], listening: ListeningExercise | null = null): Debrief {
   const learnerText = turns.map((t) => t.learnerText).join("\n");
   const tutorText = turns.filter((t) => !t.fallback).map((t) => t.reply.spokenZh).join("\n");
 
@@ -52,13 +54,14 @@ export function buildDebrief(session: SessionDetail, turns: readonly Turn[]): De
     words,
     recommendedReviewItemIds: words.filter((w) => !w.usedByLearner && w.role !== "stretch").map((w) => w.itemId),
     corrections,
+    listening: listening?.result ?? null,
   };
 }
 
 export async function getSessionState(d1: D1Database, id: string): Promise<SessionStateResponse> {
   const session = await getSession(d1, id);
-  const turns = await listTurns(d1, session.id);
-  return { session, turns, debrief: session.status === "complete" ? buildDebrief(session, turns) : null };
+  const [turns, listening] = await Promise.all([listTurns(d1, session.id), getListening(d1, session.id)]);
+  return { session, turns, listening, debrief: session.status === "complete" ? buildDebrief(session, turns, listening) : null };
 }
 
 const ENDED = "This session has ended. Start a new one from Today.";

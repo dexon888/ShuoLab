@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { z } from "zod";
 import { sessionActionSchema } from "../../shared/debrief";
+import { listeningAnswersRequestSchema, listeningEventRequestSchema } from "../../shared/listening";
 import { planRequestSchema } from "../../shared/session";
 import { MAX_TRANSCRIPT_CHARS, turnEventRequestSchema, turnRequestSchema } from "../../shared/tutor";
 import type { AppBindings } from "../auth/access";
@@ -10,6 +11,7 @@ import type { TutorProvider } from "../providers/types";
 import { listSessions, planSession } from "../services/sessions";
 import { applySessionAction, completeSession, getSessionState } from "../services/session-state";
 import { getSession } from "../services/sessions";
+import { answerListening, createListening, recordListeningEvent } from "../services/listening";
 import { recordTurnEvent, takeTurn } from "../services/turns";
 import { readJsonBody } from "../validation/body";
 import { ApiError } from "../validation/errors";
@@ -58,6 +60,23 @@ export function createSessionRoutes(deps: SessionRouteDeps = {}) {
       if (!parsed.success) throw new ApiError("BAD_REQUEST", 'Send {"event": "played"} or {"event": "revealed"}.');
       const session = await getSession(c.env.DB, c.req.param("id"));
       return c.json(await recordTurnEvent(c.env.DB, session.id, c.req.param("turnId"), parsed.data.event));
+    })
+    // The listen-first exercise: written once per session; asking again returns it.
+    .post("/:id/listening", async (c) => {
+      const result = await createListening(c.env.DB, tutorFor(c.env), c.req.param("id"));
+      return c.json(result, result.existing ? 200 : 201);
+    })
+    .post("/:id/listening/events", async (c) => {
+      const parsed = listeningEventRequestSchema.safeParse(await readJsonBody(c.req.raw));
+      if (!parsed.success) throw new ApiError("BAD_REQUEST", 'Send {"event": "played"} or {"event": "revealed"}.');
+      const session = await getSession(c.env.DB, c.req.param("id"));
+      return c.json(await recordListeningEvent(c.env.DB, session.id, parsed.data.event));
+    })
+    .post("/:id/listening/answers", async (c) => {
+      const parsed = listeningAnswersRequestSchema.safeParse(await readJsonBody(c.req.raw));
+      if (!parsed.success) throw new ApiError("BAD_REQUEST", 'Send {"answers": [...]}, one option number (0, 1 or 2) per question.');
+      const session = await getSession(c.env.DB, c.req.param("id"));
+      return c.json(await answerListening(c.env.DB, session.id, parsed.data.answers));
     })
     // Idempotent: completing a complete session returns the same summary.
     .post("/:id/complete", async (c) => c.json(await completeSession(c.env.DB, c.req.param("id"))))

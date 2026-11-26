@@ -8,25 +8,11 @@ import { useCompleteSession, useSendTurn, useSession, useSessionAction, type Out
 import { ApiRequestError } from "../lib/api";
 import { loadDraft, saveDraft, type SessionDraft } from "../lib/draft";
 import { CONFIDENT_RECOGNITION } from "../speech/ssml";
-import { useVoice, type VoiceProblem } from "../speech/useVoice";
+import { problemText } from "../speech/problems";
+import { useVoice } from "../speech/useVoice";
 
 function errorText(error: unknown): string {
   return error instanceof ApiRequestError ? error.message : "Something went wrong. Try again.";
-}
-
-const PROBLEM_TEXT: Readonly<Record<Exclude<VoiceProblem["kind"], "server">, string>> = {
-  denied: "Microphone access was refused. Allow it for this site in your browser's settings, or keep typing.",
-  "no-microphone": "No microphone was found. Connect one, or keep typing.",
-  unsupported: "This browser can't record here. Speaking needs a secure (https) page in a current browser. Typing works.",
-  token: "Azure didn't accept the speech sign-in. Try again; typing still works.",
-  busy: "Azure Speech is busy. The free tier allows one recognition at a time. Wait a moment, or type.",
-  network: "Couldn't reach Azure Speech. Check your connection, or type.",
-  failed: "Speech didn't work this time. Try again, or type.",
-  "no-speech": "Didn't hear anything. Tap Speak and talk, or type instead.",
-};
-
-function problemText(problem: VoiceProblem): string {
-  return problem.kind === "server" ? problem.message : PROBLEM_TEXT[problem.kind];
 }
 
 /** Per-viewer conveniences, kept in this browser only. */

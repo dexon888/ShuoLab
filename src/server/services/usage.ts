@@ -11,6 +11,8 @@ import { getSettings } from "./settings";
 import { getSpeechAllowance, speechLimits, type SpeechLimits } from "./speech";
 
 export const TUTOR_OPERATION = "tutor_turn";
+/** Writing a listening exercise. It uses the tutor model, so it shares the tutor's limits and totals. */
+export const LISTENING_OPERATION = "listening_exercise";
 
 /** Tutor calls allowed in any 60 seconds and any 24 hours, counting retries. */
 export const MAX_TUTOR_CALLS_PER_MINUTE = 20;
@@ -76,8 +78,8 @@ export async function getMonthlyUsage(
       .prepare("SELECT COUNT(*) AS n, SUM(tokens_in) AS tin, SUM(tokens_out) AS tout, SUM(estimated_usd) AS usd FROM usage_events WHERE recorded_at >= ?1 AND recorded_at < ?2")
       .bind(start, end),
     d1
-      .prepare("SELECT COUNT(*) AS n, SUM(tokens_in) AS tin, SUM(tokens_out) AS tout, SUM(estimated_usd) AS usd FROM usage_events WHERE recorded_at >= ?1 AND recorded_at < ?2 AND operation = ?3")
-      .bind(start, end, TUTOR_OPERATION),
+      .prepare("SELECT COUNT(*) AS n, SUM(tokens_in) AS tin, SUM(tokens_out) AS tout, SUM(estimated_usd) AS usd FROM usage_events WHERE recorded_at >= ?1 AND recorded_at < ?2 AND operation IN (?3, ?4)")
+      .bind(start, end, TUTOR_OPERATION, LISTENING_OPERATION),
   ]);
   const total = all?.results[0];
   const tutorRow = tutor?.results[0];
@@ -135,9 +137,9 @@ export async function assertWithinRate(d1: D1Database, now: Date): Promise<void>
       `SELECT
   SUM(CASE WHEN recorded_at > ?1 THEN 1 ELSE 0 END) AS minute,
   COUNT(*) AS day
-FROM usage_events WHERE operation = ?3 AND recorded_at > ?2`,
+FROM usage_events WHERE operation IN (?3, ?4) AND recorded_at > ?2`,
     )
-    .bind(minuteAgo, dayAgo, TUTOR_OPERATION)
+    .bind(minuteAgo, dayAgo, TUTOR_OPERATION, LISTENING_OPERATION)
     .first<{ minute: number | null; day: number }>();
   if ((row?.day ?? 0) >= MAX_TUTOR_CALLS_PER_DAY) {
     throw new ApiError("RATE_LIMITED", "Today's limit on tutor requests has been reached. Try again tomorrow.");

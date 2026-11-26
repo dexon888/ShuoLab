@@ -107,12 +107,17 @@ export class OpenAiTutorProvider implements TutorProvider {
           instructions: request.instructions,
           input: request.messages.map((m) => ({ role: m.role, content: m.content })),
           text: {
-            format: { type: "json_schema", name: "tutor_turn", schema: TUTOR_OUTPUT_JSON_SCHEMA, strict: true },
+            format: {
+              type: "json_schema",
+              name: request.format?.name ?? "tutor_turn",
+              schema: request.format?.schema ?? TUTOR_OUTPUT_JSON_SCHEMA,
+              strict: true,
+            },
           },
-          max_output_tokens: MAX_OUTPUT_TOKENS,
+          max_output_tokens: request.format?.maxOutputTokens ?? MAX_OUTPUT_TOKENS,
           store: false,
         }),
-        signal: AbortSignal.timeout(this.timeoutMs),
+        signal: AbortSignal.timeout(request.format?.timeoutMs ?? this.timeoutMs),
       });
     } catch (error) {
       const name = error instanceof Error ? error.name : "";

@@ -38,8 +38,8 @@ Review and progress are **not built yet**.
 | Tutor turns (API) | Working locally with the stand-in tutor: validated replies, each message saved once, spending recorded and capped. One live open conversation with `gpt-6-luna` run locally: Mandarin replies, a correction, an injection attempt declined, pinyin and English returned, usage recorded |
 | Session conversation screen | Working locally with the stand-in tutor: typed turns, pause, resume, finish, summary, recovery after a reload or a dropped connection. Typed only; listening and speaking arrive in Phase 3 |
 | Speech tokens and free-tier count | Working locally with a stand-in token issuer: `POST /speech/token`, usage reports, the Azure F0 allowance enforced and shown in Settings. The Azure issuer is written and unit-tested; **no real Azure call has been made** |
-| Speaking and listening in a session | Working locally with the stand-in: Speak, read replies aloud, Play, listen first with recorded reveals, unsure transcripts checked before sending, typed fallback for every failure. The Azure path is written against the SDK's documented API; **not yet tried with a real microphone or voice** |
-| Separate listen-first exercise | Phase 3 — not built |
+| Speaking and listening in a session | Working locally with the stand-in: Speak, read replies aloud, Play, listen first with recorded reveals, unsure transcripts checked before sending, typed fallback for every failure. Real Azure recognition and voice tried by the owner on a computer (2026-11-25); **not yet on a phone** |
+| Separate listen-first exercise | Working locally: a short exchange written by the tutor for the session's situation and words, played before any text, with 2–3 questions scored before the text is shown. Tried once with the real OpenAI tutor; Azure playback of the exchange **not yet heard by the owner** |
 | Review, progress, export | Phase 4 |
 
 Nothing has been deployed. OpenAI has been called only from a local run; no Azure call has been made.

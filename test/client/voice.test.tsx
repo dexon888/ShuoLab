@@ -74,7 +74,7 @@ function turn(n: number, over: Partial<Turn> = {}): Turn {
 }
 
 function state(turns: Turn[] = [], status: SessionDetail["status"] = "active"): SessionStateResponse {
-  return { session: session(status), turns, debrief: null };
+  return { session: session(status), turns, debrief: null, listening: null };
 }
 
 const allowance = (over: Partial<SpeechAllowance> = {}): SpeechAllowance => ({
@@ -316,7 +316,7 @@ describe("listening to replies", () => {
   it("hides the newest reply's text when listening first, and records when it is shown", async () => {
     const engine = new TestEngine();
     const { posted } = open(engine, { initial: state([turn(1), turn(2)]) });
-    await userEvent.click(await screen.findByLabelText(/Listen first/));
+    await userEvent.click(await screen.findByRole("checkbox", { name: /Listen first/ }));
 
     expect(screen.getByText("回答1，你呢？")).toBeInTheDocument();
     expect(screen.queryByText("回答2，你呢？")).not.toBeInTheDocument();
