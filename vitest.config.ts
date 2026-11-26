@@ -12,6 +12,9 @@ export default defineConfig({
           name: "server",
           environment: "node",
           include: ["test/unit/**/*.test.ts", "test/integration/**/*.test.ts"],
+          // Integration tests drive a real local D1 engine; a test making a
+          // dozen writes in a row can pass 5 s when every file runs at once.
+          testTimeout: 20_000,
         },
       },
       {

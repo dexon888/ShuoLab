@@ -180,3 +180,47 @@ describe("pnpm colloquial:import", { timeout: 120_000 }, () => {
     expect(count()).toBe(12);
   });
 });
+
+describe("pnpm data:import", { timeout: 120_000 }, () => {
+  const exportFile = () => join(work, "export.json");
+  const doc = {
+    format: "shuolab-export",
+    schemaVersion: 1,
+    exportedAt: "2026-03-04T10:00:00.000Z",
+    appVersion: "test",
+    curriculumEditions: [],
+    notes: [],
+    tables: {
+      owner_settings: [],
+      sessions: [],
+      session_targets: [],
+      conversation_turns: [],
+      listening_exercises: [],
+      review_cards: [],
+      review_events: [],
+      practice_attempts: [],
+      mastery_states: [],
+      usage_events: [
+        { id: "u1", provider: "OpenAI", operation: "tutor_turn", model: "m", tokens_in: 10, tokens_out: 5, audio_seconds: 0, tts_chars: 0, estimated_usd: 0.000004, status: "ok", session_id: null, client_event_id: null, recorded_at: "2026-03-04T10:00:00.000Z" },
+      ],
+    },
+  };
+
+  it("refuses the deployed database and a missing file", () => {
+    writeFileSync(exportFile(), JSON.stringify(doc), "utf8");
+    const remote = script("import-owner-data.ts", ["--file", exportFile(), "--remote"]);
+    expect(remote.code).toBe(2);
+    expect(remote.out).toMatch(/deployed database is not supported/);
+    expect(script("import-owner-data.ts", ["--file", join(work, "nope.json"), "--persist-to", state]).code).toBe(1);
+  });
+
+  it("loads an export into the local database once, then refuses to load over it", () => {
+    writeFileSync(exportFile(), JSON.stringify(doc), "utf8");
+    const first = script("import-owner-data.ts", ["--file", exportFile(), "--persist-to", state]);
+    expect(first.code, first.out).toBe(0);
+    expect(first.out).toMatch(/usage_events\s+1/);
+    const second = script("import-owner-data.ts", ["--file", exportFile(), "--persist-to", state]);
+    expect(second.code).toBe(1);
+    expect(second.out).toMatch(/already holds data in usage_events/);
+  });
+});

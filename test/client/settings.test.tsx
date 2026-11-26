@@ -115,7 +115,7 @@ describe("settings page (SPEC §5.7)", () => {
     const limits = (await screen.findByText("Monthly spending limits")).closest("fieldset") as HTMLElement;
     expect(limits).toHaveTextContent("not a cap at OpenAI or Azure");
     expect(screen.getByRole("region", { name: "Services" })).toHaveTextContent("may charge for use");
-    expect(screen.getByRole("region", { name: "Export and deletion" })).toHaveTextContent("Not built yet");
+    expect(screen.getByRole("region", { name: "Your data" })).toHaveTextContent("Download JSON");
   });
 
   it("labels every control", async () => {

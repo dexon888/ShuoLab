@@ -40,8 +40,13 @@ export function apiPatch<S extends z.ZodType>(path: string, body: unknown, schem
   return apiRequest("PATCH", path, schema, body);
 }
 
+/** DELETEs a same-origin API route (with an optional JSON body) and validates the response. */
+export function apiDelete<S extends z.ZodType>(path: string, body: unknown, schema: S): Promise<z.infer<S>> {
+  return apiRequest("DELETE", path, schema, body);
+}
+
 async function apiRequest<S extends z.ZodType>(
-  method: "GET" | "PUT" | "POST" | "PATCH",
+  method: "GET" | "PUT" | "POST" | "PATCH" | "DELETE",
   path: string,
   schema: S,
   payload?: unknown,

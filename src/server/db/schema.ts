@@ -149,6 +149,8 @@ export const ownerSettings = sqliteTable(
     selfRatedListening: text("self_rated_listening"),
     selfRatedSpeaking: text("self_rated_speaking"),
     limitsJson: text("limits_json").notNull(),
+    /** Days conversation text is kept; null keeps it until deleted. */
+    transcriptRetentionDays: integer("transcript_retention_days"),
     onboardedAt: text("onboarded_at"),
     updatedAt: text("updated_at").notNull(),
   },

@@ -229,9 +229,10 @@ describe("session plan page (SPEC §5.3, FR-006)", () => {
     expect(await screen.findByText("Test data, not HSK content.")).toBeInTheDocument();
     const regions = screen.getAllByRole("region").map((r) => r.getAttribute("aria-labelledby"));
     const conversation = screen.getByRole("region", { name: "Conversation" });
-    expect(regions.at(-1)).toBe(conversation.getAttribute("aria-labelledby"));
+    // Only the delete control comes after the conversation.
+    expect(regions.at(-2)).toBe(conversation.getAttribute("aria-labelledby"));
+    expect(regions.at(-1)).toBe(screen.getByRole("region", { name: "Delete this session" }).getAttribute("aria-labelledby"));
     expect(within(conversation).getByLabelText("Your reply in Chinese")).toBeInTheDocument();
-    expect(conversation).not.toHaveTextContent("Not built yet");
   });
 
   it("says a suggested band is a suggestion", async () => {

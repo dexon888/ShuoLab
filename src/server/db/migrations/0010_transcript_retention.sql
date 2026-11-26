@@ -1,0 +1,1 @@
+ALTER TABLE `owner_settings` ADD `transcript_retention_days` integer;

@@ -40,6 +40,14 @@ export const SPEECH_RATE_MIN = 0.75;
 export const SPEECH_RATE_MAX = 1.15;
 export const SPEECH_RATE_STEP = 0.05;
 
+/**
+ * How long conversation text is kept (SEC-03, PRIV-01). Null keeps it until
+ * deleted. Older sessions keep their dates, minutes and evidence, but their
+ * typed and spoken words and the tutor's replies are removed.
+ */
+export const RETENTION_OPTIONS = [30, 90, 365] as const;
+export type RetentionDays = (typeof RETENTION_OPTIONS)[number];
+
 export const LIMIT_USD_MAX = 500;
 export const DEFAULT_SOFT_LIMIT_USD = 5;
 export const DEFAULT_HARD_LIMIT_USD = 10;
@@ -88,6 +96,7 @@ const fields = {
   slangIntensity: z.enum(SLANG_INTENSITIES),
   selfRatedListening: z.enum(SELF_RATINGS).nullable(),
   selfRatedSpeaking: z.enum(SELF_RATINGS).nullable(),
+  transcriptRetentionDays: z.union([z.literal(30), z.literal(90), z.literal(365)]).nullable(),
   limits: spendingLimitsSchema.refine((l) => l.softUsd <= l.hardUsd, {
     message: "The warning amount cannot be above the stop amount.",
     path: ["softUsd"],
@@ -135,6 +144,7 @@ export function defaultSettings(): OwnerSettings {
     slangIntensity: "normal",
     selfRatedListening: null,
     selfRatedSpeaking: null,
+    transcriptRetentionDays: null,
     limits: { softUsd: DEFAULT_SOFT_LIMIT_USD, hardUsd: DEFAULT_HARD_LIMIT_USD },
     onboardedAt: null,
     updatedAt: null,

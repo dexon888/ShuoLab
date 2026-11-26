@@ -26,6 +26,7 @@ import {
   type ColloquialPick,
 } from "./planner";
 import { getSettings } from "./settings";
+import { applyRetention } from "./owner-data";
 import { FREE_CHAT_SITUATION, situationFor } from "./situations";
 
 const UNFINISHED: readonly SessionStatus[] = ["planned", "active", "paused"];
@@ -300,6 +301,8 @@ ORDER BY created_at DESC LIMIT 1`,
  * different length, band or kind, it is replaced.
  */
 export async function planSession(d1: D1Database, request: PlanRequest, now: Date = new Date()): Promise<PlanResponse> {
+  // Once a day is enough for retention, and planning happens once a day.
+  await applyRetention(d1, now);
   const settings = await getSettings(d1);
   const durationMinutes: SessionMinutes = request.durationMinutes ?? settings.sessionMinutes;
   const date = localStudyDate(now, settings.timezone);

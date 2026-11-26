@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { settingsUpdateSchema, type SettingsResponse } from "../../shared/settings";
 import type { AppBindings } from "../auth/access";
+import { applyRetention } from "../services/owner-data";
 import { getSettings, updateSettings } from "../services/settings";
 import { readJsonBody } from "../validation/body";
 import { ApiError } from "../validation/errors";
@@ -26,5 +27,7 @@ export const settingsRoutes = new Hono<AppBindings>()
       );
     }
     const body: SettingsResponse = { settings: await updateSettings(c.env.DB, parsed.data) };
+    // A shorter retention takes effect at once.
+    if (parsed.data.transcriptRetentionDays !== undefined) await applyRetention(c.env.DB);
     return c.json(body);
   });

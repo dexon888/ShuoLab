@@ -1,3 +1,4 @@
+import { readFile } from "node:fs/promises";
 import { expect, test, type Page } from "@playwright/test";
 
 // A whole typed session on the real Worker runtime, with SYNTHETIC placeholder
@@ -319,5 +320,41 @@ test("progress: practice, communication and coverage, each with its sample (SPEC
   await expect(page.getByRole("region", { name: "Communication progress" })).toContainText(/minutes of practice on \d of the last 7 days/);
   await expect(page.getByRole("region", { name: "Review" })).toContainText(/cards? due/);
   await expectNoSidewaysScroll(page, "on Today with progress");
+  expect(errors).toEqual([]);
+});
+
+test("your data: export downloads, then deleting a session and everything (FR-019, SPEC §8.4)", async ({ page }) => {
+  const errors = trackErrors(page);
+  await page.goto("/settings");
+  const data = page.getByRole("region", { name: "Your data" });
+
+  // The JSON export is a real download holding every owner table.
+  const [download] = await Promise.all([page.waitForEvent("download"), data.getByRole("link", { name: "Download JSON" }).click()]);
+  expect(download.suggestedFilename()).toMatch(/^shuolab-export-\d{4}-\d{2}-\d{2}\.json$/);
+  const doc = JSON.parse(await readFile(await download.path(), "utf8"));
+  expect(doc).toMatchObject({ format: "shuolab-export", schemaVersion: 1 });
+  expect(doc.tables.sessions.length).toBeGreaterThan(0);
+  expect(doc.tables.review_events.length).toBeGreaterThan(0);
+  const csv = await page.request.get("/api/v1/export?format=csv&table=conversation_turns");
+  expect(csv.headers()["content-type"]).toBe("text/csv; charset=utf-8");
+
+  // Delete one session from its own page.
+  const sessionId = doc.tables.sessions[0].id as string;
+  await page.goto(`/session/${sessionId}`);
+  await page.getByRole("button", { name: "Delete this session…" }).click();
+  await page.getByRole("button", { name: "Yes, delete it" }).click();
+  await expect(page).toHaveURL(/\/$/);
+  expect((await page.request.get(`/api/v1/sessions/${sessionId}`)).status()).toBe(404);
+
+  // Then everything.
+  await page.goto("/settings");
+  await data.getByRole("button", { name: "Delete all my data…" }).click();
+  await data.getByLabel("Type DELETE MY DATA to confirm").fill("DELETE MY DATA");
+  await data.getByRole("button", { name: "Delete everything" }).click();
+  await expect(data.getByText(/^Deleted \d+ records\.$/)).toBeVisible();
+  const after = await (await page.request.get("/api/v1/my-data")).json();
+  expect(after.counts.sessions).toBe(0);
+  expect(after.counts.review_cards).toBe(0);
+  await expectNoSidewaysScroll(page, "on Settings after deleting");
   expect(errors).toEqual([]);
 });

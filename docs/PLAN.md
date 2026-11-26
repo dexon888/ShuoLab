@@ -54,7 +54,7 @@ Gate: mocked voice test passes. **Open until credentials and a phone test:** liv
 |---|---|---|
 | 11 | `phase-4/evidence-review` | `practice_attempts`, per-skill mastery from evidence, FSRS cards and events, review page. Done for reading and listening cards; speaking and writing prompts and `POST /attempts` follow with the assessments |
 | 12 | `phase-4/progress` | Progress summary API, HSK coverage and communication dashboards with denominators and sample sizes. Done |
-| 13 | `phase-4/export-delete` | JSON and CSV export, local re-import round trip, session and full-data deletion, retention setting |
+| 13 | `phase-4/export-delete` | JSON and CSV export, local re-import round trip, session and full-data deletion, retention setting. Done |
 | 14 | `phase-4/release` | Accessibility and responsive pass, budget meter, deployment guide verified against a real deployment, Access verification |
 
 Gate: every P0 requirement in `docs/CHECKLIST.md` satisfied, or listed as waiting on the owner.
