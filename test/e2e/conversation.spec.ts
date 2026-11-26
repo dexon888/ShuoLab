@@ -295,3 +295,29 @@ test("review: words from the finished session come back as cards to rate (SPEC ย
   expect(due.cards.some((c: { mastery: string }) => c.mastery === "mastered")).toBe(false);
   expect(errors).toEqual([]);
 });
+
+test("progress: practice, communication and coverage, each with its sample (SPEC ยง5.6)", async ({ page }) => {
+  const errors = trackErrors(page);
+  await page.goto("/progress");
+  await expect(page.getByRole("region", { name: "Practice time" })).toBeVisible();
+  const finished = page.getByText("Sessions finished").locator("..");
+  await expect(finished).toContainText(/[1-9]/);
+
+  // One review rating so far: too few for a recall rate.
+  await expect(page.getByText("Insufficient evidence: 1 rating of the 5 needed.")).toBeVisible();
+  const table = page.getByRole("table", { name: "Entries per band by evidence state" });
+  await expect(table.getByRole("row", { name: /^All bands/ })).toContainText("11000");
+  await expect(page.getByText(/Generated placeholder words for testing, not HSK content/)).toBeVisible();
+  await expectNoSidewaysScroll(page, "on the progress page");
+
+  await page.getByText("Show as a table").click();
+  await page.getByRole("button", { name: "7 days" }).click();
+  await expect(page.getByRole("button", { name: "7 days" })).toHaveAttribute("aria-pressed", "true");
+
+  // Today shows the same evidence in brief.
+  await page.goto("/");
+  await expect(page.getByRole("region", { name: "Communication progress" })).toContainText(/minutes of practice on \d of the last 7 days/);
+  await expect(page.getByRole("region", { name: "Review" })).toContainText(/cards? due/);
+  await expectNoSidewaysScroll(page, "on Today with progress");
+  expect(errors).toEqual([]);
+});

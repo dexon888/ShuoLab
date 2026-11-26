@@ -4,6 +4,7 @@
  */
 import { z } from "zod";
 import { HSK_BANDS, ITEM_TYPES } from "./curriculum";
+import { MASTERY_STATES, SKILLS } from "./learning";
 import { ownerSettingsSchema } from "./settings";
 import { COLLOQUIAL_CHANNELS, COLLOQUIAL_REGISTERS, CURRENCY_STATUSES } from "./colloquial";
 
@@ -146,11 +147,8 @@ export const curriculumItemsQuerySchema = z.object({
   pos: z.string().trim().min(1).max(20).optional(),
   /** Matches the start of the written form or any part of the pinyin. */
   q: z.string().trim().min(1).max(40).optional(),
-  /**
-   * Learner state. No practice evidence is recorded yet, so every item is
-   * `unseen`; the other states become meaningful with Phase 4.
-   */
-  state: z.enum(["unseen", "introduced", "practiced", "developing", "mastered"]).optional(),
+  /** Learner state: an entry's most advanced state across the four skills. */
+  state: z.enum(MASTERY_STATES).optional(),
   cursor: z.string().max(64).optional(),
   limit: z.coerce.number().int().min(1).max(ITEMS_PAGE_SIZE_MAX).default(ITEMS_PAGE_SIZE_DEFAULT),
 });
@@ -166,6 +164,8 @@ export const curriculumItemSummarySchema = z.object({
   partOfSpeech: z.string().nullable(),
   homograph: z.string().nullable(),
   levelLabel: z.string().nullable(),
+  /** The most advanced of the four skills' states, from evidence. `unseen` with no evidence. */
+  state: z.enum(MASTERY_STATES).default("unseen"),
 });
 export type CurriculumItemSummary = z.infer<typeof curriculumItemSummarySchema>;
 
@@ -217,8 +217,19 @@ export const curriculumItemDetailResponseSchema = z.object({
       importedAt: z.string(),
     }),
   ),
-  /** Null until practice evidence is recorded (Phase 4). */
-  progress: z.null(),
+  /** One row per skill, from evidence. Exposure alone is at most `introduced`. */
+  progress: z.object({
+    bySkill: z.array(
+      z.object({
+        skill: z.enum(SKILLS),
+        state: z.enum(MASTERY_STATES),
+        successDays: z.number().int().nonnegative(),
+        failureCount: z.number().int().nonnegative(),
+        lastAttemptAt: z.string().nullable(),
+        lastSuccessAt: z.string().nullable(),
+      }),
+    ),
+  }),
 });
 export type CurriculumItemDetailResponse = z.infer<typeof curriculumItemDetailResponseSchema>;
 

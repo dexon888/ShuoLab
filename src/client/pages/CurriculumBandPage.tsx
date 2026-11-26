@@ -2,6 +2,7 @@ import type { FormEvent } from "react";
 import { Link, useParams, useSearchParams } from "react-router";
 import type { CurriculumItemSummary } from "../../shared/api";
 import { isHskBand, type HskBand } from "../../shared/curriculum";
+import { MASTERY_STATES, type MasteryState } from "../../shared/learning";
 import { AsyncStatus } from "../components/AsyncStatus";
 import { PageHeader } from "../components/PageHeader";
 import { SyntheticDataNotice } from "../components/SyntheticDataNotice";
@@ -12,6 +13,19 @@ const numberFormat = new Intl.NumberFormat("en-US");
 
 function bandTitle(band: HskBand): string {
   return band === "7-9" ? "HSK 7–9" : `HSK ${band}`;
+}
+
+/** Words for an entry's most advanced state across skills. */
+export const STATE_LABELS: Readonly<Record<MasteryState, string>> = {
+  unseen: "Not met",
+  introduced: "Met",
+  practiced: "Practised",
+  developing: "Developing",
+  mastered: "Mastered",
+};
+
+function isState(value: string): value is MasteryState {
+  return (MASTERY_STATES as readonly string[]).includes(value);
 }
 
 function EntryRow({ item }: { item: CurriculumItemSummary }) {
@@ -31,11 +45,14 @@ function EntryRow({ item }: { item: CurriculumItemSummary }) {
           ) : null}
           <span className="block text-mist">{item.pinyin}</span>
         </span>
-        {item.partOfSpeech ? (
-          <span lang="zh-Hans" className="shrink-0 text-sm text-mist">
-            {item.partOfSpeech}
-          </span>
-        ) : null}
+        <span className="shrink-0 text-right text-sm">
+          {item.partOfSpeech ? (
+            <span lang="zh-Hans" className="block text-mist">
+              {item.partOfSpeech}
+            </span>
+          ) : null}
+          {item.state !== "unseen" ? <span className="block font-medium text-cobalt-deep">{STATE_LABELS[item.state]}</span> : null}
+        </span>
       </Link>
     </li>
   );
@@ -45,9 +62,11 @@ function BandEntries({ band }: { band: HskBand }) {
   const [searchParams, setSearchParams] = useSearchParams();
   const q = searchParams.get("q") ?? "";
   const pos = searchParams.get("pos") ?? "";
-  const filtered = q !== "" || pos !== "";
+  const rawState = searchParams.get("state") ?? "";
+  const state = isState(rawState) ? rawState : "";
+  const filtered = q !== "" || pos !== "" || state !== "";
 
-  const items = useCurriculumItems({ band, q, pos });
+  const items = useCurriculumItems({ band, q, pos, state });
   const facets = useCurriculumFacets(band);
 
   const first = items.data?.pages[0];
@@ -60,8 +79,10 @@ function BandEntries({ band }: { band: HskBand }) {
     const next = new URLSearchParams();
     const nextQ = String(form.get("q") ?? "").trim();
     const nextPos = String(form.get("pos") ?? "");
+    const nextState = String(form.get("state") ?? "");
     if (nextQ) next.set("q", nextQ);
     if (nextPos) next.set("pos", nextPos);
+    if (nextState) next.set("state", nextState);
     setSearchParams(next, { replace: true });
   };
 
@@ -69,11 +90,11 @@ function BandEntries({ band }: { band: HskBand }) {
     <>
       {/* The key resets the fields when filters change through the URL (back, Clear). */}
       <form
-        key={`${q}|${pos}`}
+        key={`${q}|${pos}|${state}`}
         onSubmit={applyFilters}
         role="search"
         aria-label={`Filter ${bandTitle(band)} entries`}
-        className="mb-6 grid gap-3 sm:grid-cols-[1fr_auto_auto] sm:items-end"
+        className="mb-6 grid gap-3 sm:grid-cols-[1fr_auto_auto_auto] sm:items-end"
       >
         <label className="block">
           <span className="mb-1 block text-sm font-medium">Characters or pinyin</span>
@@ -103,6 +124,17 @@ function BandEntries({ band }: { band: HskBand }) {
             {pos && !facets.data?.partsOfSpeech.some((f) => f.tag === pos) ? (
               <option value={pos}>{pos}</option>
             ) : null}
+          </select>
+        </label>
+        <label className="block">
+          <span className="mb-1 block text-sm font-medium">Your progress</span>
+          <select name="state" defaultValue={state} className="min-h-11 w-full rounded-md border border-mist bg-glaze px-3">
+            <option value="">Any</option>
+            {MASTERY_STATES.map((s) => (
+              <option key={s} value={s}>
+                {STATE_LABELS[s]}
+              </option>
+            ))}
           </select>
         </label>
         <button

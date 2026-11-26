@@ -169,13 +169,17 @@ ON CONFLICT (owner_id, curriculum_item_id, skill) DO UPDATE SET
  * creates nothing twice.
  */
 export async function introduceSessionWords(d1: D1Database, sessionId: string, now: Date = new Date()): Promise<number> {
-  const rows = await d1
-    .prepare("SELECT curriculum_item_id AS id FROM session_targets WHERE session_id = ?1 AND role <> 'stretch' ORDER BY position")
-    .bind(sessionId)
-    .all<{ id: string }>();
+  const [rows, session] = await Promise.all([
+    d1
+      .prepare("SELECT curriculum_item_id AS id FROM session_targets WHERE session_id = ?1 AND role <> 'stretch' ORDER BY position")
+      .bind(sessionId)
+      .all<{ id: string }>(),
+    d1.prepare("SELECT started_at FROM sessions WHERE id = ?1").bind(sessionId).first<{ started_at: string | null }>(),
+  ]);
   if (rows.results.length === 0) return 0;
 
   const at = now.toISOString();
+  const metAt = session?.started_at ?? at;
   const empty = serializeCard(createEmptyCard(now));
   const inserts = rows.results.flatMap(({ id }) =>
     REVIEW_TEMPLATES.map((template) =>
@@ -187,13 +191,22 @@ VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?7, ?7) ON CONFLICT (curriculum_item_id, tem
         .bind(crypto.randomUUID(), OWNER_ID, id, TEMPLATE_SKILL[template], template, empty, at),
     ),
   );
-  const results = await d1.batch(inserts);
-
-  const { timezone: timeZone } = await getSettings(d1);
-  for (const { id } of rows.results) {
-    for (const template of REVIEW_TEMPLATES) await recomputeMastery(d1, id, TEMPLATE_SKILL[template], timeZone, now);
-  }
-  return results.reduce((n, r) => n + (r.meta.changes ?? 0), 0);
+  // Becoming introduced. A word that already has a state keeps it: attempts
+  // come only from cards, which exist only after a word was first met, so an
+  // earlier row already holds the right first-seen time. This gives the same
+  // result as deriving it again, in one batch.
+  const introductions = rows.results.flatMap(({ id }) =>
+    REVIEW_TEMPLATES.map((template) =>
+      d1
+        .prepare(
+          `INSERT INTO mastery_states (owner_id, curriculum_item_id, skill, state, first_seen_at, updated_at)
+VALUES (?1, ?2, ?3, 'introduced', ?4, ?5) ON CONFLICT (owner_id, curriculum_item_id, skill) DO NOTHING`,
+        )
+        .bind(OWNER_ID, id, TEMPLATE_SKILL[template], metAt, at),
+    ),
+  );
+  const results = await d1.batch([...inserts, ...introductions]);
+  return results.slice(0, inserts.length).reduce((n, r) => n + (r.meta.changes ?? 0), 0);
 }
 
 // --- Due cards -----------------------------------------------------------------

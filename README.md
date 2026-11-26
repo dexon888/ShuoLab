@@ -24,7 +24,7 @@ replies and hear the tutor's (Azure AI Speech, free tier); without Azure
 settings a stand-in pretends to hear a fixed sentence and plays nothing.
 Real speech has been tried on a computer; **not yet on a phone**. Finished
 sessions give their words review cards with spaced scheduling. Progress
-dashboards and export are **not built yet**.
+is summarised with sample sizes; export is **not built yet**.
 
 | Area | State |
 |---|---|
@@ -42,7 +42,8 @@ dashboards and export are **not built yet**.
 | Speaking and listening in a session | Working locally with the stand-in: Speak, read replies aloud, Play, listen first with recorded reveals, unsure transcripts checked before sending, typed fallback for every failure. Real Azure recognition and voice tried by the owner on a computer (2026-11-25); **not yet on a phone** |
 | Separate listen-first exercise | Working locally: a short exchange written by the tutor for the session's situation and words, played before any text, with 2–3 questions scored before the text is shown. Tried once with the real OpenAI tutor; Azure playback of the exchange **not yet heard by the owner** |
 | Review and mastery | Working locally on generated placeholder words: a finished session gives each targeted word (not stretch words) a reading card and a listening card, scheduled with FSRS; your own Again/Hard/Good/Easy ratings are the evidence, and mastery per skill follows this app's rule (three days of recall, one a day or more later). Not yet used on the real HSK list |
-| Progress, export | Phase 4 |
+| Progress | Working locally: practice minutes per day over 7, 30 or 90 days, listening accuracy from checks answered before the text, spoken and typed turns, review recall, and HSK coverage per band and skill against the imported counts. Below five observations a rate says "insufficient evidence". Today shows the week in brief and the cards due |
+| Export and deletion | Phase 4 |
 
 Nothing has been deployed. OpenAI has been called only from a local run; no Azure call has been made.
 
