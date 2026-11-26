@@ -59,6 +59,20 @@ export function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
 }
 
+/** A month with nothing spent, for pages that show the budget meter. */
+export const quietMonth = {
+  month: "2026-03",
+  estimatedUsd: 0,
+  softUsd: 5,
+  hardUsd: 10,
+  remainingUsd: 10,
+  softLimitReached: false,
+  hardLimitReached: false,
+  tutor: { requests: 0, tokensIn: 0, tokensOut: 0, estimatedUsd: 0 },
+  speech: { month: "2026-03", recognitionSeconds: 0, recognitionLimitSeconds: 18000, synthesisChars: 0, synthesisLimitChars: 500000, recognitionAvailable: true, synthesisAvailable: true },
+  disclaimer: "An estimate.",
+};
+
 /** Renders the whole app at `path`; any request not listed in `routes` fails the test. */
 export function renderApp(path: string, routes: Record<string, Responder>, options: { speech?: SpeechEnvironment } = {}) {
   const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -70,6 +84,7 @@ export function renderApp(path: string, routes: Record<string, Responder>, optio
       "/api/v1/progress/summary?days=7": () => json(emptyProgress(7)),
       "/api/v1/reviews/due?limit=20": () => json(noCards),
       "/api/v1/my-data": () => json({ counts: {}, transcriptRetentionDays: null, sessionsPastRetention: 0 }),
+      "/api/v1/usage/monthly": () => json(quietMonth),
     };
     const key = method === "GET" ? url : `${method} ${url}`;
     const responder = routes[key] ?? defaults[key];

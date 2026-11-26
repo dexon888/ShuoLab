@@ -1,9 +1,5 @@
 import { useMonthlyUsage } from "../hooks/queries";
-
-function usd(value: number): string {
-  // Below a cent the amount is shown to four places so it is not rounded to nothing.
-  return `US$${value > 0 && value < 0.01 ? value.toFixed(4) : value.toFixed(2)}`;
-}
+import { UsageBudgetMeter, usd } from "./UsageBudgetMeter";
 
 function minutes(seconds: number): string {
   return `${Math.floor(seconds / 60)} min`;
@@ -19,7 +15,8 @@ export function MonthlyUsage() {
   const { data } = usage;
   return (
     <div>
-      <p>
+      <UsageBudgetMeter estimatedUsd={data.estimatedUsd} softUsd={data.softUsd} hardUsd={data.hardUsd} />
+      <p className="mt-3">
         <span className="font-semibold">{usd(data.estimatedUsd)}</span> estimated in {data.month} (UTC), from{" "}
         {data.tutor.requests} tutor {data.tutor.requests === 1 ? "request" : "requests"}.
       </p>

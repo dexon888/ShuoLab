@@ -5,7 +5,8 @@ import { PageHeader } from "../components/PageHeader";
 import { ProviderStatusList } from "../components/ProviderStatusList";
 import { Section } from "../components/Section";
 import { TodaySession } from "../components/TodaySession";
-import { useCurriculumStatus, useDueReviews, useMe, useProgressSummary } from "../hooks/queries";
+import { UsageBudgetMeter } from "../components/UsageBudgetMeter";
+import { useCurriculumStatus, useDueReviews, useMe, useMonthlyUsage, useProgressSummary } from "../hooks/queries";
 import { MIN_OBSERVATIONS, type ProgressSummary } from "../../shared/progress";
 
 /** This week's communication evidence, kept apart from HSK coverage. */
@@ -48,6 +49,7 @@ export function DashboardPage() {
   const curriculum = useCurriculumStatus();
   const week = useProgressSummary(7);
   const due = useDueReviews();
+  const usage = useMonthlyUsage();
 
   return (
     <>
@@ -127,6 +129,22 @@ export function DashboardPage() {
         >
           {me.data ? <ProviderStatusList providers={me.data.providers} /> : null}
         </AsyncStatus>
+        {usage.data ? (
+          <div className="mt-4">
+            <h3 className="mb-1 font-semibold">AI spending this month (estimate)</h3>
+            <UsageBudgetMeter estimatedUsd={usage.data.estimatedUsd} softUsd={usage.data.softUsd} hardUsd={usage.data.hardUsd} />
+            {usage.data.hardLimitReached ? (
+              <p className="mt-1 text-sm font-semibold">Stop amount reached: paid tutor requests are paused.</p>
+            ) : usage.data.softLimitReached ? (
+              <p className="mt-1 text-sm font-semibold">Warning amount reached.</p>
+            ) : null}
+            <p className="mt-1 text-sm">
+              <Link to="/settings" className="font-medium text-cobalt underline">
+                Change the amounts in Settings
+              </Link>
+            </p>
+          </div>
+        ) : null}
       </Section>
     </>
   );

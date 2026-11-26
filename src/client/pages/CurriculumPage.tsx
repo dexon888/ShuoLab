@@ -28,8 +28,10 @@ function bandName(band: string): string {
 }
 
 function BandTable({ status }: { status: CurriculumStatusResponse }) {
+  // A table that scrolls sideways must be reachable by keyboard (axe scrollable-region-focusable).
   return (
-    <div className="overflow-x-auto">
+    // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex
+    <div className="overflow-x-auto" tabIndex={0} role="region" aria-label="Imported entries per band">
       <table className="w-full border-collapse text-left tabular-nums">
         <caption className="mb-2 text-left text-sm text-mist">
           Numbered syllabus entries first introduced at each band. Homographs count separately.
