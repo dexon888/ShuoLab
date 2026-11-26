@@ -47,6 +47,14 @@ export function SessionDebrief({ debrief }: { debrief: Debrief }) {
             shown instead.
           </p>
         ) : null}
+        {debrief.listening ? (
+          <p className="mt-3">
+            Listening: {debrief.listening.correct} of {debrief.listening.total} questions correct
+            {debrief.listening.unassisted
+              ? ", answered before seeing the text."
+              : ", answered after seeing the text, so not counted as listening."}
+          </p>
+        ) : null}
       </Section>
 
       <Section title="Corrections worth keeping">

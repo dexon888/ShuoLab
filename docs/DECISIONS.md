@@ -443,3 +443,37 @@ of its own. This PR covers listening to the tutor's replies.
 
 It opens no microphone and plays nothing, so nothing is reported to the
 speech allowance and no reply is recorded as heard.
+
+## 69. The listening exercise is written by the tutor model
+
+There is no licensed bank of graded listening material, so the exchange is
+written for each session by the same model as the tutor, from the session's
+situation and words. It is labelled with the model that wrote it. When two
+answers cannot be used, a short exchange written for ShuoLab is used and
+labelled as prepared. Neither is HSK content.
+
+## 70. Questions are in English, with three options
+
+The check is whether the Mandarin was understood, so the questions and
+options are in English: reading Chinese options would test reading too.
+Three options keep guessing at one in three and the screen short. Options
+are shuffled on the server because models put the right answer first.
+
+## 71. Only answers before the reveal count as listening
+
+SPEC §6.5 and §10: the right answers stay on the server until the
+questions are answered or the text is shown. The first answers sent are
+kept. A result is unassisted only when the answers came before any reveal;
+an assisted result is shown but not counted as listening.
+
+## 72. One exercise per session, started by the learner
+
+It is written when asked for, not when the session is planned, so a
+session that skips it costs nothing. Starting it starts the session's clock
+like a first turn. A finished session shows its exercise if it had one.
+
+## 73. One voice for both speakers
+
+The exchange is read in one voice with the lines in order. Two voices would
+need multi-voice SSML in the speech engine; it is a possible improvement,
+noted for after phone testing.

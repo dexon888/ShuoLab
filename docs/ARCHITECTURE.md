@@ -142,6 +142,30 @@ The SDK's audio worklet is loaded from a `blob:` URL, which the
 Content-Security-Policy does not allow; the SDK falls back to its
 ScriptProcessor path. This is unverified on real devices.
 
+## The listen-first exercise
+
+`src/server/services/listening.ts`, `listening-prompt.ts`; client
+`ListeningExercise.tsx`. One exercise per session (unique `session_id` in
+`listening_exercises`). `POST /sessions/:id/listening` reserves the row,
+asks the tutor provider for a 4–6 line exchange and 2–3 English questions
+with three options each (the `listening_exercise` JSON schema, 1,400 output
+tokens, 25 s timeout), validates it (Mandarin lines, distinct options, the
+answer in range), and saves it. Asking again returns the saved exercise; a
+second request while it is being written gets 409. Two unusable answers give
+a prepared exchange written for ShuoLab, labelled as such. Each call is
+metered as `listening_exercise` and shares the tutor's rate limits and
+spending gate. Starting the exercise starts the session's clock.
+
+Options are shuffled before saving, since models tend to put the answer
+first. The right answers are withheld from the browser until the questions
+are answered or the text is shown. `/listening/answers` keeps the first
+answers sent and scores them; `/listening/events` records the first play
+and the first reveal. A result counts as unassisted only when the answers
+came before any reveal. The summary shows the result.
+
+The browser reads the whole exchange in one voice through `useVoice`'s
+`speakText`, at the Settings rate or 0.8 times it for "Play slower".
+
 ## Session state, practice time and the summary
 
 `src/server/services/session-state.ts`. A session moves

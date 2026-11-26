@@ -15,6 +15,11 @@ export interface TutorRequest {
   instructions: string;
   /** Earlier turns, then the learner's new message last. Learner text is untrusted. */
   messages: readonly TutorMessage[];
+  /**
+   * The JSON Schema the answer must follow, when not a tutor turn. The
+   * listening exercise uses this; the default is the tutor-turn schema.
+   */
+  format?: { name: string; schema: Readonly<Record<string, unknown>>; maxOutputTokens: number; timeoutMs: number };
   /** The same facts the instructions describe, as data. Used by the local stand-in. */
   context: {
     targets: readonly { id: string; hanzi: string }[];

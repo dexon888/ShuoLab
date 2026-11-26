@@ -5,6 +5,7 @@
  */
 import { z } from "zod";
 import { HSK_BANDS } from "./curriculum";
+import { listeningExerciseSchema, listeningResultSchema } from "./listening";
 import { TARGET_ROLES, sessionDetailSchema } from "./session";
 import { turnCorrectionSchema, turnSchema } from "./tutor";
 
@@ -51,6 +52,8 @@ export const debriefSchema = z.object({
   recommendedReviewItemIds: z.array(z.string()),
   /** At most three, the most recent first. */
   corrections: z.array(turnCorrectionSchema).max(MAX_DEBRIEF_CORRECTIONS),
+  /** The listen-first questions, if answered. Only an unassisted result counts as listening evidence. */
+  listening: listeningResultSchema.nullable().default(null),
 });
 export type Debrief = z.infer<typeof debriefSchema>;
 
@@ -61,5 +64,7 @@ export const sessionStateResponseSchema = z.object({
   turns: z.array(turnSchema).default([]),
   /** Present once the session is complete. */
   debrief: debriefSchema.nullable().default(null),
+  /** The session's listen-first exercise, once written. */
+  listening: listeningExerciseSchema.nullable().default(null),
 });
 export type SessionStateResponse = z.infer<typeof sessionStateResponseSchema>;

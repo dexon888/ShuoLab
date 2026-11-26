@@ -11,6 +11,7 @@ import type { MeResponse } from "../../shared/api";
 import type { HskBand } from "../../shared/curriculum";
 import { settingsResponseSchema, type SettingsUpdate } from "../../shared/settings";
 import { sessionStateResponseSchema, type SessionAction, type SessionStateResponse } from "../../shared/debrief";
+import { listeningResponseSchema, type ListeningEvent, type ListeningResponse } from "../../shared/listening";
 import { planResponseSchema, sessionListResponseSchema, type PlanRequest } from "../../shared/session";
 import { monthlyUsageResponseSchema, turnResponseSchema, type SourceMode } from "../../shared/tutor";
 import { apiGet, apiPatch, apiPost, apiPut } from "../lib/api";
@@ -173,6 +174,48 @@ export function useSendTurn(sessionId: string) {
   });
 }
 
+/** Keeps the session's cached listening exercise in step with the server's answer. */
+function useStoreListening(sessionId: string) {
+  const client = useQueryClient();
+  return (result: ListeningResponse) =>
+    client.setQueryData<SessionStateResponse>(sessionKey(sessionId), (state) => (state ? { ...state, listening: result.exercise } : state));
+}
+
+/** Writes the session's listen-first exercise, or fetches the one it has. Starting it starts the session. */
+export function useCreateListening(sessionId: string) {
+  const client = useQueryClient();
+  const store = useStoreListening(sessionId);
+  return useMutation({
+    mutationFn: () => apiPost(`/sessions/${encodeURIComponent(sessionId)}/listening`, {}, listeningResponseSchema),
+    onSuccess: (result) => {
+      store(result);
+      void client.invalidateQueries({ queryKey: sessionKey(sessionId) });
+      void client.invalidateQueries({ queryKey: ["sessions", "list"] });
+      void client.invalidateQueries({ queryKey: ["usage"] });
+    },
+  });
+}
+
+/** Records the first play or the first reveal of the text. */
+export function useListeningEvent(sessionId: string) {
+  const store = useStoreListening(sessionId);
+  return useMutation({
+    mutationFn: (event: ListeningEvent) =>
+      apiPost(`/sessions/${encodeURIComponent(sessionId)}/listening/events`, { event }, listeningResponseSchema),
+    onSuccess: store,
+  });
+}
+
+/** Sends the answers to the comprehension questions. The first answers sent are kept. */
+export function useAnswerListening(sessionId: string) {
+  const store = useStoreListening(sessionId);
+  return useMutation({
+    mutationFn: (answers: number[]) =>
+      apiPost(`/sessions/${encodeURIComponent(sessionId)}/listening/answers`, { answers }, listeningResponseSchema),
+    onSuccess: store,
+  });
+}
+
 /** Pauses, resumes or abandons a session. */
 export function useSessionAction(sessionId: string) {
   const client = useQueryClient();
@@ -204,7 +247,7 @@ export function usePlanSession() {
   return useMutation({
     mutationFn: (request: PlanRequest) => apiPost("/sessions/plan", request, planResponseSchema),
     onSuccess: ({ session }) => {
-      client.setQueryData<SessionStateResponse>(sessionKey(session.id), { session, turns: [], debrief: null });
+      client.setQueryData<SessionStateResponse>(sessionKey(session.id), { session, turns: [], debrief: null, listening: null });
       void client.invalidateQueries({ queryKey: ["sessions", "list"] });
     },
   });

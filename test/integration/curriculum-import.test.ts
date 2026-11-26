@@ -125,7 +125,7 @@ describe("importing into D1 (FR-003)", () => {
     expect(after).toEqual(before);
     expect(await count("source_manifests")).toBe(1);
     expect(await count("curriculum_editions")).toBe(1);
-  });
+  }, 30_000); // Three full 11,000-row imports.
 
   it("does not overwrite a separately sourced definition on re-import", async () => {
     await importSynthetic();

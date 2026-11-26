@@ -281,6 +281,41 @@ export const conversationTurns = sqliteTable(
 );
 
 /**
+ * The "Listen first" exercise (SPEC §5.3 step 2, §6.5): one per session. The
+ * exchange and questions are stored as validated JSON, never raw model text.
+ * The answers are kept as first sent, and the reveal time beside them, so an
+ * answer given after reading the text is never counted as listening.
+ */
+export const listeningExercises = sqliteTable(
+  "listening_exercises",
+  {
+    id: text("id").primaryKey(),
+    sessionId: text("session_id")
+      .notNull()
+      .references(() => sessions.id, { onDelete: "cascade" }),
+    status: text("status").notNull().default("pending"),
+    /** `generated` by the tutor model, or `prepared` for ShuoLab when generation failed. */
+    source: text("source"),
+    model: text("model"),
+    standIn: integer("stand_in", { mode: "boolean" }).notNull().default(false),
+    /** `{lines, questions}` after validation and option shuffling. */
+    contentJson: text("content_json"),
+    createdAt: text("created_at").notNull(),
+    playedAt: text("played_at"),
+    revealedAt: text("revealed_at"),
+    answeredAt: text("answered_at"),
+    answersJson: text("answers_json"),
+    correctCount: integer("correct_count"),
+    questionCount: integer("question_count"),
+  },
+  (t) => [
+    uniqueIndex("listening_exercises_session_idx").on(t.sessionId),
+    check("listening_exercises_status_check", sql`${t.status} IN ('pending','ready','failed')`),
+    check("listening_exercises_ready_check", sql`${t.status} <> 'ready' OR (${t.contentJson} IS NOT NULL AND ${t.source} IS NOT NULL)`),
+  ],
+);
+
+/**
  * The spend ledger (SPEC §4.3, §8.2): one row per provider call, including
  * calls whose answer was rejected. Amounts are this app's estimates. Rows are
  * kept when a session is deleted, so the month's total stays true.

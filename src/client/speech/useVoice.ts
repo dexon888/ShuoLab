@@ -159,13 +159,16 @@ export function useVoice(sessionId: string, rate: number) {
     }
   }, [ready, report, source]);
 
-  /** Reads a reply aloud. Records the first time a real voice played it. */
-  const speak = useCallback(
-    async (turn: Turn) => {
+  /**
+   * Reads any Mandarin text aloud. `key` names what is playing (a turn id, or
+   * "listening"); `onPlayed` runs when a real voice finished playing it.
+   */
+  const speakText = useCallback(
+    async (key: string, text: string, options: { rate?: number; onPlayed?: () => void } = {}) => {
       abortRef.current?.abort();
       const controller = new AbortController();
       abortRef.current = controller;
-      setState((s) => ({ ...s, phase: "starting", problem: null, speakingTurnId: turn.turnId, deviceVoiceOffer: null }));
+      setState((s) => ({ ...s, phase: "starting", problem: null, speakingTurnId: key, deviceVoiceOffer: null }));
       try {
         const { token, engine } = await ready();
         if (!token.allowance.synthesisAvailable) {
@@ -173,40 +176,51 @@ export function useVoice(sessionId: string, rate: number) {
           return;
         }
         setState((s) => ({ ...s, phase: "speaking" }));
-        const outcome = await engine.speak(turn.reply.spokenZh, rate, controller.signal);
+        const outcome = await engine.speak(text, options.rate ?? rate, controller.signal);
         if (engine.real) {
           void report({ kind: "synthesis", characters: outcome.characters });
-          if (outcome.played) recordEvent(turn.turnId, "played");
+          if (outcome.played) options.onPlayed?.();
         }
         setState((s) => ({ ...s, phase: "idle", speakingTurnId: null }));
       } catch (error) {
         const problem = problemFrom(error);
-        const offer = error instanceof SpeechFailure && "speechSynthesis" in window ? turn.turnId : null;
+        const offer = error instanceof SpeechFailure && "speechSynthesis" in window ? key : null;
         setState((s) => ({ ...s, phase: "idle", speakingTurnId: null, problem, deviceVoiceOffer: offer }));
       } finally {
         if (abortRef.current === controller) abortRef.current = null;
       }
     },
-    [rate, ready, recordEvent, report],
+    [rate, ready, report],
+  );
+
+  /** Reads a reply aloud. Records the first time a real voice played it. */
+  const speak = useCallback(
+    (turn: Turn) => speakText(turn.turnId, turn.reply.spokenZh, { onPlayed: () => recordEvent(turn.turnId, "played") }),
+    [recordEvent, speakText],
   );
 
   /** The device's own voice, when Azure's failed. Not counted against Azure. */
-  const speakOnDevice = useCallback(
-    async (turn: Turn) => {
+  const speakTextOnDevice = useCallback(
+    async (key: string, text: string, options: { rate?: number; onPlayed?: () => void } = {}) => {
       abortRef.current?.abort();
       const controller = new AbortController();
       abortRef.current = controller;
-      setState((s) => ({ ...s, phase: "speaking", speakingTurnId: turn.turnId, problem: null, deviceVoiceOffer: null }));
-      const played = await speakWithDeviceVoice(turn.reply.spokenZh, rate, controller.signal);
-      if (played) recordEvent(turn.turnId, "played");
+      setState((s) => ({ ...s, phase: "speaking", speakingTurnId: key, problem: null, deviceVoiceOffer: null }));
+      const played = await speakWithDeviceVoice(text, options.rate ?? rate, controller.signal);
+      if (played) options.onPlayed?.();
       setState((s) => ({ ...s, phase: "idle", speakingTurnId: null }));
       if (abortRef.current === controller) abortRef.current = null;
     },
-    [rate, recordEvent],
+    [rate],
+  );
+
+  const speakOnDevice = useCallback(
+    (turn: Turn) => speakTextOnDevice(turn.turnId, turn.reply.spokenZh, { onPlayed: () => recordEvent(turn.turnId, "played") }),
+    [recordEvent, speakTextOnDevice],
   );
 
   const reveal = useCallback((turnId: string) => recordEvent(turnId, "revealed"), [recordEvent]);
   const clearProblem = useCallback(() => setState((s) => ({ ...s, problem: null, deviceVoiceOffer: null })), []);
 
-  return { state, canRecord: env.canRecord(), listen, speak, speakOnDevice, stop, reveal, clearProblem };
+  return { state, canRecord: env.canRecord(), listen, speak, speakText, speakOnDevice, speakTextOnDevice, stop, reveal, clearProblem };
 }

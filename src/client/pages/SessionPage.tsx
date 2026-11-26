@@ -4,6 +4,7 @@ import { TARGET_ROLE_LABELS, listeningSpeakingShare, type SessionDetail, type Se
 import { defaultSettings } from "../../shared/settings";
 import { AsyncStatus } from "../components/AsyncStatus";
 import { Conversation } from "../components/Conversation";
+import { ListeningExercise } from "../components/ListeningExercise";
 import { Section } from "../components/Section";
 import { SessionDebrief } from "../components/SessionDebrief";
 import { SyntheticDataNotice } from "../components/SyntheticDataNotice";
@@ -108,8 +109,8 @@ function PlanSections({ plan }: { plan: SessionPlan }) {
         </ol>
         <p className="mt-3 text-sm text-mist">
           {oralShare}% of the time is listening and speaking. Times are a guide, not a cut-off.
-          For now every part happens in the conversation below; separate listening, reading and
-          writing exercises are not built yet.
+          Listening has its own exercise; for now the other parts happen in the conversation.
+          Separate reading and writing exercises are not built yet.
         </p>
       </Section>
     </>
@@ -117,19 +118,27 @@ function PlanSections({ plan }: { plan: SessionPlan }) {
 }
 
 function SessionView({ state }: { state: SessionStateResponse }) {
-  const { session, turns, debrief } = state;
+  const { session, turns, debrief, listening } = state;
   const { plan } = session;
   const me = useMe();
   const { displayMode, speechRate } = me.data?.settings ?? defaultSettings();
   const tutor = me.data?.providers.find((p) => p.id === "tutor") ?? null;
   const speech = me.data?.providers.find((p) => p.id === "speech") ?? null;
   const started = session.status !== "planned";
+  const ended = session.status === "complete" || session.status === "abandoned";
 
   const conversation = (
     <Section key="conversation" title="Conversation">
       <Conversation session={session} turns={turns} displayMode={displayMode} speechRate={speechRate} tutor={tutor} speech={speech} />
     </Section>
   );
+  // An ended session shows its exercise only if one was done.
+  const listen =
+    ended && !listening ? null : (
+      <Section key="listen" title="Listen first">
+        <ListeningExercise session={session} exercise={listening} speechRate={speechRate} speech={speech} />
+      </Section>
+    );
 
   return (
     <>
@@ -184,8 +193,8 @@ function SessionView({ state }: { state: SessionStateResponse }) {
 
       {/* Before the first message the plan comes first; once talking, the conversation does. */}
       {started
-        ? [conversation, <PlanSections key="plan" plan={plan} />]
-        : [<PlanSections key="plan" plan={plan} />, conversation]}
+        ? [listen, conversation, <PlanSections key="plan" plan={plan} />]
+        : [<PlanSections key="plan" plan={plan} />, listen, conversation]}
     </>
   );
 }

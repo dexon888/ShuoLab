@@ -80,7 +80,7 @@ function turn(n: number, over: Partial<Turn> = {}): Turn {
 }
 
 function state(status: SessionDetail["status"] = "active", turns: Turn[] = [], debrief: Debrief | null = null): SessionStateResponse {
-  return { session: session(status), turns, debrief };
+  return { session: session(status), turns, debrief, listening: null };
 }
 
 function answered(body: { clientTurnId: string; transcript: string }, n = 0, over: Partial<TurnResponse> = {}): TurnResponse {
@@ -416,6 +416,7 @@ describe("pause, resume and finish (SPEC §5.3)", () => {
     ],
     recommendedReviewItemIds: ["synthetic-fixture:vocab:302"],
     corrections: [{ original: "我去了北京三次", corrected: "我去过北京三次", noteEn: "Use 过 for experience." }],
+    listening: null,
   };
 
   it("pauses and resumes, hiding the message box while paused", async () => {

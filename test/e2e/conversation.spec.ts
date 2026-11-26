@@ -203,7 +203,7 @@ test("speaking with the stand-in: a spoken turn, an unsure transcript to check, 
   await expect(turns(page)).toHaveCount(before + 2);
 
   // Listen first hides the newest reply's text until asked.
-  await page.getByLabel(/Listen first/).check();
+  await page.getByRole("checkbox", { name: /Listen first/ }).check();
   await expect(page.getByText("Text hidden so you can listen first.")).toBeVisible();
   await page.getByRole("button", { name: "Show text" }).click();
   await expect(page.getByText("Text hidden so you can listen first.")).toHaveCount(0);
@@ -223,5 +223,46 @@ test("speaking with the stand-in: a spoken turn, an unsure transcript to check, 
     expect(size?.height ?? 0, `${name} button height`).toBeGreaterThanOrEqual(44);
   }
   await expectNoSidewaysScroll(page, "with the voice controls");
+  expect(errors).toEqual([]);
+});
+
+test("listen first: hear an exchange, answer before seeing the text, then read it (SPEC §5.3, §6.5)", async ({ page }) => {
+  const errors = trackErrors(page);
+  await page.goto("/");
+  await page.getByRole("link", { name: /Resume today's session|Open today's plan/ }).click();
+  const listen = page.getByRole("region", { name: "Listen first" });
+
+  await listen.getByRole("button", { name: "Start listening" }).click();
+  await expect(listen.getByText("Practice stand-in exchange.")).toBeVisible();
+  await expect(listen.getByRole("button", { name: "Play the exchange" })).toBeVisible();
+  // No text before an attempt.
+  await expect(page.getByText("你周末有空吗？")).toHaveCount(0);
+  await listen.getByRole("button", { name: "Play the exchange" }).click();
+
+  // The stand-in's options are shuffled; pick the right ones by their words.
+  await listen.getByRole("group", { name: /When is the second speaker free/ }).getByLabel(/Saturday afternoon/).check();
+  await listen.getByRole("group", { name: /What does the first speaker suggest/ }).getByLabel(/Staying at home/).check();
+  await listen.getByRole("button", { name: "Check answers" }).click();
+  await expect(listen.getByText("1 of 2 correct")).toBeVisible();
+  await expect(listen.getByText(/answered before seeing the text/)).toBeVisible();
+
+  await listen.getByRole("button", { name: "Show the text" }).click();
+  await expect(listen.getByText("你周末有空吗？")).toBeVisible();
+  await expectNoSidewaysScroll(page, "with the listening exercise");
+
+  // A reload shows the same exercise and result; nothing is written twice.
+  await page.reload();
+  await expect(listen.getByText("1 of 2 correct")).toBeVisible();
+  const sessionId = page.url().split("/").pop();
+  const saved = await (await page.request.get(`/api/v1/sessions/${sessionId}`)).json();
+  expect(saved.listening.result).toEqual({ correct: 1, total: 2, unassisted: true });
+  expect(saved.listening.revealedAt).not.toBeNull();
+  // The stand-in plays nothing, so nothing is recorded as heard.
+  expect(saved.listening.playedAt).toBeNull();
+
+  for (const name of ["Play the exchange", "Play slower"]) {
+    const size = await listen.getByRole("button", { name, exact: true }).boundingBox();
+    expect(size?.height ?? 0, `${name} button height`).toBeGreaterThanOrEqual(44);
+  }
   expect(errors).toEqual([]);
 });

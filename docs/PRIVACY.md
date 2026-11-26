@@ -20,6 +20,9 @@ or third-party tracking scripts.
   stop, pause, leave the page or switch away.
 - For each reply you hear, when it was first played and when its text was
   first shown, if it was hidden.
+- For each session's listening exercise: the exchange and questions as
+  written, your answers, how many were right, and when the exchange was
+  first played and its text first shown.
 
 Deleting a session deletes its turns. Deletion and export from the app
 arrive in Phase 4. Nothing is logged: the Worker logs only the name of an
@@ -41,7 +44,8 @@ unexpected error, never a prompt, a reply, a provider response or a key.
 |---|---|---|
 | Cloudflare | All requests; the D1 database | Always |
 | OpenAI | The instructions (situation, the session's target words), up to eight earlier turns and your new message. Sent with `store: false`. | On each tutor turn, only if a key is configured |
-| Azure AI Speech | Microphone audio for transcription and the tutor's reply text for its voice, sent from your browser directly to Azure with a short-lived token. ShuoLab receives only the transcript, and the length and character counts it records for the free-tier limit | Phase 3 onward, only if a key is configured |
+| OpenAI (listening) | The instructions for the listening exercise: the situation, the band and the session's target words. No message of yours. Sent with `store: false`. | When you start a session's listening exercise, only if a key is configured |
+| Azure AI Speech | Microphone audio for transcription, and the tutor's reply text and the listening exchange for its voice, sent from your browser directly to Azure with a short-lived token. ShuoLab receives only the transcript, and the length and character counts it records for the free-tier limit | Phase 3 onward, only if a key is configured |
 
 No transcript is sent to any other vendor. Payment details, contacts and
 location are never collected.
