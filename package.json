@@ -29,7 +29,8 @@
     "icons": "node scripts/generate-icons.mjs",
     "check:deploy": "node scripts/check-deploy-config.mjs",
     "deploy": "pnpm check:deploy && pnpm build && wrangler deploy",
-    "verify": "pnpm typecheck && pnpm lint && pnpm test && pnpm build"
+    "verify": "pnpm typecheck && pnpm lint && pnpm test && pnpm build",
+    "data:import": "tsx scripts/import-owner-data.ts"
   },
   "dependencies": {
     "@tanstack/react-query": "5.107.1",

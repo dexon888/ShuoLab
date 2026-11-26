@@ -69,6 +69,7 @@ export function renderApp(path: string, routes: Record<string, Responder>, optio
     const defaults: Record<string, Responder> = {
       "/api/v1/progress/summary?days=7": () => json(emptyProgress(7)),
       "/api/v1/reviews/due?limit=20": () => json(noCards),
+      "/api/v1/my-data": () => json({ counts: {}, transcriptRetentionDays: null, sessionsPastRetention: 0 }),
     };
     const key = method === "GET" ? url : `${method} ${url}`;
     const responder = routes[key] ?? defaults[key];

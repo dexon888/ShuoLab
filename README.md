@@ -43,7 +43,7 @@ is summarised with sample sizes; export is **not built yet**.
 | Separate listen-first exercise | Working locally: a short exchange written by the tutor for the session's situation and words, played before any text, with 2–3 questions scored before the text is shown. Tried once with the real OpenAI tutor; Azure playback of the exchange **not yet heard by the owner** |
 | Review and mastery | Working locally on generated placeholder words: a finished session gives each targeted word (not stretch words) a reading card and a listening card, scheduled with FSRS; your own Again/Hard/Good/Easy ratings are the evidence, and mastery per skill follows this app's rule (three days of recall, one a day or more later). Not yet used on the real HSK list |
 | Progress | Working locally: practice minutes per day over 7, 30 or 90 days, listening accuracy from checks answered before the text, spoken and typed turns, review recall, and HSK coverage per band and skill against the imported counts. Below five observations a rate says "insufficient evidence". Today shows the week in brief and the cards due |
-| Export and deletion | Phase 4 |
+| Export and deletion | Working locally: Settings → Your data downloads everything as JSON or one table as CSV, sets how long conversation text is kept, and deletes everything after you type a phrase; each session can be deleted from its page. `pnpm data:import` loads an export into a local copy |
 
 Nothing has been deployed. OpenAI has been called only from a local run; no Azure call has been made.
 
@@ -83,6 +83,7 @@ no secrets and costs nothing.
 | `pnpm curriculum:import` | Validate and import your HSK vocabulary files (see below) |
 | `pnpm curriculum:verify` | Check the stored curriculum against the edition's published totals |
 | `pnpm colloquial:import` | Validate and import the optional colloquial-expression dataset (see below) |
+| `pnpm data:import` | Load a JSON export into the local database (local only; see "Backup and export") |
 | `pnpm seed:dev` | Load generated placeholder vocabulary and colloquial rows into the local database |
 | `pnpm deploy` | Safety checks, build, then `wrangler deploy` |
 | `pnpm icons` | Regenerate the app icons |
@@ -402,8 +403,46 @@ price is for the default model `gpt-6-luna` (US$0.10 per million input tokens
 and US$0.50 per million output tokens, read from OpenAI's pricing page on
 2026-11-14). If you change `OPENAI_MODEL` or prices change, set
 `OPENAI_INPUT_USD_PER_MTOK` and `OPENAI_OUTPUT_USD_PER_MTOK`; a model with no
-known price is refused rather than run untracked. JSON/CSV export arrives with
-Phase 4. See `docs/COSTS.md` and `docs/PRIVACY.md`.
+known price is refused rather than run untracked. See `docs/COSTS.md` and
+`docs/PRIVACY.md`.
+
+### Backup and export
+
+Settings → **Your data**:
+
+- **Download JSON**: everything of yours in one file: settings, sessions,
+  conversations, listening exercises, review history, evidence and the usage
+  ledger. The curriculum is not included (it comes from its own source). No
+  key or token is in it, because ShuoLab never stores one. Keep exports out
+  of the repository; `exports/` and `private-data/` are git-ignored.
+- **Download CSV**: one table at a time, for a spreadsheet. The file starts
+  with a byte-order mark so Excel shows the Chinese correctly.
+
+To check a backup, or to recover into a fresh local copy:
+
+```bash
+pnpm db:migrate:local
+pnpm curriculum:import --source ./private-data/hsk-vocab --edition hsk3-2025-11 --commit <sha>
+pnpm data:import --file ./private-data/shuolab-export-2026-11-26.json
+```
+
+`data:import` writes only to the local database, refuses a database that
+already holds any of your data, and needs the same curriculum edition first.
+It writes everything or nothing. Restoring into the deployed database is
+deliberately not offered; see `docs/DECISIONS.md` (decision 86).
+
+What a backup covers: the D1 tables listed in `src/shared/owner-data.ts`.
+Cloudflare D1 Free allows 500 MB per database and daily read and write
+quotas; Settings → Your data shows how many rows each table holds, and a
+year of daily sessions is a few megabytes.
+
+**Deleting**: a session's page has *Delete this session* (its conversation
+and listening exercise go; review history for its words stays). *Delete all
+my data* in Settings removes everything of yours after you type
+`DELETE MY DATA`, except this month's usage ledger, which the spending limit
+needs. **Retention**: *Keep conversation text* can be set to 30, 90 or 365
+days; older finished sessions then lose their text but keep their dates,
+minutes and evidence.
 
 ## Troubleshooting
 

@@ -1,4 +1,5 @@
-import { Link, useParams } from "react-router";
+import { useState } from "react";
+import { Link, useNavigate, useParams } from "react-router";
 import type { SessionStateResponse } from "../../shared/debrief";
 import { TARGET_ROLE_LABELS, listeningSpeakingShare, type SessionDetail, type SessionPlan } from "../../shared/session";
 import { defaultSettings } from "../../shared/settings";
@@ -8,7 +9,8 @@ import { ListeningExercise } from "../components/ListeningExercise";
 import { Section } from "../components/Section";
 import { SessionDebrief } from "../components/SessionDebrief";
 import { SyntheticDataNotice } from "../components/SyntheticDataNotice";
-import { useMe, useSession } from "../hooks/queries";
+import { useDeleteSession, useMe, useSession } from "../hooks/queries";
+import { ApiRequestError } from "../lib/api";
 import { NotFoundPage } from "./NotFoundPage";
 
 const STATUS_LABELS: Readonly<Record<SessionDetail["status"], string>> = {
@@ -117,6 +119,47 @@ function PlanSections({ plan }: { plan: SessionPlan }) {
   );
 }
 
+/** Deletes this session and its conversation after a second, explicit step (SPEC §8.4). */
+function DeleteSession({ sessionId }: { sessionId: string }) {
+  const remove = useDeleteSession(sessionId);
+  const navigate = useNavigate();
+  const [confirming, setConfirming] = useState(false);
+  return (
+    <Section title="Delete this session">
+      {confirming ? (
+        <div className="border-l-4 border-seal bg-seal-wash px-4 py-3">
+          <p>
+            Delete this session, its conversation and its listening exercise? This cannot be undone. Review cards for its
+            words, and their history, are kept.
+          </p>
+          <div className="mt-3 flex flex-wrap gap-3">
+            <button
+              type="button"
+              disabled={remove.isPending}
+              onClick={() => remove.mutate(undefined, { onSuccess: () => void navigate("/", { replace: true }) })}
+              className="min-h-11 rounded-md bg-seal px-4 font-semibold text-glaze disabled:opacity-60"
+            >
+              Yes, delete it
+            </button>
+            <button type="button" onClick={() => setConfirming(false)} className="min-h-11 rounded-md border border-ink px-4 font-medium">
+              Keep it
+            </button>
+          </div>
+          {remove.isError ? (
+            <p role="alert" className="mt-3">
+              {remove.error instanceof ApiRequestError ? remove.error.message : "Something went wrong. Try again."}
+            </p>
+          ) : null}
+        </div>
+      ) : (
+        <button type="button" onClick={() => setConfirming(true)} className="min-h-11 rounded-md border border-seal px-4 font-medium text-seal">
+          Delete this session…
+        </button>
+      )}
+    </Section>
+  );
+}
+
 function SessionView({ state }: { state: SessionStateResponse }) {
   const { session, turns, debrief, listening } = state;
   const { plan } = session;
@@ -195,6 +238,7 @@ function SessionView({ state }: { state: SessionStateResponse }) {
       {started
         ? [listen, conversation, <PlanSections key="plan" plan={plan} />]
         : [<PlanSections key="plan" plan={plan} />, listen, conversation]}
+      <DeleteSession sessionId={session.id} />
     </>
   );
 }

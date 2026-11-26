@@ -540,3 +540,35 @@ mastered for reading is never presented as mastered for speaking.
 
 SPEC §5.2 asks for weekly listening checks on the dashboard. The Progress page
 offers three fixed windows rather than a date picker.
+
+## 84. The export is the stored rows
+
+A versioned document with every owner table exactly as stored, rather than a
+remodelled shape, so nothing is lost and re-import is a plain insert. The
+curriculum is left out: it has its own source and licence.
+
+## 85. Deleting everything keeps this month's usage ledger
+
+The ledger holds counts and estimated cost, no text. Deleting it would reset
+the month's spending and switch off the stop amount. The rows are deleted by
+the next "delete everything" after the month ends.
+
+## 86. Re-import is local only
+
+FR-019 asks for a re-import in a local test environment. Offering it against
+the deployed database would let one mistyped command overwrite real history,
+so the command refuses `--remote`. A restore into production, if ever
+needed, is a manual step with the owner's own D1 backup.
+
+## 87. Retention removes conversation text, not evidence
+
+Sessions keep their dates, minutes, listening answers and review history;
+only what was typed or said and the tutor's replies go. Unfinished sessions
+are never touched. It runs when a session is planned and when the setting
+changes, so there is no background job.
+
+## 88. A session is deleted from its own page
+
+Deleting is a second, explicit step there, and the review history for its
+words is kept, because it schedules future reviews and is evidence about
+the words rather than about that session.

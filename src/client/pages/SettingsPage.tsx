@@ -4,7 +4,8 @@ import { MonthlyUsage } from "../components/MonthlyUsage";
 import { PageHeader } from "../components/PageHeader";
 import { PreferencesForm } from "../components/PreferencesForm";
 import { ProviderStatusList } from "../components/ProviderStatusList";
-import { NotBuiltYet, Section } from "../components/Section";
+import { Section } from "../components/Section";
+import { YourData } from "../components/YourData";
 import { useMe } from "../hooks/queries";
 
 export function SettingsPage() {
@@ -48,8 +49,8 @@ export function SettingsPage() {
                 </Link>
               </p>
             </Section>
-            <Section title="Export and deletion">
-              <NotBuiltYet phase={4}>Exporting your data as JSON or CSV, and deleting it.</NotBuiltYet>
+            <Section title="Your data">
+              <YourData settings={me.data.settings} />
             </Section>
             <Section title="About">
               <p>ShuoLab version {me.data.version}</p>

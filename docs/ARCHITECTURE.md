@@ -55,6 +55,10 @@ produced it from.
 | `GET /api/v1/reviews/due` | owner | cards due now (`limit` 1–50, default 20) with the word, the card's FSRS state, when each rating would schedule it and the skill's mastery; the number due, the total, and the next due time when none are due |
 | `POST /api/v1/reviews/:id/rate` | owner | `{rating: "again" | "hard" | "good" | "easy", clientEventId}`; 201 with the next due time and the skill's mastery; 200 with `replayed: true` for a resent `clientEventId`; 409 when the card was rated by another request in the meantime or the id was used for another card |
 | `GET /api/v1/progress/summary` | owner | `days` 7, 30 (default) or 90: practice minutes per day in the owner's time zone, sessions finished, unassisted listening checks and accuracy, spoken and typed turns, review ratings and recall, and HSK coverage per band and skill with the imported counts; a rate is null below five observations |
+| `GET /api/v1/export` | owner | `?format=json`: every owner table as stored, versioned (`schemaVersion` 1), as a download; `?format=csv&table=<name>`: one table as CSV with a BOM; never cached |
+| `GET /api/v1/my-data` | owner | rows per owner table, the retention setting, and how many finished sessions are past it |
+| `DELETE /api/v1/my-data` | owner | `{confirm: "DELETE MY DATA"}`: deletes every owner table except this UTC month's usage ledger; reports what was deleted and kept |
+| `DELETE /api/v1/sessions/:id` | owner | deletes the session, its targets, turns, listening exercise and in-session attempts; review cards and the usage ledger stay |
 | `GET /api/v1/colloquial` | owner | one page of colloquial expressions with `register`, `channel`, `status`, `q` filters, plus the sources to credit; reads only `colloquial_expressions` |
 
 Client pages: `/curriculum` (overview), `/curriculum/:band` (entries of one
@@ -205,6 +209,22 @@ count beside a partial import.
 Curriculum entries carry their most advanced state across skills, from a
 correlated lookup in `mastery_states`; the `state` filter uses the same
 value. The entry page lists all four skills.
+
+## Your data: export, re-import, deletion and retention
+
+`src/server/services/owner-data.ts`, `src/shared/owner-data.ts`,
+`scripts/import-owner-data.ts`; client `YourData.tsx`. `OWNER_TABLES` lists
+the owner's tables, parents first; reference tables are never in it. The
+JSON export is every row as stored, in a fixed order, so two exports of the
+same data are equal. `importOwnerData` accepts only that format and
+version, refuses a database that already holds owner data or lacks a
+referenced edition, checks every column name against the real table, binds
+every value, and inserts everything in one batch. The `data:import` command
+runs it against the local database only.
+
+Retention runs when a session is planned (once a day) and when the setting
+is saved: turns of finished sessions whose study date is before the cutoff
+are deleted. Nothing runs in the background.
 
 ## Session state, practice time and the summary
 

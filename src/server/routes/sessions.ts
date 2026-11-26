@@ -12,6 +12,7 @@ import { listSessions, planSession } from "../services/sessions";
 import { applySessionAction, completeSession, getSessionState } from "../services/session-state";
 import { getSession } from "../services/sessions";
 import { answerListening, createListening, recordListeningEvent } from "../services/listening";
+import { deleteSession } from "../services/owner-data";
 import { recordTurnEvent, takeTurn } from "../services/turns";
 import { readJsonBody } from "../validation/body";
 import { ApiError } from "../validation/errors";
@@ -47,6 +48,8 @@ export function createSessionRoutes(deps: SessionRouteDeps = {}) {
       return c.json(result, result.reused ? 200 : 201);
     })
     .get("/:id", async (c) => c.json(await getSessionState(c.env.DB, c.req.param("id"))))
+    // Deletes the session and its conversation; review history for its words stays.
+    .delete("/:id", async (c) => c.json(await deleteSession(c.env.DB, c.req.param("id"))))
     .patch("/:id", async (c) => {
       const parsed = sessionActionSchema.safeParse(await readJsonBody(c.req.raw));
       if (!parsed.success) {

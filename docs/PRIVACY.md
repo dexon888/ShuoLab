@@ -27,8 +27,14 @@ or third-party tracking scripts.
   written, your answers, how many were right, and when the exchange was
   first played and its text first shown.
 
-Deleting a session deletes its turns. Deletion and export from the app
-arrive in Phase 4. Nothing is logged: the Worker logs only the name of an
+Settings → Your data exports all of it (JSON, or CSV per table), sets how
+long conversation text is kept (until deleted, or 30, 90 or 365 days), and
+deletes everything after a typed confirmation. A session can be deleted from
+its page: its conversation, targets and listening exercise go; review cards
+for its words stay. Deleting everything keeps only this UTC month's usage
+ledger (counts and estimated cost, no text), so the spending limit cannot be
+reset by deleting; the next deletion after the month removes it. Curriculum
+and colloquial reference data are never deleted with your data. Nothing is logged: the Worker logs only the name of an
 unexpected error, never a prompt, a reply, a provider response or a key.
 
 ## What later phases will store

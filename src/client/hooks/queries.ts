@@ -12,11 +12,12 @@ import type { HskBand } from "../../shared/curriculum";
 import { settingsResponseSchema, type SettingsUpdate } from "../../shared/settings";
 import { sessionStateResponseSchema, type SessionAction, type SessionStateResponse } from "../../shared/debrief";
 import { listeningResponseSchema, type ListeningEvent, type ListeningResponse } from "../../shared/listening";
+import { DELETE_ALL_PHRASE, dataSummaryResponseSchema, deletionResponseSchema } from "../../shared/owner-data";
 import { progressSummarySchema, type ProgressWindow } from "../../shared/progress";
 import { dueResponseSchema, rateResponseSchema, type ReviewRating } from "../../shared/review";
 import { planResponseSchema, sessionListResponseSchema, type PlanRequest } from "../../shared/session";
 import { monthlyUsageResponseSchema, turnResponseSchema, type SourceMode } from "../../shared/tutor";
-import { apiGet, apiPatch, apiPost, apiPut } from "../lib/api";
+import { apiDelete, apiGet, apiPatch, apiPost, apiPut } from "../lib/api";
 
 export function useMe() {
   return useQuery({ queryKey: ["me"], queryFn: () => apiGet("/me", meResponseSchema) });
@@ -293,5 +294,40 @@ export function useProgressSummary(days: ProgressWindow) {
   return useQuery({
     queryKey: ["progress", days],
     queryFn: () => apiGet(`/progress/summary?days=${days}`, progressSummarySchema),
+  });
+}
+
+/** What is stored, and whether retention has removed any conversation text. */
+export function useDataSummary() {
+  return useQuery({ queryKey: ["my-data"], queryFn: () => apiGet("/my-data", dataSummaryResponseSchema) });
+}
+
+/** Everything a deletion can change in the browser's copy is fetched again. */
+function useForgetCachedData() {
+  const client = useQueryClient();
+  return () => {
+    for (const key of [["sessions"], ["reviews"], ["progress"], ["curriculum"], ["my-data"], ["me"], ["usage"]]) {
+      void client.invalidateQueries({ queryKey: key });
+    }
+  };
+}
+
+export function useDeleteSession(sessionId: string) {
+  const forget = useForgetCachedData();
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: () => apiDelete(`/sessions/${encodeURIComponent(sessionId)}`, undefined, deletionResponseSchema),
+    onSuccess: () => {
+      client.removeQueries({ queryKey: sessionKey(sessionId) });
+      forget();
+    },
+  });
+}
+
+export function useDeleteAllData() {
+  const forget = useForgetCachedData();
+  return useMutation({
+    mutationFn: () => apiDelete("/my-data", { confirm: DELETE_ALL_PHRASE }, deletionResponseSchema),
+    onSuccess: forget,
   });
 }
