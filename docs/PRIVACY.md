@@ -20,6 +20,9 @@ or third-party tracking scripts.
   stop, pause, leave the page or switch away.
 - For each reply you hear, when it was first played and when its text was
   first shown, if it was hidden.
+- For each review: the rating you gave, the card's schedule before and
+  after, and a recall attempt (your rating, when, which skill). Mastery per
+  word and skill is worked out from those.
 - For each session's listening exercise: the exchange and questions as
   written, your answers, how many were right, and when the exchange was
   first played and its text first shown.

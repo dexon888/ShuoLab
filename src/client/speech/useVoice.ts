@@ -63,7 +63,8 @@ function problemFrom(error: unknown): VoiceProblem {
  * released when the learner stops, leaves the page, or the app goes to the
  * background (SPEC §7.1 step 8, §7.4).
  */
-export function useVoice(sessionId: string, rate: number) {
+/** `sessionId` is null outside a session, such as on the Review page. */
+export function useVoice(sessionId: string | null, rate: number) {
   const env = useContext(SpeechEnvironmentContext);
   const [state, setState] = useState<VoiceState>(IDLE);
   const sourceRef = useRef<SpeechTokenSource | null>(null);
@@ -106,7 +107,7 @@ export function useVoice(sessionId: string, rate: number) {
   const report = useCallback(
     async (body: { kind: "recognition"; audioSeconds: number } | { kind: "synthesis"; characters: number }) => {
       try {
-        const result = await apiPost("/speech/usage", { clientEventId: crypto.randomUUID(), sessionId, ...body }, speechUsageResponseSchema);
+        const result = await apiPost("/speech/usage", { clientEventId: crypto.randomUUID(), ...(sessionId ? { sessionId } : {}), ...body }, speechUsageResponseSchema);
         source().setAllowance(result.allowance);
         setState((s) => ({ ...s, allowance: result.allowance }));
       } catch {
@@ -118,6 +119,7 @@ export function useVoice(sessionId: string, rate: number) {
 
   const recordEvent = useCallback(
     (turnId: string, event: TurnEvent) => {
+      if (!sessionId) return;
       void apiPost(`/sessions/${encodeURIComponent(sessionId)}/turns/${encodeURIComponent(turnId)}/events`, { event }, turnEventResponseSchema).catch(
         () => undefined,
       );

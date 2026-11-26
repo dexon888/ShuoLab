@@ -52,6 +52,8 @@ produced it from.
 | `POST /api/v1/speech/token` | owner | a short-lived Azure token, the region, when to refresh (nine minutes), whether it is the stand-in, and the month's speech allowance; 429 `BUDGET_EXCEEDED` once both recognition and voice allowances are used up; 429 `RATE_LIMITED` over 6 a minute or 300 a day; 503 when speech is not set up |
 | `POST /api/v1/speech/usage` | owner | `{clientEventId, kind: "recognition", audioSeconds}` (at most 60) or `{clientEventId, kind: "synthesis", characters}` (at most 2,000); 201 when counted, 200 when that event was already counted |
 | `GET /api/v1/sessions` | owner | the most recent sessions (`limit` 1–50, default 10) and today's resumable one, if any |
+| `GET /api/v1/reviews/due` | owner | cards due now (`limit` 1–50, default 20) with the word, the card's FSRS state, when each rating would schedule it and the skill's mastery; the number due, the total, and the next due time when none are due |
+| `POST /api/v1/reviews/:id/rate` | owner | `{rating: "again" | "hard" | "good" | "easy", clientEventId}`; 201 with the next due time and the skill's mastery; 200 with `replayed: true` for a resent `clientEventId`; 409 when the card was rated by another request in the meantime or the id was used for another card |
 | `GET /api/v1/colloquial` | owner | one page of colloquial expressions with `register`, `channel`, `status`, `q` filters, plus the sources to credit; reads only `colloquial_expressions` |
 
 Client pages: `/curriculum` (overview), `/curriculum/:band` (entries of one
@@ -165,6 +167,26 @@ came before any reveal. The summary shows the result.
 
 The browser reads the whole exchange in one voice through `useVoice`'s
 `speakText`, at the Settings rate or 0.8 times it for "Play slower".
+
+## Review cards and mastery
+
+`src/server/services/review.ts`, `src/shared/review.ts`; client
+`ReviewPage.tsx`. Finishing a session calls `introduceSessionWords`: each
+targeted word except stretch words gets a `hanzi_to_meaning` (reading) and an
+`audio_to_meaning` (listening) card, due at once, and its mastery for both
+skills is worked out again (`introduced`). Cards are unique per word and
+template, so a word that comes back in a later session keeps its card.
+
+Scheduling is `ts-fsrs` 6.0.0 with fuzz off, so a history and a clock always
+give the same due time. A rating writes three rows in one batch, each
+conditional on the card being as it was read: an append-only
+`review_events` row (before and after states), the card's new state, and a
+`practice_attempts` row (`review_self_rating`, `score_source = 'self'`,
+qualifying, successful unless Again). A resent `clientEventId` returns the
+saved result. `mastery_states` is then recomputed from all qualifying
+attempts with `deriveMastery`: success days are counted in the owner's time
+zone, and a failed latest attempt keeps a word below mastered. Nothing else
+writes mastery; model feedback never does.
 
 ## Session state, practice time and the summary
 
