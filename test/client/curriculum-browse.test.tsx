@@ -28,6 +28,7 @@ function entry(sourceId: number, over: Partial<CurriculumItemSummary> = {}): Cur
     partOfSpeech: "名",
     homograph: null,
     levelLabel: "1（1）",
+    state: "unseen",
     ...over,
   };
 }
@@ -116,6 +117,22 @@ describe("band page (FR-016)", () => {
     expect(screen.getByLabelText("Characters or pinyin")).toHaveValue("");
   });
 
+  it("filters by your progress and labels entries you have met", async () => {
+    renderApp("/curriculum/1", {
+      ...base,
+      [ITEMS]: () => json(page([entry(1), entry(2, { state: "developing" })], { total: 300 })),
+      [`${ITEMS}&state=developing`]: () => json(page([entry(2, { state: "developing" })])),
+    });
+    expect(await screen.findByRole("link", { name: /样例词2/ })).toHaveTextContent("Developing");
+    // An entry with no evidence carries no label.
+    expect(screen.getByRole("link", { name: /样例词1/ }).textContent).not.toMatch(/Not met|Met|Developing/);
+    const form = screen.getByRole("search", { name: "Filter HSK 1 entries" });
+    await userEvent.selectOptions(within(form).getByLabelText("Your progress"), "developing");
+    await userEvent.click(within(form).getByRole("button", { name: "Filter" }));
+    expect(await screen.findByText("1 entry matches, showing 1.")).toBeInTheDocument();
+    expect(screen.getByLabelText("Your progress")).toHaveValue("developing");
+  });
+
   it("restores filters from the address", async () => {
     renderApp("/curriculum/1?q=zzz", {
       ...base,
@@ -191,7 +208,16 @@ describe("entry page (FR-016)", () => {
           importedAt: "2026-01-02T03:04:05.000Z",
         },
       ],
-      progress: null,
+      progress: {
+        bySkill: (["listening", "speaking", "reading", "writing"] as const).map((skill) => ({
+          skill,
+          state: "unseen" as const,
+          successDays: 0,
+          failureCount: 0,
+          lastAttemptAt: null,
+          lastSuccessAt: null,
+        })),
+      },
       ...over,
     };
   }
@@ -243,14 +269,42 @@ describe("entry page (FR-016)", () => {
     expect(link).toHaveTextContent("entry 11");
   });
 
-  it("claims no practice evidence", async () => {
+  it("shows every skill as not met when there is no evidence", async () => {
     renderApp(`/curriculum/item/${encodeURIComponent(id)}`, {
       "/api/v1/me": () => json(me),
       [url]: () => json(detail({ homographs: [] })),
     });
-    expect(await screen.findByRole("region", { name: "Your practice" })).toHaveTextContent("Nothing recorded.");
+    const practice = await screen.findByRole("region", { name: "Your practice" });
+    expect(within(practice).getAllByText("Not met")).toHaveLength(4);
     expect(screen.queryByRole("region", { name: "Same written form" })).not.toBeInTheDocument();
     expect(document.body.textContent).not.toMatch(/\d\s?%/);
+  });
+
+  it("shows each skill's state from the evidence, with recall days and misses", async () => {
+    const base = detail();
+    renderApp(`/curriculum/item/${encodeURIComponent(id)}`, {
+      "/api/v1/me": () => json(me),
+      [url]: () =>
+        json(
+          detail({
+            progress: {
+              bySkill: base.progress.bySkill.map((p) =>
+                p.skill === "reading"
+                  ? { ...p, state: "developing", successDays: 2, failureCount: 1, lastAttemptAt: "2026-03-04T10:00:00.000Z", lastSuccessAt: "2026-03-03T10:00:00.000Z" }
+                  : p.skill === "listening"
+                    ? { ...p, state: "introduced" }
+                    : p,
+              ),
+            },
+          }),
+        ),
+    });
+    const practice = await screen.findByRole("region", { name: "Your practice" });
+    expect(within(practice).getByText("Developing")).toBeInTheDocument();
+    expect(within(practice).getByText("Recalled on 2 days, missed 1 time")).toBeInTheDocument();
+    expect(within(practice).getByText("Met, not yet reviewed")).toBeInTheDocument();
+    expect(within(practice).getAllByText("Not met")).toHaveLength(2);
+    expect(within(practice).getByText(/this app's rule, not an HSK/)).toBeInTheDocument();
   });
 
   it("does not turn a non-web source address into a link", async () => {

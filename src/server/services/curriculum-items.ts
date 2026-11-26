@@ -1,5 +1,5 @@
 import type { D1Database } from "@cloudflare/workers-types";
-import { and, asc, count, desc, eq, gt, ne, sql, type SQL } from "drizzle-orm";
+import { and, asc, count, desc, eq, getTableColumns, gt, ne, sql, type SQL } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 import type {
   CurriculumFacetsResponse,
@@ -15,10 +15,24 @@ import {
   type HskBand,
   type ItemType,
 } from "../../shared/curriculum";
-import { curriculumEditions, curriculumItems, sourceManifests } from "../db/schema";
+import { MASTERY_STATES, SKILLS, type MasteryState } from "../../shared/learning";
+import { OWNER_ID, curriculumEditions, curriculumItems, sourceManifests } from "../db/schema";
 import { ApiError } from "../validation/errors";
 
-type ItemRow = typeof curriculumItems.$inferSelect;
+type ItemRow = typeof curriculumItems.$inferSelect & { rank?: number | null };
+
+/**
+ * An entry's most advanced state across skills, as a rank: 0 unseen up to
+ * 4 mastered (the order of MASTERY_STATES). Read from mastery_states, which
+ * holds only what evidence supports.
+ */
+const STATE_RANK = sql<number>`COALESCE((SELECT MAX(CASE ms.state ${sql.raw(
+  MASTERY_STATES.map((s, i) => `WHEN '${s}' THEN ${i}`).join(" "),
+)} ELSE 0 END) FROM mastery_states ms WHERE ms.owner_id = ${OWNER_ID} AND ms.curriculum_item_id = ${curriculumItems.id}), 0)`;
+
+function stateOf(rank: number | null | undefined): MasteryState {
+  return MASTERY_STATES[rank ?? 0] ?? "unseen";
+}
 
 function toSummary(row: ItemRow): CurriculumItemSummary {
   return {
@@ -32,6 +46,7 @@ function toSummary(row: ItemRow): CurriculumItemSummary {
     partOfSpeech: row.partOfSpeech,
     homograph: row.homograph,
     levelLabel: row.levelLabel,
+    state: stateOf(row.rank),
   };
 }
 
@@ -90,8 +105,7 @@ export async function listCurriculumItems(
     total: 0,
     nextCursor: null,
   };
-  // No evidence is recorded yet, so nothing can be in any state but `unseen`.
-  if (!editionId || (query.state && query.state !== "unseen")) {
+  if (!editionId) {
     if (query.cursor) decodeCursor(query.cursor);
     return empty;
   }
@@ -101,6 +115,7 @@ export async function listCurriculumItems(
     eq(curriculumItems.itemType, query.type),
   ];
   if (query.band) filters.push(eq(curriculumItems.hskBand, query.band));
+  if (query.state) filters.push(sql`${STATE_RANK} = ${MASTERY_STATES.indexOf(query.state)}`);
   if (query.pos) {
     filters.push(sql`${DELIMITED_POS} LIKE ${`%、${likeLiteral(query.pos)}、%`} ESCAPE '\\'`);
   }
@@ -122,7 +137,7 @@ export async function listCurriculumItems(
     : filters;
   // One extra row tells us whether another page exists.
   const rows = await db
-    .select()
+    .select({ ...getTableColumns(curriculumItems), rank: STATE_RANK })
     .from(curriculumItems)
     .where(and(...pageFilters))
     .orderBy(asc(curriculumItems.sourceId))
@@ -181,7 +196,11 @@ export async function getCurriculumItem(
   }
   const db = drizzle(d1);
 
-  const [row] = await db.select().from(curriculumItems).where(eq(curriculumItems.id, id)).limit(1);
+  const [row] = await db
+    .select({ ...getTableColumns(curriculumItems), rank: STATE_RANK })
+    .from(curriculumItems)
+    .where(eq(curriculumItems.id, id))
+    .limit(1);
   if (!row) {
     throw new ApiError("NOT_FOUND", "No imported curriculum item has that id.");
   }
@@ -196,7 +215,7 @@ export async function getCurriculumItem(
   }
 
   const homographs = await db
-    .select()
+    .select({ ...getTableColumns(curriculumItems), rank: STATE_RANK })
     .from(curriculumItems)
     .where(
       and(
@@ -252,6 +271,28 @@ export async function getCurriculumItem(
     },
     homographs: homographs.map(toSummary),
     sources,
-    progress: null,
+    progress: { bySkill: await skillProgress(d1, row.id) },
   };
+}
+
+/** The entry's state for each of the four skills; `unseen` where there is no row. */
+async function skillProgress(d1: D1Database, itemId: string): Promise<CurriculumItemDetailResponse["progress"]["bySkill"]> {
+  const rows = await d1
+    .prepare(
+      "SELECT skill, state, success_days, failure_count, last_attempt_at, last_success_at FROM mastery_states WHERE owner_id = ?1 AND curriculum_item_id = ?2",
+    )
+    .bind(OWNER_ID, itemId)
+    .all<{ skill: string; state: string; success_days: number; failure_count: number; last_attempt_at: string | null; last_success_at: string | null }>();
+  const bySkill = new Map(rows.results.map((r) => [r.skill, r]));
+  return SKILLS.map((skill) => {
+    const r = bySkill.get(skill);
+    return {
+      skill,
+      state: (r?.state as MasteryState | undefined) ?? "unseen",
+      successDays: r?.success_days ?? 0,
+      failureCount: r?.failure_count ?? 0,
+      lastAttemptAt: r?.last_attempt_at ?? null,
+      lastSuccessAt: r?.last_success_at ?? null,
+    };
+  });
 }

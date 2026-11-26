@@ -12,6 +12,7 @@ import type { HskBand } from "../../shared/curriculum";
 import { settingsResponseSchema, type SettingsUpdate } from "../../shared/settings";
 import { sessionStateResponseSchema, type SessionAction, type SessionStateResponse } from "../../shared/debrief";
 import { listeningResponseSchema, type ListeningEvent, type ListeningResponse } from "../../shared/listening";
+import { progressSummarySchema, type ProgressWindow } from "../../shared/progress";
 import { dueResponseSchema, rateResponseSchema, type ReviewRating } from "../../shared/review";
 import { planResponseSchema, sessionListResponseSchema, type PlanRequest } from "../../shared/session";
 import { monthlyUsageResponseSchema, turnResponseSchema, type SourceMode } from "../../shared/tutor";
@@ -32,6 +33,8 @@ export interface ItemFilters {
   band: HskBand;
   pos: string;
   q: string;
+  /** An entry's most advanced state across skills; empty for any. */
+  state?: string;
 }
 
 /** Entries of one band, a page at a time; more are fetched only when asked for. */
@@ -43,6 +46,7 @@ export function useCurriculumItems(filters: ItemFilters) {
       const params = new URLSearchParams({ band: filters.band });
       if (filters.pos) params.set("pos", filters.pos);
       if (filters.q) params.set("q", filters.q);
+      if (filters.state) params.set("state", filters.state);
       if (pageParam) params.set("cursor", pageParam);
       return apiGet(`/curriculum/items?${params.toString()}`, curriculumItemsResponseSchema);
     },
@@ -238,6 +242,10 @@ export function useCompleteSession(sessionId: string) {
     onSuccess: (state) => {
       client.setQueryData(sessionKey(sessionId), state);
       void client.invalidateQueries({ queryKey: ["sessions", "list"] });
+      // New review cards, and new practice to count.
+      void client.invalidateQueries({ queryKey: ["reviews"] });
+      void client.invalidateQueries({ queryKey: ["progress"] });
+      void client.invalidateQueries({ queryKey: ["curriculum"] });
     },
   });
 }
@@ -273,6 +281,17 @@ export function useRateCard() {
   return useMutation({
     mutationFn: (r: OutgoingRating) =>
       apiPost(`/reviews/${encodeURIComponent(r.cardId)}/rate`, { rating: r.rating, clientEventId: r.clientEventId }, rateResponseSchema),
-    onSuccess: () => void client.invalidateQueries({ queryKey: dueKey }),
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: dueKey });
+      void client.invalidateQueries({ queryKey: ["progress"] });
+    },
+  });
+}
+
+/** The progress summary for a window of days. Fetched when a page needs it; nothing polls. */
+export function useProgressSummary(days: ProgressWindow) {
+  return useQuery({
+    queryKey: ["progress", days],
+    queryFn: () => apiGet(`/progress/summary?days=${days}`, progressSummarySchema),
   });
 }

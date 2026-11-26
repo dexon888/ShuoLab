@@ -54,6 +54,7 @@ produced it from.
 | `GET /api/v1/sessions` | owner | the most recent sessions (`limit` 1–50, default 10) and today's resumable one, if any |
 | `GET /api/v1/reviews/due` | owner | cards due now (`limit` 1–50, default 20) with the word, the card's FSRS state, when each rating would schedule it and the skill's mastery; the number due, the total, and the next due time when none are due |
 | `POST /api/v1/reviews/:id/rate` | owner | `{rating: "again" | "hard" | "good" | "easy", clientEventId}`; 201 with the next due time and the skill's mastery; 200 with `replayed: true` for a resent `clientEventId`; 409 when the card was rated by another request in the meantime or the id was used for another card |
+| `GET /api/v1/progress/summary` | owner | `days` 7, 30 (default) or 90: practice minutes per day in the owner's time zone, sessions finished, unassisted listening checks and accuracy, spoken and typed turns, review ratings and recall, and HSK coverage per band and skill with the imported counts; a rate is null below five observations |
 | `GET /api/v1/colloquial` | owner | one page of colloquial expressions with `register`, `channel`, `status`, `q` filters, plus the sources to credit; reads only `colloquial_expressions` |
 
 Client pages: `/curriculum` (overview), `/curriculum/:band` (entries of one
@@ -187,6 +188,23 @@ saved result. `mastery_states` is then recomputed from all qualifying
 attempts with `deriveMastery`: success days are counted in the owner's time
 zone, and a failed latest attempt keeps a word below mastered. Nothing else
 writes mastery; model feedback never does.
+
+## Progress
+
+`src/server/services/progress.ts`, `src/shared/progress.ts`; client
+`ProgressPage.tsx`, `PracticeChart.tsx` and the Today cards. Read-only
+counts over the evidence tables. Practice minutes are summed per
+`local_study_date`; other events are counted over the same number of days
+ending now. Listening counts only exercises answered before their text was
+shown; review recall counts ratings other than Again. Below
+`MIN_OBSERVATIONS` (5) a rate is null and the page says "insufficient
+evidence" with the count. Coverage counts `mastery_states` rows per band and
+skill against the active edition's imported entries, with the published
+count beside a partial import.
+
+Curriculum entries carry their most advanced state across skills, from a
+correlated lookup in `mastery_states`; the `state` filter uses the same
+value. The entry page lists all four skills.
 
 ## Session state, practice time and the summary
 

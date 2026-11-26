@@ -206,7 +206,13 @@ describe("GET /curriculum/items/:id", () => {
       expect.objectContaining({ sourceUrl: "generated:test", commitSha: null }),
     ]);
     expect(d.homographs).toEqual([]);
-    expect(d.progress).toBeNull();
+    // No evidence yet: every skill is unseen.
+    expect(d.progress.bySkill.map((p) => [p.skill, p.state])).toEqual([
+      ["listening", "unseen"],
+      ["speaking", "unseen"],
+      ["reading", "unseen"],
+      ["writing", "unseen"],
+    ]);
   });
 
   it("links homographs to each other, and only to each other", async () => {

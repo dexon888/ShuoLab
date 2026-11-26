@@ -12,6 +12,16 @@ function bandName(band: string): string {
   return band === "7-9" ? "HSK 7–9 (shared band)" : `HSK ${band}`;
 }
 
+const SKILL_LABELS = { listening: "Listening", speaking: "Speaking", reading: "Reading", writing: "Writing" } as const;
+
+const SKILL_STATE_TEXT = {
+  unseen: "Not met",
+  introduced: "Met, not yet reviewed",
+  practiced: "Practised, not yet recalled",
+  developing: "Developing",
+  mastered: "Mastered",
+} as const;
+
 function Fact({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="flex flex-wrap justify-between gap-x-6 border-b border-line py-2">
@@ -125,9 +135,22 @@ function ItemDetail({ data }: { data: CurriculumItemDetailResponse }) {
         ) : null}
 
         <Section title="Your practice">
-          <p className="text-mist">
-            Nothing recorded. Practice evidence for each skill starts with sessions and review,
-            which are not built yet.
+          <dl>
+            {data.progress.bySkill.map((p) => (
+              <Fact key={p.skill} label={SKILL_LABELS[p.skill]}>
+                {SKILL_STATE_TEXT[p.state]}
+                {p.successDays > 0 || p.failureCount > 0 ? (
+                  <span className="block text-sm font-normal text-mist">
+                    Recalled on {p.successDays} day{p.successDays === 1 ? "" : "s"}, missed {p.failureCount} time{p.failureCount === 1 ? "" : "s"}
+                  </span>
+                ) : null}
+              </Fact>
+            ))}
+          </dl>
+          <p className="mt-3 text-sm text-mist">
+            From your session targets and review ratings only. Mastered means recalled on three different days, at least
+            once a day or more after you met the word, with the latest recall a success: this app's rule, not an HSK
+            standard. Speaking and writing have no review cards yet.
           </p>
         </Section>
 

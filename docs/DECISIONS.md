@@ -515,3 +515,28 @@ When this was written, the owner's local database held only generated
 placeholder words, and no finished session had targeted any, so there was
 nothing to backfill. The unfinished session of that day gets cards when it
 is finished.
+
+## 80. Five observations before a rate
+
+SPEC §5.6 asks for "insufficient evidence" below five qualifying
+observations. For listening the observation is a check (one dated
+exercise), not a question, so three questions on one day do not count as
+three samples. For reviews it is a rating. Counts are always shown.
+
+## 81. Practice days follow the owner's calendar; events a rolling span
+
+Minutes are summed by each session's study date, which is already in the
+owner's time zone. Listening checks, turns and ratings are counted over the
+same number of days ending now, which avoids converting a local midnight
+into an instant without a time-zone library.
+
+## 82. An entry's state is its most advanced skill
+
+Lists and the filter need one state per entry. The most advanced of the four
+skills is used, and the entry page shows each skill separately, so a word
+mastered for reading is never presented as mastered for speaking.
+
+## 83. Today shows the week; Progress shows 7, 30 or 90 days
+
+SPEC §5.2 asks for weekly listening checks on the dashboard. The Progress page
+offers three fixed windows rather than a date picker.

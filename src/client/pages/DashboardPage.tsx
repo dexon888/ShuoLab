@@ -5,11 +5,49 @@ import { PageHeader } from "../components/PageHeader";
 import { ProviderStatusList } from "../components/ProviderStatusList";
 import { Section } from "../components/Section";
 import { TodaySession } from "../components/TodaySession";
-import { useCurriculumStatus, useMe } from "../hooks/queries";
+import { useCurriculumStatus, useDueReviews, useMe, useProgressSummary } from "../hooks/queries";
+import { MIN_OBSERVATIONS, type ProgressSummary } from "../../shared/progress";
+
+/** This week's communication evidence, kept apart from HSK coverage. */
+function WeekInBrief({ s }: { s: ProgressSummary }) {
+  const { practice, listening, speaking } = s;
+  return (
+    <ul className="space-y-1">
+      <li>
+        <span className="font-semibold tabular-nums">{practice.totalMinutes}</span> minutes of practice on{" "}
+        {practice.activeDays} of the last 7 days.
+      </li>
+      <li>
+        {listening.checks === 0
+          ? "No listening checks this week."
+          : `${listening.correct} of ${listening.questions} listening questions right in ${listening.checks} check${listening.checks === 1 ? "" : "s"}`}
+        {listening.checks > 0 && listening.checks < MIN_OBSERVATIONS ? " (too few for an accuracy figure)." : listening.checks > 0 ? "." : ""}
+      </li>
+      <li>
+        {speaking.spokenTurns} spoken turn{speaking.spokenTurns === 1 ? "" : "s"}, {speaking.typedTurns} typed.
+      </li>
+    </ul>
+  );
+}
+
+/** Entries met and mastered, against the imported denominator. */
+function CoverageBrief({ s }: { s: ProgressSummary }) {
+  const { total } = s.hsk;
+  if (!s.hsk.editionId) return null;
+  const mastered = (["listening", "reading"] as const).map((k) => `${k} ${total.bySkill[k].mastered}`).join(", ");
+  return (
+    <p className="mt-3">
+      Met <span className="font-semibold tabular-nums">{total.introduced}</span> of {total.entries} entries
+      {s.hsk.synthetic ? " (placeholder words)" : ""}. Mastered: {mastered}.
+    </p>
+  );
+}
 
 export function DashboardPage() {
   const me = useMe();
   const curriculum = useCurriculumStatus();
+  const week = useProgressSummary(7);
+  const due = useDueReviews();
 
   return (
     <>
@@ -48,13 +86,35 @@ export function DashboardPage() {
             </Link>
           </p>
         </AsyncStatus>
+        {week.data ? <CoverageBrief s={week.data} /> : null}
       </Section>
 
+      {due.data && due.data.totalCards > 0 ? (
+        <Section title="Review">
+          <p>
+            {due.data.dueCount > 0 ? (
+              <>
+                <span className="font-semibold tabular-nums">{due.data.dueCount}</span> card{due.data.dueCount === 1 ? "" : "s"} due.{" "}
+                <Link to="/review" className="font-medium text-cobalt underline">
+                  Review now
+                </Link>
+              </>
+            ) : (
+              "Nothing due."
+            )}
+          </p>
+        </Section>
+      ) : null}
+
       <Section title="Communication progress">
-        <p>No evidence yet.</p>
-        <p className="mt-1 text-mist">
-          Listening checks and speaking turns will be counted here once you have completed sessions.
-          This is measured separately from HSK coverage, and neither one is an HSK exam score.
+        <AsyncStatus isPending={week.isPending} error={week.error} onRetry={() => void week.refetch()} label="this week's progress">
+          {week.data ? <WeekInBrief s={week.data} /> : null}
+        </AsyncStatus>
+        <p className="mt-2 text-mist">
+          Measured separately from HSK coverage, and neither one is an HSK exam score.{" "}
+          <Link to="/progress" className="font-medium text-cobalt underline">
+            See progress
+          </Link>
         </p>
       </Section>
 
