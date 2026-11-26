@@ -12,6 +12,7 @@ import type { HskBand } from "../../shared/curriculum";
 import { settingsResponseSchema, type SettingsUpdate } from "../../shared/settings";
 import { sessionStateResponseSchema, type SessionAction, type SessionStateResponse } from "../../shared/debrief";
 import { listeningResponseSchema, type ListeningEvent, type ListeningResponse } from "../../shared/listening";
+import { dueResponseSchema, rateResponseSchema, type ReviewRating } from "../../shared/review";
 import { planResponseSchema, sessionListResponseSchema, type PlanRequest } from "../../shared/session";
 import { monthlyUsageResponseSchema, turnResponseSchema, type SourceMode } from "../../shared/tutor";
 import { apiGet, apiPatch, apiPost, apiPut } from "../lib/api";
@@ -250,5 +251,28 @@ export function usePlanSession() {
       client.setQueryData<SessionStateResponse>(sessionKey(session.id), { session, turns: [], debrief: null, listening: null });
       void client.invalidateQueries({ queryKey: ["sessions", "list"] });
     },
+  });
+}
+
+const dueKey = ["reviews", "due"] as const;
+
+/** Cards due now. Fetched on demand; nothing polls in the background. */
+export function useDueReviews() {
+  return useQuery({ queryKey: dueKey, queryFn: () => apiGet("/reviews/due?limit=20", dueResponseSchema) });
+}
+
+export interface OutgoingRating {
+  cardId: string;
+  rating: ReviewRating;
+  /** Made once per rating and reused on a retry, so it is recorded once. */
+  clientEventId: string;
+}
+
+export function useRateCard() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (r: OutgoingRating) =>
+      apiPost(`/reviews/${encodeURIComponent(r.cardId)}/rate`, { rating: r.rating, clientEventId: r.clientEventId }, rateResponseSchema),
+    onSuccess: () => void client.invalidateQueries({ queryKey: dueKey }),
   });
 }

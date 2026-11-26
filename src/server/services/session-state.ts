@@ -15,6 +15,7 @@ import type { SessionDetail } from "../../shared/session";
 import type { Turn, TurnCorrection } from "../../shared/tutor";
 import { ApiError } from "../validation/errors";
 import { getListening } from "./listening";
+import { introduceSessionWords } from "./review";
 import { accrueSql, getSession } from "./sessions";
 import { listTurns } from "./turns";
 
@@ -126,5 +127,7 @@ WHERE id = ?1 AND status IN ('active','paused')`,
     )
     .bind(id, at)
     .run();
+  // The words it targeted now have review cards. Safe to repeat.
+  await introduceSessionWords(d1, id, now);
   return getSessionState(d1, id);
 }

@@ -477,3 +477,41 @@ like a first turn. A finished session shows its exercise if it had one.
 The exchange is read in one voice with the lines in order. Two voices would
 need multi-voice SSML in the speech engine; it is a possible improvement,
 noted for after phone testing.
+
+## 74. Cards are made when a session is finished
+
+A word becomes something to review once a finished session targeted it.
+Stretch words are left out, since they are exposure only (SPEC §2.4). An
+abandoned session gives no cards. A word met again later keeps its card.
+
+## 75. Two card templates for now: reading and listening
+
+`hanzi_to_meaning` checks reading, `audio_to_meaning` listening. Both are
+recall: the answer is shown only after the learner has tried, and the
+learner rates themselves. There is no multiple choice (SPEC §5.5). Speaking
+and writing prompts need a meaning to prompt from, and the syllabus has no
+English, so they wait for the assessments work.
+
+## 76. A recall is anything but Again
+
+FSRS treats Hard, Good and Easy as remembered. The same line decides a
+successful attempt for mastery.
+
+## 77. Mastery is worked out again on every rating
+
+`mastery_states` is a cache of `deriveMastery` over all qualifying attempts,
+not a running counter, so it can never drift from the evidence. Days are the
+owner's calendar days in their Settings time zone.
+
+## 78. FSRS fuzz is off
+
+Fuzz spreads due dates to avoid pile-ups, which matters with thousands of
+cards. With a few cards a day, a repeatable schedule matters more, and
+SPEC §14.1 asks for determinism.
+
+## 79. Cards are not made for sessions finished before this change
+
+When this was written, the owner's local database held only generated
+placeholder words, and no finished session had targeted any, so there was
+nothing to backfill. The unfinished session of that day gets cards when it
+is finished.

@@ -266,3 +266,32 @@ test("listen first: hear an exchange, answer before seeing the text, then read i
   }
   expect(errors).toEqual([]);
 });
+
+test("review: words from the finished session come back as cards to rate (SPEC §5.5, FR-014, FR-015)", async ({ page }) => {
+  const errors = trackErrors(page);
+  await page.goto("/review");
+  const card = page.getByRole("article", { name: "Review card" });
+  await expect(card).toBeVisible();
+  const counts = page.getByText(/due of \d+ cards/);
+  const before = Number((await counts.textContent())?.match(/^(\d+)/)?.[1]);
+  expect(before).toBeGreaterThan(0);
+  await expect(card.getByText("Generated placeholder word for testing. Not HSK content.")).toBeVisible();
+
+  // Skipping keeps a card due; showing and rating it schedules it.
+  await card.getByRole("button", { name: "Show answer" }).click();
+  await expect(card.getByText(/No English definition is imported|Source:/)).toBeVisible();
+  await card.getByRole("button", { name: /^Good/ }).click();
+  await expect(page.getByText(new RegExp(`^${before - 1} due of`))).toBeVisible();
+  await expectNoSidewaysScroll(page, "on the review page");
+
+  for (const name of [/^Show answer/, /^Skip for now/]) {
+    const size = await card.getByRole("button", { name }).boundingBox();
+    expect(size?.height ?? 0).toBeGreaterThanOrEqual(44);
+  }
+
+  // The rating is on the server, once, as the learner's own recall.
+  const due = await (await page.request.get("/api/v1/reviews/due?limit=50")).json();
+  expect(due.dueCount).toBe(before - 1);
+  expect(due.cards.some((c: { mastery: string }) => c.mastery === "mastered")).toBe(false);
+  expect(errors).toEqual([]);
+});

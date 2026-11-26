@@ -347,3 +347,111 @@ export const usageEvents = sqliteTable(
     check("usage_events_amounts_check", sql`${t.tokensIn} >= 0 AND ${t.tokensOut} >= 0 AND ${t.estimatedUsd} >= 0`),
   ],
 );
+
+/** The single owner's id in evidence tables (SPEC §8.2 keeps the column for clarity, not for tenants). */
+export const OWNER_ID = "owner";
+
+/**
+ * Evidence (SPEC §6.5, §8.2): one row per assessed attempt. Only rows with
+ * `is_qualifying_recall` move mastery. Appearing in a lesson is never an
+ * attempt. Kept when a session is deleted only if it was not part of one.
+ */
+export const practiceAttempts = sqliteTable(
+  "practice_attempts",
+  {
+    id: text("id").primaryKey(),
+    /** Null for attempts made outside a session, such as reviews. */
+    sessionId: text("session_id").references(() => sessions.id, { onDelete: "cascade" }),
+    curriculumItemId: text("curriculum_item_id").references(() => curriculumItems.id, { onDelete: "cascade" }),
+    colloquialId: text("colloquial_id"),
+    skill: text("skill").notNull(),
+    /** `review_self_rating`: the learner rated their own recall on a review card. */
+    assessmentType: text("assessment_type").notNull(),
+    /** The card template or authored prompt that was answered. */
+    promptId: text("prompt_id").notNull(),
+    userResponse: text("user_response"),
+    score: real("score"),
+    /** `self`: the learner's own rating. Never `ai`: model feedback does not mark mastery. */
+    scoreSource: text("score_source").notNull(),
+    isQualifyingRecall: integer("is_qualifying_recall", { mode: "boolean" }).notNull(),
+    success: integer("success", { mode: "boolean" }).notNull(),
+    /** The review event this attempt came from, if any. */
+    reviewEventId: text("review_event_id"),
+    attemptedAt: text("attempted_at").notNull(),
+  },
+  (t) => [
+    index("practice_attempts_item_skill_idx").on(t.curriculumItemId, t.skill, t.attemptedAt),
+    uniqueIndex("practice_attempts_review_event_idx").on(t.reviewEventId),
+    check("practice_attempts_skill_check", sql`${t.skill} IN ('listening','speaking','reading','writing')`),
+    check("practice_attempts_source_check", sql`${t.scoreSource} IN ('self','rubric')`),
+    // One subject: an imported item or a colloquial expression, never both.
+    check("practice_attempts_subject_check", sql`(${t.curriculumItemId} IS NULL) <> (${t.colloquialId} IS NULL)`),
+  ],
+);
+
+/** Derived from `practice_attempts` and session targets; recomputed, never edited by hand. */
+export const masteryStates = sqliteTable(
+  "mastery_states",
+  {
+    ownerId: text("owner_id").notNull().default(OWNER_ID),
+    curriculumItemId: text("curriculum_item_id")
+      .notNull()
+      .references(() => curriculumItems.id, { onDelete: "cascade" }),
+    skill: text("skill").notNull(),
+    state: text("state").notNull(),
+    firstSeenAt: text("first_seen_at"),
+    lastAttemptAt: text("last_attempt_at"),
+    lastSuccessAt: text("last_success_at"),
+    successDays: integer("success_days").notNull().default(0),
+    failureCount: integer("failure_count").notNull().default(0),
+    updatedAt: text("updated_at").notNull(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.ownerId, t.curriculumItemId, t.skill] }),
+    check("mastery_states_state_check", sql`${t.state} IN ('unseen','introduced','practiced','developing','mastered')`),
+  ],
+);
+
+/** One FSRS card per item and template (SPEC §5.5). */
+export const reviewCards = sqliteTable(
+  "review_cards",
+  {
+    id: text("id").primaryKey(),
+    ownerId: text("owner_id").notNull().default(OWNER_ID),
+    curriculumItemId: text("curriculum_item_id")
+      .notNull()
+      .references(() => curriculumItems.id, { onDelete: "cascade" }),
+    skill: text("skill").notNull(),
+    template: text("template").notNull(),
+    fsrsStateJson: text("fsrs_state_json").notNull(),
+    dueAt: text("due_at").notNull(),
+    createdAt: text("created_at").notNull(),
+    updatedAt: text("updated_at").notNull(),
+  },
+  (t) => [
+    uniqueIndex("review_cards_item_template_idx").on(t.curriculumItemId, t.template),
+    index("review_cards_due_idx").on(t.ownerId, t.dueAt),
+  ],
+);
+
+/** Append-only schedule history: every rating with the card before and after. */
+export const reviewEvents = sqliteTable(
+  "review_events",
+  {
+    id: text("id").primaryKey(),
+    reviewCardId: text("review_card_id")
+      .notNull()
+      .references(() => reviewCards.id, { onDelete: "cascade" }),
+    clientEventId: text("client_event_id").notNull(),
+    rating: text("rating").notNull(),
+    elapsedDays: real("elapsed_days").notNull(),
+    stateBeforeJson: text("state_before_json").notNull(),
+    stateAfterJson: text("state_after_json").notNull(),
+    createdAt: text("created_at").notNull(),
+  },
+  (t) => [
+    uniqueIndex("review_events_client_event_idx").on(t.clientEventId),
+    index("review_events_card_idx").on(t.reviewCardId, t.createdAt),
+    check("review_events_rating_check", sql`${t.rating} IN ('again','hard','good','easy')`),
+  ],
+);
