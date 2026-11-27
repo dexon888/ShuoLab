@@ -457,3 +457,56 @@ export const reviewEvents = sqliteTable(
     check("review_events_rating_check", sql`${t.rating} IN ('again','hard','good','easy')`),
   ],
 );
+
+/**
+ * Grammar points, characters, the topic and the task a session targets
+ * (SPEC §2.4, §2.5). Kept apart from `session_targets`, which holds the
+ * session's words, so word queries stay as they are. These are the only
+ * section ids the tutor and the materials may use for the session.
+ */
+export const sessionItems = sqliteTable(
+  "session_items",
+  {
+    sessionId: text("session_id")
+      .notNull()
+      .references(() => sessions.id, { onDelete: "cascade" }),
+    curriculumItemId: text("curriculum_item_id")
+      .notNull()
+      .references(() => curriculumItems.id),
+    itemType: text("item_type").notNull(),
+    /** `new` or `recycled` for grammar; `target` otherwise. */
+    role: text("role").notNull(),
+    position: integer("position").notNull(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.sessionId, t.curriculumItemId] }),
+    index("session_items_item_idx").on(t.curriculumItemId),
+    check("session_items_type_check", sql`${t.itemType} IN ('grammar','character','topic','task')`),
+    check("session_items_role_check", sql`${t.role} IN ('new','recycled','target')`),
+  ],
+);
+
+/**
+ * The reading text, guided-practice prompts and writing prompt of a session
+ * (SPEC §5.3 steps 4, 5, 7), written once and kept, with the learner's
+ * answers beside them. No audio.
+ */
+export const sessionMaterials = sqliteTable("session_materials", {
+  sessionId: text("session_id")
+    .primaryKey()
+    .references(() => sessions.id, { onDelete: "cascade" }),
+  /** `pending` while being written, `ready`, or `failed`. */
+  status: text("status").notNull(),
+  source: text("source"),
+  model: text("model"),
+  standIn: integer("stand_in").notNull().default(0),
+  coversTargets: integer("covers_targets").notNull().default(1),
+  contentJson: text("content_json"),
+  readingAnswersJson: text("reading_answers_json"),
+  readingCorrect: integer("reading_correct"),
+  readingAnsweredAt: text("reading_answered_at"),
+  readingRevealedAt: text("reading_revealed_at"),
+  practiceJson: text("practice_json"),
+  writingJson: text("writing_json"),
+  createdAt: text("created_at").notNull(),
+});

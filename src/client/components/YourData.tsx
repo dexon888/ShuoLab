@@ -10,6 +10,8 @@ const TABLE_LABELS: Readonly<Record<OwnerTable, string>> = {
   owner_settings: "Settings",
   sessions: "Sessions",
   session_targets: "Session words",
+  session_items: "Session grammar and topics",
+  session_materials: "Reading and writing",
   conversation_turns: "Conversation turns",
   listening_exercises: "Listening exercises",
   review_cards: "Review cards",

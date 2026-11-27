@@ -48,6 +48,11 @@ function session(status: SessionDetail["status"] = "active"): SessionDetail {
       situation: { id: "free-chat", sourceType: "app-authored", titleZh: "自由聊天", titleEn: "Open conversation", communicativeGoal: "Talk." },
       targets: [],
       grammarIds: [],
+      grammar: [],
+      characters: [],
+      topic: null,
+      task: null,
+      weakestSkill: null,
       colloquial: [],
       levelConstraints: { activeBand: null, stretchBand: null },
       activities: [{ kind: "speak", skill: "speaking", minutes: 15, title: "Conversation", description: "Talk." }],
@@ -65,6 +70,9 @@ function turn(n: number, over: Partial<Turn> = {}): Turn {
     reply: { spokenZh: `回答${n}，你呢？`, pinyin: null, translationEn: null },
     referencedCurriculumItemIds: [],
     referencedColloquialIds: [],
+    grammarUsedIds: [],
+    grammarElicitedIds: [],
+    learnerGrammarIds: [],
     feedback: { understoodIntent: true, corrections: [], encouragementZh: null, transcriptUncertain: false },
     fallback: false,
     createdAt: "2026-03-04T10:02:00.000Z",
@@ -74,7 +82,7 @@ function turn(n: number, over: Partial<Turn> = {}): Turn {
 }
 
 function state(turns: Turn[] = [], status: SessionDetail["status"] = "active"): SessionStateResponse {
-  return { session: session(status), turns, debrief: null, listening: null };
+  return { session: session(status), turns, debrief: null, listening: null, materials: null };
 }
 
 const allowance = (over: Partial<SpeechAllowance> = {}): SpeechAllowance => ({
@@ -175,7 +183,7 @@ function open(engine: TestEngine, options: { initial?: SessionStateResponse; who
       json({ turnId, listening: { playedAt: body.event === "played" ? "t" : null, revealedAt: body.event === "revealed" ? "t" : null } }),
     );
   }
-  renderApp(`/session/${ID}`, routes, { speech: env });
+  renderApp(`/session/${ID}?step=speak`, routes, { speech: env });
   return { posted, fetchToken };
 }
 
@@ -266,7 +274,7 @@ describe("speaking a reply (SPEC §7.1)", () => {
           throw Object.assign(new (await import("../../src/client/lib/api")).ApiRequestError("BUDGET_EXCEEDED", "This month's free speech allowance is used up.", 429, false));
         }),
     };
-    renderApp(`/session/${ID}`, { "/api/v1/me": () => json(me()), [SESSION]: () => json(state()) }, { speech: env });
+    renderApp(`/session/${ID}?step=speak`, { "/api/v1/me": () => json(me()), [SESSION]: () => json(state()) }, { speech: env });
     await userEvent.click(await speakButton());
     expect(await screen.findByRole("alert")).toHaveTextContent("This month's free speech allowance is used up.");
     expect(posted).toEqual(["token"]);

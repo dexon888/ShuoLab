@@ -1,6 +1,6 @@
 import type { D1Database } from "@cloudflare/workers-types";
 import { usageWarnings, getColloquialSource, type ColloquialChannel, type ColloquialRegister, type CurrencyStatus } from "../../shared/colloquial";
-import { getEdition, isHskBand, type HskBand } from "../../shared/curriculum";
+import { HSK_BANDS, getEdition, isHskBand, type HskBand } from "../../shared/curriculum";
 import { ACTIVITY_GAP_CAP_SECONDS } from "../../shared/debrief";
 import type { SessionMinutes, SessionStatus } from "../../shared/learning";
 import {
@@ -22,11 +22,13 @@ import {
   buildFreeChatPlan,
   buildHskPlan,
   nextBand,
+  weakestSkill,
   type CandidateItem,
   type ColloquialPick,
 } from "./planner";
 import { getSettings } from "./settings";
 import { applyRetention } from "./owner-data";
+import { characterLists, daysBefore, grammarCandidates, introTopics, metWords, missedWords, skillStats, topicsAndTasks } from "./plan-inputs";
 import { FREE_CHAT_SITUATION, situationFor } from "./situations";
 
 const UNFINISHED: readonly SessionStatus[] = ["planned", "active", "paused"];
@@ -142,8 +144,12 @@ ORDER BY source_id LIMIT ?3`,
   return candidates([...fresh.results, ...wrapped.results]);
 }
 
-/** Entries that earlier live sessions introduced, longest-ago first. */
-async function reviewCandidates(d1: D1Database, editionId: string, limit: number): Promise<CandidateItem[]> {
+/**
+ * Entries that earlier live sessions introduced and that are not mastered for
+ * both reading and listening, last targeted two or more days ago, longest-ago
+ * first (SPEC §6.2 priority b).
+ */
+async function reviewCandidates(d1: D1Database, editionId: string, limit: number, before = "9999-12-31"): Promise<CandidateItem[]> {
   const rows = await d1
     .prepare(
       `SELECT ci.id, ci.source_id, ci.hsk_band, ci.hanzi, ci.pinyin
@@ -151,11 +157,14 @@ FROM session_targets st
 JOIN sessions s ON s.id = st.session_id
 JOIN curriculum_items ci ON ci.id = st.curriculum_item_id
 WHERE s.status <> 'abandoned' AND ci.edition_id = ?1 AND ci.item_type = 'vocab' AND st.role <> 'stretch'
+  AND (SELECT COUNT(*) FROM mastery_states ms WHERE ms.curriculum_item_id = ci.id AND ms.state = 'mastered'
+       AND ms.skill IN ('reading','listening')) < 2
 GROUP BY ci.id
+HAVING MAX(s.local_study_date) <= ?3
 ORDER BY MAX(s.created_at) ASC, ci.source_id ASC
 LIMIT ?2`,
     )
-    .bind(editionId, limit)
+    .bind(editionId, limit, before)
     .all<ItemRow>();
   return candidates(rows.results);
 }
@@ -261,6 +270,41 @@ WHERE edition_id = ?1 AND item_type = 'vocab' AND id IN (SELECT value FROM json_
   if (active * 2 < plan.targets.length) {
     throw new ApiError("BAD_REQUEST", "Fewer than half of the targets are in the study band.");
   }
+  await assertPlanSectionsValid(d1, plan);
+}
+
+/** Grammar, characters, topic and task must be imported rows of the right type, at or below the study band. */
+async function assertPlanSectionsValid(d1: D1Database, plan: SessionPlan): Promise<void> {
+  const wanted = sectionItems(plan);
+  if (wanted.length === 0 || !plan.targetBand || !plan.editionId) return;
+  const rows = await d1
+    .prepare(
+      `SELECT id, item_type, hsk_band FROM curriculum_items
+WHERE edition_id = ?1 AND id IN (SELECT value FROM json_each(?2))`,
+    )
+    .bind(plan.editionId, JSON.stringify(wanted.map((w) => w.id)))
+    .all<{ id: string; item_type: string; hsk_band: string }>();
+  const found = new Map(rows.results.map((r) => [r.id, r]));
+  const limit = HSK_BANDS.indexOf(plan.targetBand);
+  for (const w of wanted) {
+    const row = found.get(w.id);
+    if (!row || row.item_type !== w.type) {
+      throw new ApiError("BAD_REQUEST", "The plan references a grammar point, character, topic or task that is not imported.");
+    }
+    if (!isHskBand(row.hsk_band) || HSK_BANDS.indexOf(row.hsk_band) > limit) {
+      throw new ApiError("BAD_REQUEST", "A grammar point, character, topic or task in the plan is above the study band.");
+    }
+  }
+}
+
+/** The section rows a plan targets, in the order they are stored. */
+function sectionItems(plan: SessionPlan): { id: string; type: "grammar" | "character" | "topic" | "task"; role: "new" | "recycled" | "target" }[] {
+  return [
+    ...plan.grammar.map((g) => ({ id: g.itemId, type: "grammar" as const, role: g.role })),
+    ...plan.characters.map((c) => ({ id: c.itemId, type: "character" as const, role: "target" as const })),
+    ...(plan.topic ? [{ id: plan.topic.itemId, type: "topic" as const, role: "target" as const }] : []),
+    ...(plan.task ? [{ id: plan.task.itemId, type: "task" as const, role: "target" as const }] : []),
+  ];
 }
 
 async function insertSession(d1: D1Database, id: string, plan: SessionPlan, createdAt: string): Promise<void> {
@@ -275,6 +319,11 @@ VALUES (?1, ?2, ?3, ?4, ?5, 'planned', ?6, ?7)`,
       d1
         .prepare("INSERT INTO session_targets (session_id, curriculum_item_id, role, position) VALUES (?1, ?2, ?3, ?4)")
         .bind(id, target.itemId, target.role, position),
+    ),
+    ...sectionItems(plan).map((item, position) =>
+      d1
+        .prepare("INSERT INTO session_items (session_id, curriculum_item_id, item_type, role, position) VALUES (?1, ?2, ?3, ?4, ?5)")
+        .bind(id, item.id, item.type, item.role, position),
     ),
   ];
   // One batch is one transaction: a session is never saved without its targets.
@@ -342,12 +391,19 @@ export async function planSession(d1: D1Database, request: PlanRequest, now: Dat
       .first<{ n: number }>();
     const sessionIndex = prior?.n ?? 0;
 
-    const [active, review, stretch, colloquial] = await Promise.all([
+    const [active, review, stretch, colloquial, missed, grammar, characters, met, stats] = await Promise.all([
       bandCandidates(d1, editionId, targetBand, wanted),
-      reviewCandidates(d1, editionId, wanted),
+      reviewCandidates(d1, editionId, wanted, daysBefore(date, 2)),
       stretchBand ? bandCandidates(d1, editionId, stretchBand, 1) : Promise.resolve([]),
       pickColloquial(d1, settings.slangIntensity, sessionIndex),
+      missedWords(d1, editionId, now),
+      grammarCandidates(d1, editionId, targetBand, date),
+      characterLists(d1, editionId, targetBand),
+      metWords(d1, editionId),
+      skillStats(d1, now),
     ]);
+    const avoid = await introTopics(d1, [...missed, ...review].map((c) => c.id));
+    const { topics, tasks } = await topicsAndTasks(d1, editionId, targetBand, sessionIndex, avoid);
     if (active.length === 0) {
       throw new ApiError("CURRICULUM_MISSING", "No vocabulary is imported for that band.");
     }
@@ -364,6 +420,14 @@ export async function planSession(d1: D1Database, request: PlanRequest, now: Dat
       reviewCandidates: review,
       stretchCandidates: stretch,
       colloquial,
+      missedCandidates: missed,
+      recycledGrammar: grammar.recycled,
+      newGrammar: grammar.fresh,
+      characters,
+      metWords: met,
+      topics,
+      tasks,
+      weakestSkill: weakestSkill(stats),
     });
   }
 

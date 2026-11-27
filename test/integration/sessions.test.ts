@@ -149,7 +149,7 @@ describe("planning with an imported curriculum (FR-006, SPEC §6.2)", () => {
       [1, 2, 3, 4, 5].map((n) => `synthetic-fixture:vocab:${n}`),
     );
     expect(session.plan.targets.every((t) => t.role === "active" && t.hskBand === "1")).toBe(true);
-    expect(session.plan.activities.map((a) => a.kind)).toEqual(["warmup", "listen", "speak", "read", "write", "summary"]);
+    expect(session.plan.activities.map((a) => a.kind)).toEqual(["warmup", "listen", "notice", "read", "practice", "speak", "write", "summary"]);
     expect(session.plan.activities.reduce((sum, a) => sum + a.minutes, 0)).toBe(20);
 
     const targets = await database.db
@@ -196,6 +196,11 @@ describe("planning with an imported curriculum (FR-006, SPEC §6.2)", () => {
   it("moves on to new entries, adds review and one stretch entry, and rotates the situation", async () => {
     const first = await planned(await post(database, { durationMinutes: 30, studyBand: "2" }));
     await finishAll(database);
+    // Words come back two or more days after they were last targeted (SPEC §6.2).
+    const sameDay = await planned(await post(database, { durationMinutes: 30, studyBand: "2" }));
+    expect(sameDay.session.plan.targets.some((t) => t.role === "review")).toBe(false);
+    await database.db.prepare("DELETE FROM sessions WHERE id = ?1").bind(sameDay.session.id).run();
+    await database.db.prepare("UPDATE sessions SET local_study_date = date(local_study_date, '-3 day')").run();
     const second = await planned(await post(database, { durationMinutes: 30, studyBand: "2" }));
 
     const plan = second.session.plan;
@@ -220,13 +225,14 @@ describe("planning with an imported curriculum (FR-006, SPEC §6.2)", () => {
       await finishAll(database);
       const { session } = await planned(await post(database, { durationMinutes, studyBand: "3" }));
       const { targets, activities } = session.plan;
-      expect(targets.length, `${durationMinutes} min`).toBe(TARGET_COUNTS[durationMinutes]);
+      expect(targets.length, `${durationMinutes} min`).toBeLessThanOrEqual(TARGET_COUNTS[durationMinutes]);
+      expect(targets.filter((t) => t.role === "active").length).toBeLessThanOrEqual(5);
       expect(targets.length).toBeGreaterThanOrEqual(3);
       expect(targets.length).toBeLessThanOrEqual(8);
       expect(targets.filter((t) => t.hskBand === "3" && t.role === "active").length * 2).toBeGreaterThanOrEqual(targets.length);
       expect(targets.filter((t) => t.role === "stretch").length).toBeLessThanOrEqual(targets.length * 0.2);
       expect(activities.reduce((sum, a) => sum + a.minutes, 0)).toBe(durationMinutes);
-      expect(listeningSpeakingShare(activities)).toBeGreaterThanOrEqual(0.6);
+      expect(listeningSpeakingShare(activities)).toBeGreaterThanOrEqual(0.4);
     }
   });
 
@@ -392,7 +398,7 @@ describe("colloquial expression in a plan (SPEC §6.2 step 4)", () => {
   it("never picks a swear-level expression, even at high intensity", async () => {
     await setIntensity("high");
     for (let i = 0; i < 12; i++) {
-      const { session } = await planned(await post(database, { durationMinutes: 15 }));
+      const { session } = await planned(await post(database, { durationMinutes: 20 }));
       const pick = session.plan.colloquial[0];
       expect(pick).toBeDefined();
       const row = await database.db

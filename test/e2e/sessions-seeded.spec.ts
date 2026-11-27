@@ -20,6 +20,17 @@ async function openTodaysPlan(page: Page) {
   const open = page.getByRole("link", { name: /Open today's plan|Resume today's session/ });
   await start.or(open).first().click();
   await expect(page).toHaveURL(/\/session\/[0-9a-f-]{36}$/);
+  await showWords(page);
+}
+
+/** Once a session has started, its words fold away under the steps; open them. */
+async function showWords(page: Page) {
+  await expect(page.getByRole("navigation", { name: "Session steps" })).toBeVisible();
+  const folded = page.getByText("Today's words, grammar and characters");
+  if (await folded.isVisible()) {
+    const open = await page.locator("details", { has: folded }).evaluate((d) => (d as HTMLDetailsElement).open);
+    if (!open) await folded.click();
+  }
 }
 
 test.describe("planning today's session (SPEC §5.2, §5.3, FR-005, FR-006)", () => {
@@ -37,9 +48,11 @@ test.describe("planning today's session (SPEC §5.2, §5.3, FR-005, FR-006)", ()
     expect(count).toBeLessThanOrEqual(8);
     await expect(words).toContainText("It is not a measured level.");
 
-    const plan = page.getByRole("region", { name: "Plan" });
-    await expect(plan.getByRole("listitem")).toHaveCount(6);
-    await expect(plan).toContainText(/\d+% of the time is listening and speaking\./);
+    // The session runs as a fixed sequence of steps (SPEC §5.3).
+    const steps = page.getByRole("navigation", { name: "Session steps" });
+    await expect(steps.getByRole("button")).toHaveCount(8);
+    await expect(steps).toContainText(/\d+% of the time is listening and speaking\./);
+    await steps.getByRole("button", { name: /Conversation/ }).click();
     await expect(page.getByRole("region", { name: "Conversation" }).getByLabel("Your reply in Chinese")).toBeVisible();
 
     const overflow = await page.evaluate(
@@ -57,6 +70,7 @@ test.describe("planning today's session (SPEC §5.2, §5.3, FR-005, FR-006)", ()
     const before = await words.getByRole("link").allInnerTexts();
 
     await page.reload();
+    await showWords(page);
     await expect(words.getByRole("link").first()).toBeVisible();
     expect(await words.getByRole("link").allInnerTexts()).toEqual(before);
 

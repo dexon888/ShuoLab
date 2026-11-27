@@ -26,6 +26,12 @@ async function expectNoSidewaysScroll(page: Page, where: string) {
 const turns = (page: Page) => page.getByRole("list", { name: "Conversation so far" }).getByRole("listitem");
 const box = (page: Page) => page.getByLabel("Your reply in Chinese");
 
+/** Opens one step of the session (SPEC §5.3) from the steps list. */
+async function step(page: Page, title: string) {
+  await page.getByRole("navigation", { name: "Session steps" }).getByRole("button", { name: new RegExp(`^\\d+\\. ${title}`) }).click();
+  await expect(page.getByRole("region", { name: title })).toBeVisible();
+}
+
 async function say(page: Page, text: string, expectedTurns: number) {
   await box(page).fill(text);
   await box(page).press("Enter");
@@ -40,6 +46,7 @@ test("a typed session from Today to the summary, surviving reloads (FR-010, FR-0
   await page.getByRole("button", { name: "Start today's session" }).click();
   await expect(page).toHaveURL(/\/session\/[0-9a-f-]{36}$/);
   const url = page.url();
+  await step(page, "Conversation");
 
   await expect(page.getByText("Practice stand-in tutor.")).toBeVisible();
   await expect(page.getByText(/Planned, not started/)).toBeVisible();
@@ -72,6 +79,7 @@ test("a typed session from Today to the summary, surviving reloads (FR-010, FR-0
   await page.goto("/");
   await page.getByRole("link", { name: "Resume today's session" }).click();
   await expect(page).toHaveURL(url);
+  await step(page, "Conversation");
   await page.getByRole("button", { name: "Resume" }).click();
   await say(page, "我们去哪儿吃？", 3);
 
@@ -105,6 +113,7 @@ test("a message that fails to send is kept and saved once when sent again (REL-0
   await page.goto("/");
   await page.getByRole("button", { name: "Start today's session" }).click();
   await expect(page).toHaveURL(/\/session\/[0-9a-f-]{36}$/);
+  await step(page, "Conversation");
 
   // The connection drops for the first attempt only.
   const ids: string[] = [];
@@ -144,6 +153,7 @@ test("a message that fails to send is kept and saved once when sent again (REL-0
 test("the message box and controls are large enough to tap and work from the keyboard", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("link", { name: /Resume today's session|Open today's plan/ }).click();
+  await step(page, "Conversation");
 
   for (const name of ["Send", "Pause", "Finish session"]) {
     const size = await page.getByRole("button", { name, exact: true }).boundingBox();
@@ -174,6 +184,7 @@ test("speaking with the stand-in: a spoken turn, an unsure transcript to check, 
   });
   await page.goto("/");
   await page.getByRole("link", { name: /Resume today's session|Open today's plan/ }).click();
+  await step(page, "Conversation");
   // The earlier tests left two turns in today's session; wait for them before counting.
   await expect(turns(page).first()).toBeVisible();
   const before = await turns(page).count();
@@ -231,6 +242,7 @@ test("listen first: hear an exchange, answer before seeing the text, then read i
   const errors = trackErrors(page);
   await page.goto("/");
   await page.getByRole("link", { name: /Resume today's session|Open today's plan/ }).click();
+  await step(page, "Listen first");
   const listen = page.getByRole("region", { name: "Listen first" });
 
   await listen.getByRole("button", { name: "Start listening" }).click();
@@ -265,6 +277,48 @@ test("listen first: hear an exchange, answer before seeing the text, then read i
     const size = await listen.getByRole("button", { name, exact: true }).boundingBox();
     expect(size?.height ?? 0, `${name} button height`).toBeGreaterThanOrEqual(44);
   }
+  expect(errors).toEqual([]);
+});
+
+test("notice, read, guided practice and write: the rest of the session's steps (SPEC §5.3)", async ({ page }) => {
+  const errors = trackErrors(page);
+  await page.goto("/");
+  await page.getByRole("link", { name: /Resume today's session|Open today's plan/ }).click();
+
+  // Notice: the exchange heard earlier, now with today's words marked.
+  await step(page, "Notice");
+  await expect(page.getByRole("region", { name: "Notice" }).locator("mark").first()).toBeVisible();
+
+  // Read: written on request, answered before the translation.
+  await step(page, "Read");
+  const read = page.getByRole("region", { name: "Read" });
+  await read.getByRole("button", { name: "Start" }).click();
+  await expect(read.getByText("Practice stand-in", { exact: false }).or(read.locator("p").first())).toBeVisible();
+  await read.getByLabel("Today's words").check();
+  await read.getByRole("button", { name: "Check answers" }).click();
+  await expect(read.getByText(/1 of 1 right, before the translation\./)).toBeVisible();
+
+  // Guided practice: checked by fixed criteria, with a model answer after.
+  await step(page, "Guided practice");
+  const practice = page.getByRole("region", { name: "Guided practice" });
+  await practice.getByLabel("Your answer to prompt 1").fill("我今天很好。");
+  await practice.getByRole("button", { name: "Check" }).first().click();
+  await expect(practice.getByText("One way to say it:", { exact: false })).toBeVisible();
+
+  // Write: the criteria are shown first, then which were met.
+  await step(page, "Write");
+  const write = page.getByRole("region", { name: "Write" });
+  await expect(write.getByText(/Chinese characters$/)).toBeVisible();
+  await write.getByLabel("Your writing").fill("我今天学了很多新词，我觉得很有意思，明天还想学。");
+  await write.getByRole("button", { name: "Check my writing" }).click();
+  await expect(write.getByText(/At least \d+ Chinese characters: yes/)).toBeVisible();
+  await expectNoSidewaysScroll(page, "on the writing step");
+
+  // Everything is on the server, once.
+  const sessionId = page.url().split("/").pop()?.split("?")[0];
+  const saved = await (await page.request.get(`/api/v1/sessions/${sessionId}`)).json();
+  expect(saved.materials.reading.correct).toBe(1);
+  expect(saved.materials.writing.result.answer).toContain("我今天学了很多新词");
   expect(errors).toEqual([]);
 });
 

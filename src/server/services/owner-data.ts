@@ -28,6 +28,8 @@ const ORDER: Readonly<Record<OwnerTable, string>> = {
   owner_settings: "owner_id",
   sessions: "created_at, id",
   session_targets: "session_id, position",
+  session_items: "session_id, position",
+  session_materials: "created_at, session_id",
   conversation_turns: "session_id, created_at, id",
   listening_exercises: "created_at, id",
   review_cards: "created_at, id",
@@ -233,6 +235,15 @@ export async function applyRetention(d1: D1Database, now: Date = new Date()): Pr
     .prepare(
       `DELETE FROM conversation_turns WHERE session_id IN (
   SELECT id FROM sessions WHERE local_study_date < ?1 AND status IN ('complete','abandoned'))`,
+    )
+    .bind(cutoff)
+    .run();
+  // Written and spoken answers to guided practice and writing are learner text too.
+  await d1
+    .prepare(
+      `UPDATE session_materials SET practice_json = NULL, writing_json = NULL WHERE session_id IN (
+  SELECT id FROM sessions WHERE local_study_date < ?1 AND status IN ('complete','abandoned'))
+  AND (practice_json IS NOT NULL OR writing_json IS NOT NULL)`,
     )
     .bind(cutoff)
     .run();

@@ -33,6 +33,8 @@ function output(over: Partial<TutorOutput> = {}): TutorOutput {
     optional_pinyin: null,
     optional_translation_en: "What do you usually like to do on weekends?",
     referenced_curriculum_item_ids: ["test:vocab:301"],
+    used_grammar_ids: [],
+    elicited_grammar_ids: [],
     referenced_colloquial_ids: [],
     semantic_feedback: { understood_intent: true, corrections: [], encouragement_zh: "不错！" },
     suggested_followup_topic: null,

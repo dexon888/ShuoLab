@@ -42,6 +42,11 @@ function plan(over: Partial<SessionPlan> = {}): SessionPlan {
       { itemId: "synthetic-fixture:vocab:501", sourceId: 501, hskBand: "3", hanzi: "样例词501", pinyin: "yànglì 501", role: "stretch" },
     ],
     grammarIds: [],
+    grammar: [],
+    characters: [],
+    topic: null,
+    task: null,
+    weakestSkill: null,
     colloquial: [],
     levelConstraints: { activeBand: "2", stretchBand: "3" },
     activities: [
@@ -218,21 +223,26 @@ describe("session plan page (SPEC §5.3, FR-006)", () => {
     expect(words).toHaveTextContent("the band you chose to study. It is not a measured level.");
     expect(words).toHaveTextContent("Appearing here is not evidence that you know a word.");
 
-    const planRegion = screen.getByRole("region", { name: "Plan" });
-    expect(within(planRegion).getAllByRole("listitem")).toHaveLength(6);
-    expect(planRegion).toHaveTextContent("9 min");
-    expect(planRegion).toHaveTextContent("70% of the time is listening and speaking.");
+    // The steps, in order, with their minutes (SPEC §5.3).
+    const steps = screen.getByRole("navigation", { name: "Session steps" });
+    expect(within(steps).getAllByRole("button")).toHaveLength(detail().plan.activities.length);
+    expect(within(steps).getByRole("button", { name: /^1\. / })).toHaveAttribute("aria-current", "step");
+    expect(steps).toHaveTextContent("of the time is listening and speaking.");
   });
 
-  it("labels synthetic data and offers the conversation below the plan before it starts", async () => {
+  it("labels synthetic data, starts on the first step below the plan, and moves between steps", async () => {
     renderApp(`/session/${ID}`, { "/api/v1/me": () => json(me()), [url]: () => json({ session: detail() }) });
     expect(await screen.findByText("Test data, not HSK content.")).toBeInTheDocument();
     const regions = screen.getAllByRole("region").map((r) => r.getAttribute("aria-labelledby"));
-    const conversation = screen.getByRole("region", { name: "Conversation" });
-    // Only the delete control comes after the conversation.
-    expect(regions.at(-2)).toBe(conversation.getAttribute("aria-labelledby"));
+    // The words come before the current step; only the delete control comes after it.
+    expect(regions[0]).toBe(screen.getByRole("region", { name: "Words for this session" }).getAttribute("aria-labelledby"));
     expect(regions.at(-1)).toBe(screen.getByRole("region", { name: "Delete this session" }).getAttribute("aria-labelledby"));
+    expect(screen.getByRole("region", { name: "Warm-up" })).toBeInTheDocument();
+
+    await userEvent.click(within(screen.getByRole("navigation", { name: "Session steps" })).getByRole("button", { name: /Conversation/ }));
+    const conversation = await screen.findByRole("region", { name: "Conversation" });
     expect(within(conversation).getByLabelText("Your reply in Chinese")).toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "Warm-up" })).not.toBeInTheDocument();
   });
 
   it("says a suggested band is a suggestion", async () => {

@@ -7,6 +7,8 @@
  * second charge.
  */
 import type { D1Database } from "@cloudflare/workers-types";
+import { ELICIT_AFTER_TURNS, grammarMarkers, usesGrammar } from "../../shared/lesson";
+import { parseItemDetails } from "../../shared/sections";
 import {
   MAX_TURNS_PER_SESSION,
   turnSchema,
@@ -21,7 +23,9 @@ import { ApiError } from "../validation/errors";
 import { accrueSql, getSession } from "./sessions";
 import {
   buildInstructions,
+  checkGrammar,
   checkReferences,
+  type AllowedGrammar,
   fallbackReply,
   parseTutorOutput,
   type AllowedColloquial,
@@ -53,7 +57,10 @@ const TURN_COLUMNS =
   "id, client_turn_id, source_mode, asr_text, asr_uncertain, status, ai_reply_json, created_at, reply_played_at, transcript_revealed_at";
 
 /** What is stored in `ai_reply_json`: the validated reply, never raw model text. */
-type StoredReply = Pick<Turn, "reply" | "referencedCurriculumItemIds" | "referencedColloquialIds" | "feedback" | "fallback">;
+type StoredReply = Pick<
+  Turn,
+  "reply" | "referencedCurriculumItemIds" | "referencedColloquialIds" | "grammarUsedIds" | "grammarElicitedIds" | "learnerGrammarIds" | "feedback" | "fallback"
+>;
 
 function toTurn(row: TurnRow, position: number): Turn {
   let stored: unknown;
@@ -124,6 +131,23 @@ async function findTurn(d1: D1Database, sessionId: string, clientTurnId: string)
     .bind(sessionId, clientTurnId)
     .first<TurnRow>();
   return row ?? null;
+}
+
+/** The session's grammar points as the database has them, with their checkable patterns. */
+async function allowedGrammar(d1: D1Database, sessionId: string): Promise<AllowedGrammar[]> {
+  const rows = await d1
+    .prepare(
+      `SELECT ci.id, ci.hanzi, ci.metadata_json FROM session_items si JOIN curriculum_items ci ON ci.id = si.curriculum_item_id
+WHERE si.session_id = ?1 AND si.item_type = 'grammar' ORDER BY si.position`,
+    )
+    .bind(sessionId)
+    .all<{ id: string; hanzi: string; metadata_json: string | null }>();
+  return rows.results.map((r) => {
+    const details = parseItemDetails("grammar", r.metadata_json);
+    const markers = grammarMarkers(r.hanzi);
+    const example = details?.kind === "grammar" ? (details.examples.find((e) => usesGrammar(e, markers)) ?? null) : null;
+    return { id: r.id, name: r.hanzi, example, markers };
+  });
 }
 
 /** The session's targets as the database has them. The plan's own text is not trusted for this. */
@@ -275,11 +299,22 @@ export async function takeTurn(
   let stored: StoredReply | null = null;
   let spentUsd = 0;
   try {
-    const [targets, colloquial, history] = await Promise.all([
+    const [targets, colloquial, history, grammar] = await Promise.all([
       allowedTargets(d1, sessionId),
       allowedColloquial(d1, session.plan.colloquial),
       listTurns(d1, sessionId),
+      allowedGrammar(d1, sessionId),
     ]);
+    const learnerGrammarIds = grammar.filter((g) => usesGrammar(request.transcript, g.markers)).map((g) => g.id);
+    // SPEC §6.3: a point neither used nor invited by the learner's 4th turn must be invited now.
+    const mustElicit =
+      turnIndex + 1 >= ELICIT_AFTER_TURNS
+        ? grammar.filter(
+            (g) =>
+              !learnerGrammarIds.includes(g.id) &&
+              !history.some((t) => t.grammarUsedIds.includes(g.id) || t.grammarElicitedIds.includes(g.id) || t.learnerGrammarIds.includes(g.id)),
+          )
+        : [];
     const messages: TutorMessage[] = [
       ...history.slice(-HISTORY_TURNS).flatMap((t): TutorMessage[] => [
         { role: "user", content: t.learnerText },
@@ -290,7 +325,7 @@ export async function takeTurn(
 
     let retryReason: RejectionReason | null = null;
     for (let attempt = 1; attempt <= MAX_ATTEMPTS && stored === null; attempt += 1) {
-      const instructions = buildInstructions({ plan: session.plan, targets, colloquial, asrUncertain: uncertain, retryReason });
+      const instructions = buildInstructions({ plan: session.plan, targets, colloquial, grammar, mustElicit, asrUncertain: uncertain, retryReason });
       let result;
       try {
         result = await provider.generate({
@@ -299,6 +334,8 @@ export async function takeTurn(
           context: {
             targets: targets.map((t) => ({ id: t.id, hanzi: t.hanzi })),
             colloquial: colloquial.map((c) => ({ id: c.id, term: c.term })),
+            grammar: grammar.map((g) => ({ id: g.id, name: g.name, example: g.example })),
+            mustElicit: mustElicit.map((g) => g.id),
             turnIndex,
             attempt,
           },
@@ -333,6 +370,9 @@ export async function takeTurn(
           },
           referencedCurriculumItemIds: refs.curriculumItemIds,
           referencedColloquialIds: refs.colloquialIds,
+          grammarUsedIds: checkGrammar(parsed.output.used_grammar_ids, grammar, parsed.output.spoken_reply_zh),
+          grammarElicitedIds: checkGrammar(parsed.output.elicited_grammar_ids, grammar, parsed.output.spoken_reply_zh),
+          learnerGrammarIds,
           feedback: {
             understoodIntent: feedback.understood_intent,
             // An unsure transcript is not evidence of a learner error (SPEC §6.3).
@@ -356,6 +396,9 @@ export async function takeTurn(
         reply: { spokenZh: prepared.zh, pinyin: prepared.pinyin, translationEn: prepared.en },
         referencedCurriculumItemIds: [],
         referencedColloquialIds: [],
+        grammarUsedIds: [],
+        grammarElicitedIds: [],
+        learnerGrammarIds,
         feedback: { understoodIntent: null, corrections: [], encouragementZh: null, transcriptUncertain: uncertain },
         fallback: true,
       };
@@ -376,6 +419,15 @@ WHERE id = ?1 AND status = 'pending'`,
 WHERE id = ?1 AND status IN ('planned','active')`,
         )
         .bind(sessionId, completedAt, provider.model),
+      // Using a session's grammar point in conversation is practice evidence for it (SPEC §6.3), not recall.
+      ...learnerGrammarIds.map((grammarId) =>
+        d1
+          .prepare(
+            `INSERT INTO practice_attempts (id, session_id, curriculum_item_id, skill, assessment_type, prompt_id, user_response, score, score_source, is_qualifying_recall, success, attempted_at)
+VALUES (?1, ?2, ?3, ?4, 'conversation_use', ?5, ?6, 1, 'rubric', 0, 1, ?7)`,
+          )
+          .bind(crypto.randomUUID(), sessionId, grammarId, request.sourceMode === "speech" ? "speaking" : "writing", `turn:${turnId}`, request.transcript, completedAt),
+      ),
     ]);
   } catch (error) {
     await markFailed(d1, turnId);

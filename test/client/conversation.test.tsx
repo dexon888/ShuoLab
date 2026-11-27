@@ -36,6 +36,11 @@ const plan: SessionPlan = {
     { itemId: "synthetic-fixture:vocab:501", sourceId: 501, hskBand: "3", hanzi: "火锅", pinyin: "huǒguō", role: "stretch" },
   ],
   grammarIds: [],
+  grammar: [],
+  characters: [],
+  topic: null,
+  task: null,
+  weakestSkill: null,
   colloquial: [],
   levelConstraints: { activeBand: "2", stretchBand: "3" },
   activities: [{ kind: "speak", skill: "speaking", minutes: 20, title: "Conversation", description: "Talk it through." }],
@@ -71,6 +76,9 @@ function turn(n: number, over: Partial<Turn> = {}): Turn {
     reply: { spokenZh: `你周末喜欢做什么？（${n}）`, pinyin: `Nǐ zhōumò xǐhuan zuò shénme? (${n})`, translationEn: `What do you like to do on weekends? (${n})` },
     referencedCurriculumItemIds: ["synthetic-fixture:vocab:301"],
     referencedColloquialIds: [],
+    grammarUsedIds: [],
+    grammarElicitedIds: [],
+    learnerGrammarIds: [],
     feedback: { understoodIntent: true, corrections: [], encouragementZh: null, transcriptUncertain: false },
     fallback: false,
     createdAt: "2026-03-04T10:02:00.000Z",
@@ -80,7 +88,7 @@ function turn(n: number, over: Partial<Turn> = {}): Turn {
 }
 
 function state(status: SessionDetail["status"] = "active", turns: Turn[] = [], debrief: Debrief | null = null): SessionStateResponse {
-  return { session: session(status), turns, debrief, listening: null };
+  return { session: session(status), turns, debrief, listening: null, materials: null };
 }
 
 function answered(body: { clientTurnId: string; transcript: string }, n = 0, over: Partial<TurnResponse> = {}): TurnResponse {
@@ -107,7 +115,7 @@ interface Sent {
 /** Renders the session page; `turnResponder` answers each POST of a turn in order. */
 function open(initial: SessionStateResponse, extra: Record<string, Responder> = {}, who: MeResponse = me()) {
   const sent: Sent[] = [];
-  const fetchMock = renderApp(`/session/${ID}`, {
+  const fetchMock = renderApp(`/session/${ID}?step=${initial.session.status === "complete" ? "summary" : "speak"}`, {
     "/api/v1/me": () => json(who),
     [SESSION]: () => json(initial),
     ...extra,
@@ -151,12 +159,11 @@ describe("typed conversation (SPEC §5.3, §7.2)", () => {
     expect(await box()).toHaveFocus();
     expect(window.localStorage.getItem(DRAFT_KEY)).toBeNull();
 
-    // Once talking, the header and the controls reflect it, and the conversation comes before the plan.
+    // Once talking, the header and the controls reflect it, and the plan folds away below the steps.
     expect(screen.getByText(/In progress/)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Pause" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Finish session" })).toBeInTheDocument();
-    const labels = screen.getAllByRole("region").map((r) => r.querySelector("h2")?.textContent);
-    expect(labels.indexOf("Conversation")).toBeLessThan(labels.indexOf("Plan"));
+    expect(screen.getByText("Today's words, grammar and characters")).toBeInTheDocument();
   });
 
   it("sends with Enter but not with Shift+Enter, and never sends an empty message", async () => {

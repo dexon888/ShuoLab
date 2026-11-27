@@ -53,6 +53,11 @@ function session(status: SessionDetail["status"] = "active"): SessionDetail {
       situation: { id: "free-chat", sourceType: "app-authored", titleZh: "自由聊天", titleEn: "Open conversation", communicativeGoal: "Talk." },
       targets: [],
       grammarIds: [],
+      grammar: [],
+      characters: [],
+      topic: null,
+      task: null,
+      weakestSkill: null,
       colloquial: [],
       levelConstraints: { activeBand: null, stretchBand: null },
       activities: [{ kind: "listen", skill: "listening", minutes: 3, title: "Listen first", description: "Hear it." }],
@@ -69,6 +74,7 @@ function exercise(over: Partial<ListeningExercise> = {}): ListeningExercise {
     source: "generated",
     model: "gpt-6-luna",
     standIn: false,
+    coversTargets: true,
     lines: [
       { speaker: "A", zh: "你周末有空吗？", pinyin: "Nǐ zhōumò yǒu kòng ma?", en: "Are you free this weekend?" },
       { speaker: "B", zh: "星期六下午有空。", pinyin: "Xīngqīliù xiàwǔ yǒu kòng.", en: "I'm free on Saturday afternoon." },
@@ -91,7 +97,7 @@ function exercise(over: Partial<ListeningExercise> = {}): ListeningExercise {
 }
 
 function state(listening: ListeningExercise | null = null, status: SessionDetail["status"] = "active"): SessionStateResponse {
-  return { session: session(status), turns: [], debrief: null, listening };
+  return { session: session(status), turns: [], debrief: null, listening, materials: null };
 }
 
 class TestEngine implements SpeechEngine {
@@ -134,7 +140,7 @@ function open(options: { initial?: SessionStateResponse; who?: MeResponse; start
   const body = (init?: RequestInit) => JSON.parse(String(init?.body ?? "{}")) as Record<string, unknown>;
 
   renderApp(
-    `/session/${ID}`,
+    `/session/${ID}?step=listen`,
     {
       "/api/v1/me": () => json(options.who ?? me()),
       [SESSION]: () => json({ ...(options.initial ?? state()), listening: current }),
@@ -263,7 +269,8 @@ describe("the listen-first exercise (SPEC §5.3 step 2)", () => {
 
   it("is not shown for a finished session without an exercise", async () => {
     open({ initial: state(null, "complete") });
-    expect(await screen.findByRole("heading", { name: "Conversation" })).toBeInTheDocument();
-    expect(screen.queryByRole("region", { name: "Listen first" })).not.toBeInTheDocument();
+    const listen = await section();
+    expect(listen.getByText("This session ended without a listening exercise.")).toBeInTheDocument();
+    expect(listen.queryByRole("button", { name: "Start listening" })).not.toBeInTheDocument();
   });
 });
