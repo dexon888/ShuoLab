@@ -4,6 +4,7 @@
  * It makes no claim about what the learner now knows.
  */
 import { z } from "zod";
+import { materialsSchema } from "./lesson";
 import { HSK_BANDS } from "./curriculum";
 import { listeningExerciseSchema, listeningResultSchema } from "./listening";
 import { TARGET_ROLES, sessionDetailSchema } from "./session";
@@ -66,5 +67,7 @@ export const sessionStateResponseSchema = z.object({
   debrief: debriefSchema.nullable().default(null),
   /** The session's listen-first exercise, once written. */
   listening: listeningExerciseSchema.nullable().default(null),
+  /** The session's reading, guided practice and writing, once written. */
+  materials: materialsSchema.nullable().default(null),
 });
 export type SessionStateResponse = z.infer<typeof sessionStateResponseSchema>;

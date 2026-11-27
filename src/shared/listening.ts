@@ -126,6 +126,8 @@ export const listeningExerciseSchema = z.object({
   standIn: z.boolean(),
   lines: z.array(listeningLineSchema),
   questions: z.array(listeningQuestionSchema),
+  /** False when the exchange did not contain every target grammar pattern and half the new words (SPEC §5.3). */
+  coversTargets: z.boolean().default(true),
   createdAt: z.string(),
   playedAt: z.string().nullable(),
   revealedAt: z.string().nullable(),

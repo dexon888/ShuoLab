@@ -5,6 +5,7 @@ import {
   buildHskPlan,
   nextBand,
   targetMix,
+  weakestSkill,
   type CandidateItem,
   type HskPlanInput,
 } from "../../src/server/services/planner";
@@ -47,33 +48,39 @@ function input(over: Partial<HskPlanInput> = {}): HskPlanInput {
 }
 
 describe("time budget (SPEC §5.3)", () => {
-  it("adds up to the session length for every option", () => {
+  it("adds up to the session length for every option, with or without a weak skill", () => {
     for (const minutes of SESSION_MINUTE_OPTIONS) {
-      const activities = buildActivities(minutes);
-      expect(activities.reduce((sum, a) => sum + a.minutes, 0)).toBe(minutes);
-      expect(activities.every((a) => a.minutes >= 1)).toBe(true);
+      for (const weak of [null, "listening", "speaking", "reading", "writing"] as const) {
+        const activities = buildActivities(minutes, weak);
+        expect(activities.reduce((sum, a) => sum + a.minutes, 0)).toBe(minutes);
+        expect(activities.filter((a) => a.kind !== "summary").every((a) => a.minutes >= 1)).toBe(true);
+      }
     }
   });
 
-  it("matches the 25-minute target: 5 listening, 12 speaking, 4 reading, 4 writing and review", () => {
-    const b = TIME_BUDGETS[25];
-    expect(b.listen).toBe(5);
-    expect(b.warmup + b.speak).toBe(12);
-    expect(b.read).toBe(4);
-    expect(b.write + b.summary).toBe(4);
+  it("matches the 25-minute spine: warm-up 3, listen 4, notice 2, read 3, practice 3, conversation 7, write 3", () => {
+    expect(TIME_BUDGETS[25]).toEqual({ warmup: 3, listen: 4, notice: 2, read: 3, practice: 3, speak: 7, write: 3, summary: 0 });
   });
 
-  it("keeps listening and speaking between 60% and 70% of every session", () => {
+  it("keeps listening and speaking at 40% or more of every session, even after a shift", () => {
     for (const minutes of SESSION_MINUTE_OPTIONS) {
-      const share = listeningSpeakingShare(buildActivities(minutes));
-      expect(share, `${minutes} min`).toBeGreaterThanOrEqual(0.6);
-      expect(share, `${minutes} min`).toBeLessThanOrEqual(0.7);
+      for (const weak of [null, "listening", "speaking", "reading", "writing"] as const) {
+        expect(listeningSpeakingShare(buildActivities(minutes, weak)), `${minutes} min, ${weak}`).toBeGreaterThanOrEqual(0.4);
+      }
     }
+    expect(listeningSpeakingShare(buildActivities(25))).toBeGreaterThanOrEqual(0.55);
   });
 
-  it("runs the activities in the order warm-up, listen, speak, read, write, summary", () => {
-    expect(buildActivities(20).map((a) => a.kind)).toEqual(["warmup", "listen", "speak", "read", "write", "summary"]);
+  it("runs every step of the spine in order", () => {
+    expect(buildActivities(20).map((a) => a.kind)).toEqual(["warmup", "listen", "notice", "read", "practice", "speak", "write", "summary"]);
     expect(buildActivities(20)[1]?.skill).toBe("listening");
+  });
+
+  it("moves minutes to the weakest skill's step", () => {
+    const base = buildActivities(25);
+    const shifted = buildActivities(25, "writing");
+    const write = (a: typeof base) => a.find((x) => x.kind === "write")?.minutes ?? 0;
+    expect(write(shifted)).toBe(write(base) + 2);
   });
 });
 
@@ -85,13 +92,14 @@ describe("target mix (SPEC §6.2 step 2)", () => {
     }
   });
 
-  it("always keeps at least half active and stretch at most 20%", () => {
+  it("never exceeds the total, keeps new words to 5 and stretch at most 20%", () => {
     for (const total of [3, 4, 5, 6, 7, 8]) {
       for (const review of [0, 1, 5, 50]) {
         for (const stretch of [0, 1, 9]) {
           const mix = targetMix(total, review, stretch);
-          expect(mix.active + mix.review + mix.stretch).toBe(total);
-          expect(mix.active * 2, JSON.stringify({ total, review, stretch })).toBeGreaterThanOrEqual(total);
+          expect(mix.active + mix.review + mix.stretch).toBeLessThanOrEqual(total);
+          expect(mix.active).toBeLessThanOrEqual(5);
+          expect(mix.active, JSON.stringify({ total, review, stretch })).toBeGreaterThanOrEqual(mix.review);
           expect(mix.stretch).toBeLessThanOrEqual(total * 0.2);
           expect(mix.review).toBeLessThanOrEqual(review);
         }
@@ -100,8 +108,10 @@ describe("target mix (SPEC §6.2 step 2)", () => {
   });
 
   it("has no review in a first session and no stretch in a short one", () => {
-    expect(targetMix(8, 0, 1)).toEqual({ active: 7, review: 0, stretch: 1 });
+    expect(targetMix(8, 0, 1)).toEqual({ active: 5, review: 0, stretch: 1 });
     expect(targetMix(4, 10, 1)).toEqual({ active: 3, review: 1, stretch: 0 });
+    // Recent misses always get room, up to three.
+    expect(targetMix(4, 10, 0, 3)).toEqual({ active: 1, review: 3, stretch: 0 });
   });
 });
 
@@ -112,25 +122,26 @@ describe("buildHskPlan", () => {
     expect(plan.targets.map((t) => t.role)).toEqual(["active", "active", "active", "active", "active", "review", "review", "stretch"]);
     expect(plan.levelConstraints).toEqual({ activeBand: "2", stretchBand: "3" });
     expect(plan.grammarIds).toEqual([]);
+    expect(plan.version).toBe(2);
   });
 
   it("takes candidates in the order given and is deterministic", () => {
     const a = buildHskPlan(input());
     const b = buildHskPlan(input());
     expect(a).toEqual(b);
-    expect(a.targets.map((t) => t.sourceId)).toEqual([301, 302, 303, 304, 305, 306, 307, 308]);
+    expect(a.targets.map((t) => t.sourceId)).toEqual([301, 302, 303, 304, 305]);
   });
 
   it("never lists the same entry twice, even if it is offered for two roles", () => {
     const shared = items("2", 301, 3);
     const plan = buildHskPlan(input({ reviewCandidates: shared, activeCandidates: [...shared, ...items("2", 304, 12)] }));
     expect(new Set(plan.targets.map((t) => t.itemId)).size).toBe(plan.targets.length);
-    expect(plan.targets).toHaveLength(8);
+    expect(plan.targets.filter((t) => t.role === "active").length).toBeLessThanOrEqual(5);
   });
 
   it("makes up a missing stretch entry at the study band", () => {
     const plan = buildHskPlan(input({ stretchCandidates: [] }));
-    expect(plan.targets).toHaveLength(8);
+    expect(plan.targets).toHaveLength(5);
     expect(plan.targets.every((t) => t.role === "active")).toBe(true);
     expect(plan.levelConstraints.stretchBand).toBeNull();
   });
@@ -175,5 +186,86 @@ describe("bands and dates", () => {
     expect(localStudyDate(instant, "UTC")).toBe("2026-03-04");
     expect(localStudyDate(instant, "Asia/Shanghai")).toBe("2026-03-05");
     expect(localStudyDate(new Date("2026-03-04T03:00:00.000Z"), "America/Los_Angeles")).toBe("2026-03-03");
+  });
+});
+
+describe("connected plan (SPEC §2.5, §6.2)", () => {
+  const g = (n: number, band: HskBand = "2") => ({
+    itemId: `test:grammar:${n}`,
+    sourceId: n,
+    hskBand: band,
+    name: `样例${n}`,
+    grammarType: "词类",
+    example: `这是样例${n}。`,
+    unverified: true,
+  });
+  const topic = { itemId: "test:topic:1", area: "基本信息", subject: "个人信息", details: "姓名、年龄", unverified: true };
+  const task = { itemId: "test:task:1", task: "问答个人基本信息", canDo: "能询问个人的基本信息。", unverified: true };
+
+  it("takes recent misses first, at most three", () => {
+    const plan = buildHskPlan(input({ durationMinutes: 20, missedCandidates: items("2", 101, 4), reviewCandidates: items("2", 201, 4) }));
+    expect(plan.targets.filter((t) => t.role === "review").map((t) => t.sourceId).slice(0, 3)).toEqual([101, 102, 103]);
+    expect(plan.targets.some((t) => t.sourceId === 104)).toBe(false);
+  });
+
+  it("picks one recycled and one new grammar point, and only one in 15 minutes", () => {
+    const plan = buildHskPlan(input({ recycledGrammar: [g(1)], newGrammar: [g(2), g(3)] }));
+    expect(plan.grammar.map((x) => [x.sourceId, x.role])).toEqual([[1, "recycled"], [2, "new"]]);
+    expect(plan.grammarIds).toEqual(["test:grammar:1", "test:grammar:2"]);
+    const short = buildHskPlan(input({ durationMinutes: 15, recycledGrammar: [g(1)], newGrammar: [g(2)] }));
+    expect(short.grammar).toHaveLength(1);
+    expect(buildHskPlan(input({ newGrammar: [g(2), g(3)] })).grammar.map((x) => x.sourceId)).toEqual([2]);
+  });
+
+  it("shows the target words' characters in their words, plus up to three from words already met", () => {
+    const plan = buildHskPlan(
+      input({
+        activeCandidates: [{ id: "t:1", sourceId: 1, hskBand: "2", hanzi: "学生", pinyin: null }],
+        characters: [
+          { itemId: "c:学", hanzi: "学", skill: "recognition", unverified: true },
+          { itemId: "c:学w", hanzi: "学", skill: "writing", unverified: true },
+          { itemId: "c:生", hanzi: "生", skill: "recognition", unverified: true },
+          { itemId: "c:老", hanzi: "老", skill: "recognition", unverified: true },
+          { itemId: "c:师", hanzi: "师", skill: "recognition", unverified: true },
+          { itemId: "c:朋", hanzi: "朋", skill: "recognition", unverified: true },
+          { itemId: "c:友", hanzi: "友", skill: "recognition", unverified: true },
+        ],
+        metWords: ["老师", "朋友"],
+      }),
+    );
+    expect(plan.characters.map((c) => [c.hanzi, c.skill, c.word])).toEqual([
+      ["学", "writing", "学生"],
+      ["生", "recognition", "学生"],
+      ["老", "recognition", "老师"],
+      ["师", "recognition", "老师"],
+      ["朋", "recognition", "朋友"],
+    ]);
+  });
+
+  it("sets the session in a syllabus topic and makes the task's can-do statement the goal", () => {
+    const plan = buildHskPlan(input({ topics: [topic], tasks: [task] }));
+    expect(plan.topic).toEqual(topic);
+    expect(plan.task).toEqual(task);
+    expect(plan.situation).toMatchObject({ sourceType: "syllabus", titleZh: "个人信息", communicativeGoal: task.canDo });
+    // Without both, the app-authored situation stays.
+    expect(buildHskPlan(input({ topics: [topic] })).situation.sourceType).toBe("app-authored");
+  });
+
+  it("allows slang only in sessions of 20 minutes or more", () => {
+    const colloquial = { id: "x", term: "靠谱", pinyin: null, meaningEn: "reliable", warnings: [], synthetic: true };
+    expect(buildHskPlan(input({ durationMinutes: 15, colloquial })).colloquial).toEqual([]);
+    expect(buildHskPlan(input({ durationMinutes: 20, colloquial })).colloquial).toHaveLength(1);
+  });
+
+  it("finds the weakest skill from evidence, and none without any", () => {
+    expect(weakestSkill([])).toBeNull();
+    expect(
+      weakestSkill([
+        { skill: "listening", attempts: 10, successes: 9 },
+        { skill: "reading", attempts: 10, successes: 4 },
+        { skill: "speaking", attempts: 0, successes: 0 },
+        { skill: "writing", attempts: 5, successes: 5 },
+      ]),
+    ).toBe("speaking");
   });
 });

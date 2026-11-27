@@ -6,15 +6,17 @@
 import { z } from "zod";
 import { HSK_BANDS } from "./curriculum";
 import { SESSION_MINUTE_OPTIONS, SESSION_STATUSES, SKILLS, type SessionMinutes } from "./learning";
+import { SPINE_BUDGETS, planCharacterSchema, planGrammarSchema, planTaskSchema, planTopicSchema } from "./lesson";
 import { turnSchema } from "./tutor";
 
-export const SESSION_PLAN_VERSION = 1;
+/** 2: the connected spine (SPEC §5.3) with grammar, characters, topic and task. 1 plans still read. */
+export const SESSION_PLAN_VERSION = 2;
 
 /** `hsk`: built on imported syllabus entries. `free_chat`: no syllabus, never HSK-labelled. */
 export const SESSION_KINDS = ["hsk", "free_chat"] as const;
 export type SessionKind = (typeof SESSION_KINDS)[number];
 
-export const ACTIVITY_KINDS = ["warmup", "listen", "speak", "read", "write", "summary"] as const;
+export const ACTIVITY_KINDS = ["warmup", "listen", "notice", "read", "practice", "speak", "write", "summary"] as const;
 export type ActivityKind = (typeof ACTIVITY_KINDS)[number];
 
 /** `active`: new at the study band. `review`: targeted before. `stretch`: one band up, never counted toward the band. */
@@ -35,8 +37,8 @@ export const planActivitySchema = z.object({
   kind: z.enum(ACTIVITY_KINDS),
   /** The skill this activity mainly exercises. */
   skill: z.enum(SKILLS),
-  /** A guide, not a hard stop. */
-  minutes: z.number().int().positive(),
+  /** A guide, not a hard stop. The summary has none. */
+  minutes: z.number().int().nonnegative(),
   title: z.string(),
   description: z.string(),
 });
@@ -55,8 +57,8 @@ export type PlanTarget = z.infer<typeof planTargetSchema>;
 
 export const planSituationSchema = z.object({
   id: z.string(),
-  /** Situations are written for ShuoLab. They are not HSK topics or tasks. */
-  sourceType: z.literal("app-authored"),
+  /** `app-authored`: written for ShuoLab. `syllabus`: the session's imported topic and task. */
+  sourceType: z.enum(["app-authored", "syllabus"]),
   titleZh: z.string(),
   titleEn: z.string(),
   communicativeGoal: z.string(),
@@ -64,7 +66,7 @@ export const planSituationSchema = z.object({
 export type PlanSituation = z.infer<typeof planSituationSchema>;
 
 export const sessionPlanSchema = z.object({
-  version: z.literal(SESSION_PLAN_VERSION),
+  version: z.union([z.literal(1), z.literal(SESSION_PLAN_VERSION)]),
   kind: z.enum(SESSION_KINDS),
   /** Null for free chat. */
   editionId: z.string().nullable(),
@@ -77,8 +79,18 @@ export const sessionPlanSchema = z.object({
   localStudyDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   situation: planSituationSchema,
   targets: z.array(planTargetSchema).max(8),
-  /** Empty until a verified grammar list is imported. */
+  /** Ids of `grammar`, kept for older readers. */
   grammarIds: z.array(z.string()),
+  /** Grammar targets (SPEC §6.2: 1 new + 1 recycled at most). */
+  grammar: z.array(planGrammarSchema).max(2).default([]),
+  /** Characters of the target words on the band's lists, plus a few met in known words. */
+  characters: z.array(planCharacterSchema).max(16).default([]),
+  /** The syllabus topic the session is set in, when imported. */
+  topic: planTopicSchema.nullable().default(null),
+  /** The syllabus task the session aims at, when imported (SPEC §2.4). */
+  task: planTaskSchema.nullable().default(null),
+  /** The skill that got the extra minutes, if any (SPEC §6.2). */
+  weakestSkill: z.enum(SKILLS).nullable().default(null),
   /** Colloquial expressions are listed apart from HSK targets and never counted as HSK. */
   colloquial: z
     .array(
@@ -160,20 +172,8 @@ export type SessionListResponse = z.infer<typeof sessionListResponseSchema>;
 
 // --- Time budget -------------------------------------------------------------
 
-type Budget = Readonly<Record<ActivityKind, number>>;
-
-/**
- * Minutes per activity for each session length. The 25-minute row follows the
- * SPEC target (5 listening, 12 speaking, 4 reading, 4 writing and review);
- * the others keep the same proportions. Listening plus speaking is about two
- * thirds of every session, and never under 40%.
- */
-export const TIME_BUDGETS: Readonly<Record<SessionMinutes, Budget>> = {
-  15: { warmup: 1, listen: 3, speak: 6, read: 2, write: 2, summary: 1 },
-  20: { warmup: 1, listen: 4, speak: 9, read: 3, write: 2, summary: 1 },
-  25: { warmup: 2, listen: 5, speak: 10, read: 4, write: 3, summary: 1 },
-  30: { warmup: 2, listen: 6, speak: 12, read: 5, write: 4, summary: 1 },
-};
+/** Minutes per step for each session length (SPEC §5.3); see `SPINE_BUDGETS`. */
+export const TIME_BUDGETS = SPINE_BUDGETS;
 
 /** How many syllabus entries a session of each length targets (SPEC: 3–8). */
 export const TARGET_COUNTS: Readonly<Record<SessionMinutes, number>> = { 15: 4, 20: 5, 25: 6, 30: 8 };

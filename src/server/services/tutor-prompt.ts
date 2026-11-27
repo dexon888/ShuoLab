@@ -7,6 +7,7 @@
  * instructions tell the model to treat as speech to answer, not as orders.
  */
 import type { SessionPlan } from "../../shared/session";
+import { usesGrammar } from "../../shared/lesson";
 import { isMandarinReply, tutorOutputSchema, type TutorOutput } from "../../shared/tutor";
 
 export interface AllowedTarget {
@@ -15,6 +16,14 @@ export interface AllowedTarget {
   pinyin: string | null;
   hskBand: string;
   role: string;
+}
+
+/** A grammar point of this session, as the database has it. */
+export interface AllowedGrammar {
+  id: string;
+  name: string;
+  example: string | null;
+  markers: string[][];
 }
 
 export interface AllowedColloquial {
@@ -29,6 +38,10 @@ export interface PromptInput {
   /** Read from the database for this session, not from the plan text. */
   targets: readonly AllowedTarget[];
   colloquial: readonly AllowedColloquial[];
+  /** The session's grammar points (SPEC §6.3). */
+  grammar?: readonly AllowedGrammar[];
+  /** Points that must be elicited in this reply: unused by the learner's 4th turn. */
+  mustElicit?: readonly AllowedGrammar[];
   asrUncertain: boolean;
   /** Why the previous answer was rejected, on the retry. */
   retryReason: RejectionReason | null;
@@ -58,8 +71,12 @@ export function buildInstructions(input: PromptInput): string {
     "- English belongs only in optional_translation_en and in correction notes.",
     "- Always fill optional_pinyin with tone-marked pinyin for all of spoken_reply_zh, and optional_translation_en with a natural English translation of it. The app decides whether to show them.",
     "",
-    `Situation (written for this app, not an HSK topic): ${plan.situation.titleZh} / ${plan.situation.titleEn}.`,
-    `Goal: ${plan.situation.communicativeGoal}`,
+    plan.situation.sourceType === "syllabus" && plan.topic && plan.task
+      ? `Topic: ${plan.topic.area} · ${plan.topic.subject} (${plan.topic.details}).`
+      : `Situation (written for this app, not an HSK topic): ${plan.situation.titleZh} / ${plan.situation.titleEn}.`,
+    plan.task
+      ? `Task the learner is practising (help them carry it out in the conversation): ${plan.task.canDo}`
+      : `Goal: ${plan.situation.communicativeGoal}`,
   ];
 
   if (plan.kind === "hsk" && plan.targetBand) {
@@ -75,6 +92,24 @@ export function buildInstructions(input: PromptInput): string {
       "",
       "This is an open conversation with no syllabus words. referenced_curriculum_item_ids must be an empty list. Never state an HSK level for any word.",
     );
+  }
+
+  const grammar = input.grammar ?? [];
+  if (grammar.length > 0) {
+    lines.push(
+      "",
+      "Grammar for this session, each with its id and a syllabus example. Use each naturally in your own replies, and ask questions that invite the learner to use it:",
+      ...grammar.map((g) => `- ${g.id} = ${g.name}${g.example ? ` (example: ${g.example})` : ""}`),
+      "In used_grammar_ids list the ids of points your spoken_reply_zh uses; in elicited_grammar_ids the ids of points your question invites the learner to use. Only ids from this list. Leave both empty otherwise.",
+    );
+    const must = input.mustElicit ?? [];
+    if (must.length > 0) {
+      lines.push(
+        `This reply must end with a question that the learner would naturally answer using: ${must.map((g) => g.name).join("; ")}. Use the pattern in your question too.`,
+      );
+    }
+  } else {
+    lines.push("", "used_grammar_ids and elicited_grammar_ids must be empty lists.");
   }
 
   if (colloquial.length > 0) {
@@ -169,6 +204,19 @@ export function checkReferences(
   const colloquialIds = keep(output.referenced_colloquial_ids, terms);
   const given = output.referenced_curriculum_item_ids.length + output.referenced_colloquial_ids.length;
   return { curriculumItemIds, colloquialIds, dropped: given - curriculumItemIds.length - colloquialIds.length };
+}
+
+/**
+ * Keeps a grammar id only when it is one of this session's points and its
+ * pattern is really in the reply (SPEC §6.3).
+ */
+export function checkGrammar(ids: readonly string[], grammar: readonly AllowedGrammar[], reply: string): string[] {
+  const kept: string[] = [];
+  for (const id of ids) {
+    const g = grammar.find((x) => x.id === id);
+    if (g && usesGrammar(reply, g.markers) && !kept.includes(id)) kept.push(id);
+  }
+  return kept;
 }
 
 /**

@@ -41,6 +41,10 @@ export const tutorOutputSchema = z
     optional_translation_en: z.string().max(800).nullable(),
     referenced_curriculum_item_ids: z.array(z.string().max(120)).max(12),
     referenced_colloquial_ids: z.array(z.string().max(160)).max(4),
+    /** Grammar points of this session the reply uses (SPEC §6.3). Checked against the text. */
+    used_grammar_ids: z.array(z.string().max(120)).max(4).default([]),
+    /** Grammar points the reply invites the learner to use. Checked against the text. */
+    elicited_grammar_ids: z.array(z.string().max(120)).max(4).default([]),
     semantic_feedback: z
       .object({
         understood_intent: z.boolean(),
@@ -66,6 +70,8 @@ export const TUTOR_OUTPUT_JSON_SCHEMA = {
     "optional_translation_en",
     "referenced_curriculum_item_ids",
     "referenced_colloquial_ids",
+    "used_grammar_ids",
+    "elicited_grammar_ids",
     "semantic_feedback",
     "suggested_followup_topic",
   ],
@@ -75,6 +81,8 @@ export const TUTOR_OUTPUT_JSON_SCHEMA = {
     optional_translation_en: { type: ["string", "null"] },
     referenced_curriculum_item_ids: { type: "array", items: { type: "string" } },
     referenced_colloquial_ids: { type: "array", items: { type: "string" } },
+    used_grammar_ids: { type: "array", items: { type: "string" } },
+    elicited_grammar_ids: { type: "array", items: { type: "string" } },
     semantic_feedback: {
       type: "object",
       additionalProperties: false,
@@ -157,6 +165,12 @@ export const turnSchema = z.object({
   referencedCurriculumItemIds: z.array(z.string()),
   /** Only ids of this session's colloquial expressions whose term appears in the reply. Never HSK. */
   referencedColloquialIds: z.array(z.string()),
+  /** This session's grammar points whose pattern appears in the reply (SPEC §6.3). */
+  grammarUsedIds: z.array(z.string()).default([]),
+  /** This session's grammar points the reply invites the learner to use, with the pattern in the reply. */
+  grammarElicitedIds: z.array(z.string()).default([]),
+  /** This session's grammar points whose pattern appears in what the learner said or typed. */
+  learnerGrammarIds: z.array(z.string()).default([]),
   feedback: z.object({
     /** Null when there is no model feedback (a fallback reply). */
     understoodIntent: z.boolean().nullable(),

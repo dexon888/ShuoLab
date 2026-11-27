@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { z } from "zod";
 import { sessionActionSchema } from "../../shared/debrief";
+import { practiceAnswerRequestSchema, readingAnswersRequestSchema, writingAnswerRequestSchema } from "../../shared/lesson";
 import { listeningAnswersRequestSchema, listeningEventRequestSchema } from "../../shared/listening";
 import { planRequestSchema } from "../../shared/session";
 import { MAX_TRANSCRIPT_CHARS, turnEventRequestSchema, turnRequestSchema } from "../../shared/tutor";
@@ -12,6 +13,7 @@ import { listSessions, planSession } from "../services/sessions";
 import { applySessionAction, completeSession, getSessionState } from "../services/session-state";
 import { getSession } from "../services/sessions";
 import { answerListening, createListening, recordListeningEvent } from "../services/listening";
+import { answerPractice, answerReading, answerWriting, createMaterials, revealReading } from "../services/materials";
 import { deleteSession } from "../services/owner-data";
 import { recordTurnEvent, takeTurn } from "../services/turns";
 import { readJsonBody } from "../validation/body";
@@ -80,6 +82,27 @@ export function createSessionRoutes(deps: SessionRouteDeps = {}) {
       if (!parsed.success) throw new ApiError("BAD_REQUEST", 'Send {"answers": [...]}, one option number (0, 1 or 2) per question.');
       const session = await getSession(c.env.DB, c.req.param("id"));
       return c.json(await answerListening(c.env.DB, session.id, parsed.data.answers));
+    })
+    // Reading, guided practice and writing (SPEC §5.3): written once per session.
+    .post("/:id/materials", async (c) => {
+      const result = await createMaterials(c.env.DB, tutorFor(c.env), c.req.param("id"));
+      return c.json({ materials: result.materials }, result.existing ? 200 : 201);
+    })
+    .post("/:id/materials/reading/answers", async (c) => {
+      const parsed = readingAnswersRequestSchema.safeParse(await readJsonBody(c.req.raw));
+      if (!parsed.success) throw new ApiError("BAD_REQUEST", 'Send {"answers": [...]}, one option number (0, 1 or 2) per question.');
+      return c.json(await answerReading(c.env.DB, c.req.param("id"), parsed.data.answers));
+    })
+    .post("/:id/materials/reading/reveal", async (c) => c.json(await revealReading(c.env.DB, c.req.param("id"))))
+    .post("/:id/materials/practice", async (c) => {
+      const parsed = practiceAnswerRequestSchema.safeParse(await readJsonBody(c.req.raw));
+      if (!parsed.success) throw new ApiError("BAD_REQUEST", 'Send {"index": 0, "answer": "…", "mode": "typed" or "spoken"}.');
+      return c.json(await answerPractice(c.env.DB, c.req.param("id"), parsed.data.index, parsed.data.answer, parsed.data.mode));
+    })
+    .post("/:id/materials/writing", async (c) => {
+      const parsed = writingAnswerRequestSchema.safeParse(await readJsonBody(c.req.raw));
+      if (!parsed.success) throw new ApiError("BAD_REQUEST", 'Send {"answer": "…"} with up to 1,000 characters.');
+      return c.json(await answerWriting(c.env.DB, c.req.param("id"), parsed.data.answer));
     })
     // Idempotent: completing a complete session returns the same summary.
     .post("/:id/complete", async (c) => c.json(await completeSession(c.env.DB, c.req.param("id"))))

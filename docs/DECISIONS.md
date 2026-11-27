@@ -654,3 +654,35 @@ recognition and production evidence, and §8.3 meaningful days instead of a
 streak. Character "writing" is named typed or self-rated, because handwriting
 recognition is out of scope.
 
+## 98. A grammar point is checked by the pattern in its name
+
+The source gives no machine-readable pattern, so the name is read: 、 and ／
+separate alternatives, and gaps (……, —) split one alternative into parts that
+must appear in order. A point is used in study only when one of its own
+syllabus examples shows that pattern, so points such as 陈述句 (a kind of
+sentence) are left out of plans rather than checked wrongly. One-character
+patterns (上、下、里) can match loosely; the tutor's claims and the learner's
+use are recorded as practice, never as recall.
+
+## 99. Reading, practice and writing are written once per session
+
+One generated set per session (`session_materials`), from the saved plan,
+checked for every grammar pattern and enough words with one retry; if the
+model cannot be used, the reading is the grammar points' own syllabus
+examples. Answers are checked by fixed criteria in code, not by the model:
+the pattern, the words, and a length. It is metered with the listening
+exercise and shares its limits. Typed practice answers are writing evidence,
+never speaking.
+
+## 100. Sections a session targets live in `session_items`
+
+Words stay in `session_targets`, so every word query is unchanged; grammar,
+characters, the topic and the task go in a separate table with their own
+check constraint. Recycling grammar, avoiding a recent topic or task, and the
+tutor's allowed grammar all read from it.
+
+## 101. Plans have a version 2; version 1 still reads
+
+New plan fields default when absent, so plans saved before the spine keep
+opening and show their old steps.
+

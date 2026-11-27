@@ -1,13 +1,14 @@
 import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import type { SessionStateResponse } from "../../shared/debrief";
-import { TARGET_ROLE_LABELS, listeningSpeakingShare, type SessionDetail, type SessionPlan } from "../../shared/session";
+import { TARGET_ROLE_LABELS, type SessionDetail, type SessionPlan } from "../../shared/session";
 import { defaultSettings } from "../../shared/settings";
 import { AsyncStatus } from "../components/AsyncStatus";
 import { Conversation } from "../components/Conversation";
 import { ListeningExercise } from "../components/ListeningExercise";
 import { Section } from "../components/Section";
 import { SessionDebrief } from "../components/SessionDebrief";
+import { SessionSpine } from "../components/SessionSpine";
 import { SyntheticDataNotice } from "../components/SyntheticDataNotice";
 import { useDeleteSession, useMe, useSession } from "../hooks/queries";
 import { ApiRequestError } from "../lib/api";
@@ -21,16 +22,12 @@ const STATUS_LABELS: Readonly<Record<SessionDetail["status"], string>> = {
   abandoned: "Ended without finishing",
 };
 
-const SKILL_LABELS = { listening: "Listening", speaking: "Speaking", reading: "Reading", writing: "Writing" } as const;
-
 function bandName(band: string): string {
   return band === "7-9" ? "HSK 7–9" : `HSK ${band}`;
 }
 
-/** The saved plan: words, an optional colloquial expression, and the time budget. */
+/** The saved plan: words, grammar, characters, the task, and an optional colloquial expression. */
 function PlanSections({ plan }: { plan: SessionPlan }) {
-  const oralShare = Math.round(listeningSpeakingShare(plan.activities) * 100);
-
   return (
     <>
       {plan.kind === "free_chat" ? null : (
@@ -96,25 +93,38 @@ function PlanSections({ plan }: { plan: SessionPlan }) {
         </Section>
       ) : null}
 
-      <Section title="Plan">
-        <ol className="border-t border-line">
-          {plan.activities.map((activity) => (
-            <li key={activity.kind} className="flex flex-wrap items-baseline gap-x-4 border-b border-line py-3">
-              <span className="w-20 shrink-0 font-medium tabular-nums">{activity.minutes} min</span>
-              <span className="min-w-0 flex-1">
-                <span className="font-medium">{activity.title}</span>
-                <span className="block text-mist">{activity.description}</span>
-              </span>
-              <span className="text-sm text-mist">{SKILL_LABELS[activity.skill]}</span>
-            </li>
-          ))}
-        </ol>
-        <p className="mt-3 text-sm text-mist">
-          {oralShare}% of the time is listening and speaking. Times are a guide, not a cut-off.
-          Listening has its own exercise; for now the other parts happen in the conversation.
-          Separate reading and writing exercises are not built yet.
-        </p>
-      </Section>
+      {plan.grammar.length > 0 ? (
+        <Section title="Grammar for this session">
+          <ul className="border-t border-line">
+            {plan.grammar.map((g) => (
+              <li key={g.itemId} className="border-b border-line">
+                <Link to={`/curriculum/item/${encodeURIComponent(g.itemId)}`} className="flex min-h-14 flex-wrap items-baseline gap-x-4 py-3 hover:bg-wash">
+                  <span lang="zh-Hans" className="text-xl">
+                    {g.name}
+                  </span>
+                  <span lang="zh-Hans" className="text-mist">
+                    {g.grammarType}
+                  </span>
+                  <span className="ml-auto text-sm text-mist">{g.role === "new" ? "New" : "Coming back"}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+          {plan.grammar.some((g) => g.unverified) ? (
+            <p className="mt-3 text-sm text-mist">From a second-hand transcription of the syllabus, not checked against the official document.</p>
+          ) : null}
+        </Section>
+      ) : null}
+
+      {plan.characters.length > 0 ? (
+        <Section title="Characters">
+          <p lang="zh-Hans" className="text-2xl tracking-wide">
+            {plan.characters.map((c) => c.hanzi).join(" ")}
+          </p>
+          <p className="mt-2 text-sm text-mist">Each is shown inside a word in the Notice step.</p>
+        </Section>
+      ) : null}
+
     </>
   );
 }
@@ -160,8 +170,13 @@ function DeleteSession({ sessionId }: { sessionId: string }) {
   );
 }
 
+function isSyllabusPlan(plan: SessionPlan): boolean {
+  return plan.situation.sourceType === "syllabus" && plan.topic !== null && plan.task !== null;
+}
+
 function SessionView({ state }: { state: SessionStateResponse }) {
   const { session, turns, debrief, listening } = state;
+  const syllabus = isSyllabusPlan(session.plan);
   const { plan } = session;
   const me = useMe();
   const { displayMode, speechRate } = me.data?.settings ?? defaultSettings();
@@ -170,18 +185,28 @@ function SessionView({ state }: { state: SessionStateResponse }) {
   const started = session.status !== "planned";
   const ended = session.status === "complete" || session.status === "abandoned";
 
-  const conversation = (
-    <Section key="conversation" title="Conversation">
-      <Conversation session={session} turns={turns} displayMode={displayMode} speechRate={speechRate} tutor={tutor} speech={speech} />
-    </Section>
-  );
+  const conversation = <Conversation session={session} turns={turns} displayMode={displayMode} speechRate={speechRate} tutor={tutor} speech={speech} />;
   // An ended session shows its exercise only if one was done.
   const listen =
-    ended && !listening ? null : (
-      <Section key="listen" title="Listen first">
-        <ListeningExercise session={session} exercise={listening} speechRate={speechRate} speech={speech} />
-      </Section>
+    ended && !listening ? (
+      <p className="text-mist">This session ended without a listening exercise.</p>
+    ) : (
+      <ListeningExercise session={session} exercise={listening} speechRate={speechRate} speech={speech} />
     );
+  const summary = debrief ? (
+    <>
+      <SessionDebrief debrief={debrief} />
+      <p className="mb-6">
+        <Link to="/" className="font-medium text-cobalt underline">
+          Back to Today
+        </Link>
+      </p>
+    </>
+  ) : (
+    <p className="text-mist">
+      {ended ? "This session was ended without finishing, so it has no summary." : "Finish the session from the Conversation step to see your summary: corrections, what you used, and what comes back when."}
+    </p>
+  );
 
   return (
     <>
@@ -195,10 +220,23 @@ function SessionView({ state }: { state: SessionStateResponse }) {
           </span>{" "}
           <span className="text-lg text-mist">{plan.situation.titleEn}</span>
         </h1>
-        <p className="mt-3 max-w-[60ch]">{plan.situation.communicativeGoal}</p>
-        <p className="mt-1 text-sm text-mist">
-          This situation was written for ShuoLab. It is not an HSK topic or task.
-        </p>
+        {syllabus && plan.task && plan.topic ? (
+          <>
+            <p className="mt-3 max-w-[60ch]">
+              <span className="font-medium">Today's task: </span>
+              <span lang="zh-Hans">{plan.task.canDo}</span>
+            </p>
+            <p className="mt-1 text-sm text-mist">
+              Topic <span lang="zh-Hans">{plan.topic.area} · {plan.topic.subject}</span>, task <span lang="zh-Hans">{plan.task.task}</span>.{" "}
+              {plan.task.unverified ? "From a second-hand transcription of the syllabus, not checked against the official document." : ""}
+            </p>
+          </>
+        ) : (
+          <>
+            <p className="mt-3 max-w-[60ch]">{plan.situation.communicativeGoal}</p>
+            <p className="mt-1 text-sm text-mist">This situation was written for ShuoLab. It is not an HSK topic or task.</p>
+          </>
+        )}
       </header>
 
       {plan.synthetic ? (
@@ -223,21 +261,15 @@ function SessionView({ state }: { state: SessionStateResponse }) {
         </p>
       ) : null}
 
-      {debrief ? (
-        <>
-          <SessionDebrief debrief={debrief} />
-          <p className="mb-6">
-            <Link to="/" className="font-medium text-cobalt underline">
-              Back to Today
-            </Link>
-          </p>
-        </>
+      {/* Before starting, the targets come first; once started, they fold away under the steps. */}
+      {started ? null : <PlanSections plan={plan} />}
+      <SessionSpine state={state} listen={listen} conversation={conversation} summary={summary} />
+      {started ? (
+        <details className="mt-6 border-t border-line pt-4">
+          <summary className="min-h-11 cursor-pointer font-medium text-cobalt">Today's words, grammar and characters</summary>
+          <PlanSections plan={plan} />
+        </details>
       ) : null}
-
-      {/* Before the first message the plan comes first; once talking, the conversation does. */}
-      {started
-        ? [listen, conversation, <PlanSections key="plan" plan={plan} />]
-        : [<PlanSections key="plan" plan={plan} />, listen, conversation]}
       <DeleteSession sessionId={session.id} />
     </>
   );

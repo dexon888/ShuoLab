@@ -24,6 +24,12 @@ export interface TutorRequest {
   context: {
     targets: readonly { id: string; hanzi: string }[];
     colloquial: readonly { id: string; term: string }[];
+    /** The session's grammar points, when it has any. */
+    grammar?: readonly { id: string; name: string; example: string | null }[];
+    /** Grammar ids this reply must elicit. */
+    mustElicit?: readonly string[];
+    /** The session's task, for the materials. */
+    task?: { canDo: string } | null;
     /** 0 for the first turn of the session. */
     turnIndex: number;
     /** 1 for the first try, 2 for the retry after a rejected answer. */

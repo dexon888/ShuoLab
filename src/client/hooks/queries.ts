@@ -11,6 +11,7 @@ import type { MeResponse } from "../../shared/api";
 import type { HskBand, ItemType } from "../../shared/curriculum";
 import { settingsResponseSchema, type SettingsUpdate } from "../../shared/settings";
 import { sessionStateResponseSchema, type SessionAction, type SessionStateResponse } from "../../shared/debrief";
+import { materialsResponseSchema, type MaterialsResponse } from "../../shared/lesson";
 import { listeningResponseSchema, type ListeningEvent, type ListeningResponse } from "../../shared/listening";
 import { DELETE_ALL_PHRASE, dataSummaryResponseSchema, deletionResponseSchema } from "../../shared/owner-data";
 import { progressSummarySchema, type ProgressWindow } from "../../shared/progress";
@@ -260,7 +261,7 @@ export function usePlanSession() {
   return useMutation({
     mutationFn: (request: PlanRequest) => apiPost("/sessions/plan", request, planResponseSchema),
     onSuccess: ({ session }) => {
-      client.setQueryData<SessionStateResponse>(sessionKey(session.id), { session, turns: [], debrief: null, listening: null });
+      client.setQueryData<SessionStateResponse>(sessionKey(session.id), { session, turns: [], debrief: null, listening: null, materials: null });
       void client.invalidateQueries({ queryKey: ["sessions", "list"] });
     },
   });
@@ -332,5 +333,59 @@ export function useDeleteAllData() {
   return useMutation({
     mutationFn: () => apiDelete("/my-data", { confirm: DELETE_ALL_PHRASE }, deletionResponseSchema),
     onSuccess: forget,
+  });
+}
+
+// --- Reading, guided practice and writing (SPEC §5.3) ----------------------------
+
+function useStoreMaterials(sessionId: string) {
+  const client = useQueryClient();
+  return (result: MaterialsResponse) =>
+    client.setQueryData<SessionStateResponse>(sessionKey(sessionId), (state) => (state ? { ...state, materials: result.materials } : state));
+}
+
+/** Writes the session's reading, practice and writing, or fetches what it has. */
+export function useCreateMaterials(sessionId: string) {
+  const client = useQueryClient();
+  const store = useStoreMaterials(sessionId);
+  return useMutation({
+    mutationFn: () => apiPost(`/sessions/${encodeURIComponent(sessionId)}/materials`, {}, materialsResponseSchema),
+    onSuccess: (result) => {
+      store(result);
+      void client.invalidateQueries({ queryKey: ["usage"] });
+    },
+  });
+}
+
+export function useAnswerReading(sessionId: string) {
+  const store = useStoreMaterials(sessionId);
+  return useMutation({
+    mutationFn: (answers: number[]) => apiPost(`/sessions/${encodeURIComponent(sessionId)}/materials/reading/answers`, { answers }, materialsResponseSchema),
+    onSuccess: store,
+  });
+}
+
+export function useRevealReading(sessionId: string) {
+  const store = useStoreMaterials(sessionId);
+  return useMutation({
+    mutationFn: () => apiPost(`/sessions/${encodeURIComponent(sessionId)}/materials/reading/reveal`, {}, materialsResponseSchema),
+    onSuccess: store,
+  });
+}
+
+export function useAnswerPractice(sessionId: string) {
+  const store = useStoreMaterials(sessionId);
+  return useMutation({
+    mutationFn: (body: { index: number; answer: string; mode: "spoken" | "typed" }) =>
+      apiPost(`/sessions/${encodeURIComponent(sessionId)}/materials/practice`, body, materialsResponseSchema),
+    onSuccess: store,
+  });
+}
+
+export function useAnswerWriting(sessionId: string) {
+  const store = useStoreMaterials(sessionId);
+  return useMutation({
+    mutationFn: (answer: string) => apiPost(`/sessions/${encodeURIComponent(sessionId)}/materials/writing`, { answer }, materialsResponseSchema),
+    onSuccess: store,
   });
 }

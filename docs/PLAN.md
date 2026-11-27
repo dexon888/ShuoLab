@@ -72,7 +72,7 @@ production evidence, a flag-as-wrong control and meaningful days (DECISIONS 97).
 | PR | Branch | Contents |
 |---|---|---|
 | A | `phase-5/browse-sections` | Browse grammar, characters, topics and tasks by band, with search, details, examples and source credit |
-| B | `phase-5/session-spine` | The §5.3 spine (warm-up, listen, notice, read, guided practice, task conversation, write, summary); planner priority, caps, weakest-skill time shift and topic change for recycled items (§6.2); task as the session goal; tutor grammar claims checked and unused points elicited (FR-024, FR-028) |
+| B | `phase-5/session-spine` | The §5.3 spine (warm-up, listen, notice, read, guided practice, task conversation, write, summary); planner priority, caps, weakest-skill time shift and topic change for recycled items (§6.2); task as the session goal; tutor grammar claims checked and unused points elicited (FR-024, FR-028). Done |
 | C | `phase-5/section-review` | Grammar and character cards (characters shown in words), speaking and writing production cards, corrections feeding cards and the next plan, production mastery only from production evidence; section progress, skill balance and meaningful days (FR-025, FR-026, FR-029) |
 | D | `phase-5/task-check` | Task check with 2–3 criteria and a stored scorer version, tasks achieved per band; flag an unverified row as wrong (FR-030, FR-031) |
 | E | `phase-5/speaking-writing-review` | Folded into C; kept as a follow-up only if C grows too large |

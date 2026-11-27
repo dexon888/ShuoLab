@@ -15,6 +15,7 @@ import type { SessionDetail } from "../../shared/session";
 import type { Turn, TurnCorrection } from "../../shared/tutor";
 import { ApiError } from "../validation/errors";
 import { getListening } from "./listening";
+import { getMaterials } from "./materials";
 import { introduceSessionWords } from "./review";
 import { accrueSql, getSession } from "./sessions";
 import { listTurns } from "./turns";
@@ -61,8 +62,8 @@ export function buildDebrief(session: SessionDetail, turns: readonly Turn[], lis
 
 export async function getSessionState(d1: D1Database, id: string): Promise<SessionStateResponse> {
   const session = await getSession(d1, id);
-  const [turns, listening] = await Promise.all([listTurns(d1, session.id), getListening(d1, session.id)]);
-  return { session, turns, listening, debrief: session.status === "complete" ? buildDebrief(session, turns, listening) : null };
+  const [turns, listening, materials] = await Promise.all([listTurns(d1, session.id), getListening(d1, session.id), getMaterials(d1, session)]);
+  return { session, turns, listening, materials, debrief: session.status === "complete" ? buildDebrief(session, turns, listening) : null };
 }
 
 const ENDED = "This session has ended. Start a new one from Today.";

@@ -16,6 +16,8 @@ export const OWNER_TABLES = [
   "owner_settings",
   "sessions",
   "session_targets",
+  "session_items",
+  "session_materials",
   "conversation_turns",
   "listening_exercises",
   "review_cards",
@@ -36,9 +38,10 @@ export const exportDocumentSchema = z.object({
   notes: z.array(z.string()),
   /** Rows exactly as stored, keyed by column name. */
   tables: z.object(
-    Object.fromEntries(OWNER_TABLES.map((t) => [t, z.array(z.record(z.string(), z.union([z.string(), z.number(), z.null()])))])) as Record<
+    // A table missing from an older export (one made before it existed) reads as empty.
+    Object.fromEntries(OWNER_TABLES.map((t) => [t, z.array(z.record(z.string(), z.union([z.string(), z.number(), z.null()]))).default([])])) as Record<
       OwnerTable,
-      z.ZodArray<z.ZodRecord<z.ZodString, z.ZodUnion<[z.ZodString, z.ZodNumber, z.ZodNull]>>>
+      z.ZodDefault<z.ZodArray<z.ZodRecord<z.ZodString, z.ZodUnion<[z.ZodString, z.ZodNumber, z.ZodNull]>>>>
     >,
   ),
 });

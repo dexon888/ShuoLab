@@ -47,7 +47,7 @@ function errorText(error: unknown): string {
   return error instanceof ApiRequestError ? error.message : "Something went wrong. Try again.";
 }
 
-function CardView({ card, onDone, onSkip }: { card: ReviewCard; onDone: () => void; onSkip: () => void }) {
+export function CardView({ card, onDone, onSkip }: { card: ReviewCard; onDone: () => void; onSkip: () => void }) {
   const me = useMe();
   const { speechRate } = me.data?.settings ?? defaultSettings();
   const speech = me.data?.providers.find((p) => p.id === "speech") ?? null;

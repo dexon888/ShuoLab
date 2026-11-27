@@ -20,6 +20,7 @@ import {
   buildListeningInstructions,
   parseListeningOutput,
   toStored,
+  listeningCovers,
   type ListeningRejection,
   type StoredListening,
 } from "./listening-prompt";
@@ -93,6 +94,7 @@ export function toExercise(row: ListeningRow): ListeningExercise {
     model: row.model,
     standIn: row.stand_in === 1,
     lines: content.lines,
+    coversTargets: (content as StoredListening & { coversTargets?: boolean }).coversTargets ?? true,
     questions: content.questions.map((q) => ({ questionEn: q.questionEn, optionsEn: q.optionsEn, answerIndex: open ? q.answerIndex : null })),
     createdAt: row.created_at,
     playedAt: row.played_at,
@@ -201,15 +203,22 @@ export async function createListening(
   try {
     const targets = await targetsFor(d1, session.id);
     let stored: StoredListening | null = null;
+    let covers = false;
     let retry: ListeningRejection | null = null;
-    for (let attempt = 1; attempt <= MAX_ATTEMPTS && stored === null; attempt += 1) {
+    for (let attempt = 1; attempt <= MAX_ATTEMPTS && !covers; attempt += 1) {
       let result;
       try {
         result = await provider.generate({
           instructions: buildListeningInstructions(session.plan, targets, retry),
           messages: [{ role: "user", content: "Write the listening exercise." }],
           format: { name: LISTENING_FORMAT_NAME, schema: LISTENING_OUTPUT_JSON_SCHEMA, maxOutputTokens: MAX_OUTPUT_TOKENS, timeoutMs: TIMEOUT_MS },
-          context: { targets: targets.map((t) => ({ id: t.id, hanzi: t.hanzi })), colloquial: [], turnIndex: 0, attempt },
+          context: {
+            targets: targets.map((t) => ({ id: t.id, hanzi: t.hanzi })),
+            colloquial: [],
+            grammar: session.plan.grammar.map((g) => ({ id: g.itemId, name: g.name, example: g.example })),
+            turnIndex: 0,
+            attempt,
+          },
         });
       } catch (error) {
         await recordUsage(
@@ -233,12 +242,18 @@ export async function createListening(
         },
         now,
       );
-      if (parsed.ok) stored = toStored(parsed.output, random);
-      else retry = parsed.reason;
+      if (parsed.ok) {
+        // A usable exchange is kept even if it misses a pattern; the retry asks for one that covers the plan.
+        stored = toStored(parsed.output, random);
+        covers = listeningCovers(parsed.output.lines, session.plan);
+        if (!covers) retry = "coverage";
+      } else {
+        retry = parsed.reason;
+      }
     }
 
     const source = stored === null ? "prepared" : "generated";
-    const content = stored ?? toStored(PREPARED_LISTENING, random);
+    const content = { ...(stored ?? toStored(PREPARED_LISTENING, random)), coversTargets: stored === null ? false : covers };
     const at = now.toISOString();
     await d1.batch([
       d1

@@ -4,17 +4,30 @@
  * from the saved plan only; no learner text goes into them.
  */
 import { listeningOutputSchema, type ListeningLine, type ListeningOutput } from "../../shared/listening";
+import { grammarMarkers, usesGrammar, wordsUsed } from "../../shared/lesson";
 import type { SessionPlan } from "../../shared/session";
 import type { AllowedTarget } from "./tutor-prompt";
 
-export type ListeningRejection = "no_output" | "not_json" | "schema";
+export type ListeningRejection = "no_output" | "not_json" | "schema" | "coverage";
 
 const RETRY_NOTES: Readonly<Record<ListeningRejection, string>> = {
   no_output: "Your previous answer was empty or refused. Write the exchange and questions.",
   not_json: "Your previous answer was not valid JSON. Return only the JSON object.",
   schema:
     "Your previous answer did not match the required fields: 4-6 short Mandarin lines, 2-3 questions, exactly 3 different options each, and answer_index 0, 1 or 2.",
+  coverage: "Your previous exchange did not use every grammar pattern and at least half of the new words. Use each pattern at least once.",
 };
+
+/**
+ * SPEC §5.3 step 2: the exchange contains each target grammar pattern and at
+ * least half of the new words.
+ */
+export function listeningCovers(lines: readonly { zh: string }[], plan: SessionPlan): boolean {
+  const text = lines.map((l) => l.zh).join("");
+  const grammarOk = plan.grammar.every((g) => usesGrammar(text, grammarMarkers(g.name)));
+  const fresh = plan.targets.filter((t) => t.role === "active").map((t) => t.hanzi);
+  return grammarOk && wordsUsed(text, fresh).length * 2 >= fresh.length;
+}
 
 function bandName(band: string): string {
   return band === "7-9" ? "HSK 7-9" : `HSK ${band}`;
@@ -35,18 +48,23 @@ export function buildListeningInstructions(
     "- It must contain concrete details (a time, a place, a choice, a reason) that a listener can be asked about.",
     "- No slang, and no names of real people or businesses.",
     "",
-    `Situation (written for this app, not an HSK topic): ${plan.situation.titleZh} / ${plan.situation.titleEn}.`,
-    `Goal: ${plan.situation.communicativeGoal}`,
+    plan.topic
+      ? `Topic: ${plan.topic.area} · ${plan.topic.subject} (${plan.topic.details}).`
+      : `Situation (written for this app, not an HSK topic): ${plan.situation.titleZh} / ${plan.situation.titleEn}.`,
+    plan.task ? `The two speakers carry out this task: ${plan.task.canDo}` : `Goal: ${plan.situation.communicativeGoal}`,
   ];
 
   if (plan.kind === "hsk" && plan.targetBand) {
     lines.push(
       "",
       `The learner is studying ${bandName(plan.targetBand)}. Keep vocabulary and grammar close to that level.`,
-      "Use two or three of these words where they fit naturally:",
+      "Use at least half of these words, naturally:",
       ...targets.map((t) => `- ${t.hanzi}${t.pinyin ? ` (${t.pinyin})` : ""}`),
       "Never state an HSK level for any word.",
     );
+    if (plan.grammar.length > 0) {
+      lines.push("Use each of these grammar patterns at least once:", ...plan.grammar.map((g) => `- ${g.name}${g.example ? ` (example: ${g.example})` : ""}`));
+    }
   } else {
     lines.push("", "Keep the language simple and everyday. Never state an HSK level for any word.");
   }
