@@ -13,6 +13,8 @@ const PAGES: [string, RegExp][] = [
   ["/review", /Review/],
   ["/progress", /Progress/],
   ["/tests", /Tests/],
+  ["/start", /Start here/],
+  ["/start/tones", /The four tones/],
   ["/settings", /Settings/],
   ["/no-such-page", /Page not found/],
 ];

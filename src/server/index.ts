@@ -9,6 +9,7 @@ import { curriculumRoutes } from "./routes/curriculum";
 import { exportRoutes, myDataRoutes } from "./routes/owner-data";
 import { progressRoutes } from "./routes/progress";
 import { testRoutes } from "./routes/tests";
+import { onrampRoutes } from "./routes/onramp";
 import { reviewRoutes } from "./routes/reviews";
 import { createSessionRoutes, type SessionRouteDeps } from "./routes/sessions";
 import { settingsRoutes } from "./routes/settings";
@@ -80,6 +81,7 @@ export function createApp(deps: AppDeps = {}) {
   api.route("/reviews", reviewRoutes);
   api.route("/progress", progressRoutes);
   api.route("/tests", testRoutes);
+  api.route("/onramp", onrampRoutes);
   api.route("/export", exportRoutes);
   api.route("/my-data", myDataRoutes);
   // This app's own estimate of the month's spending; not a provider bill.

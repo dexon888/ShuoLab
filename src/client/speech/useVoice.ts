@@ -166,7 +166,7 @@ export function useVoice(sessionId: string | null, rate: number) {
    * "listening"); `onPlayed` runs when a real voice finished playing it.
    */
   const speakText = useCallback(
-    async (key: string, text: string, options: { rate?: number; onPlayed?: () => void } = {}) => {
+    async (key: string, text: string, options: { rate?: number; onPlayed?: () => void; voice?: string; phoneme?: string } = {}) => {
       abortRef.current?.abort();
       const controller = new AbortController();
       abortRef.current = controller;
@@ -178,7 +178,7 @@ export function useVoice(sessionId: string | null, rate: number) {
           return;
         }
         setState((s) => ({ ...s, phase: "speaking" }));
-        const outcome = await engine.speak(text, options.rate ?? rate, controller.signal);
+        const outcome = await engine.speak(text, options.rate ?? rate, controller.signal, { voice: options.voice, phoneme: options.phoneme });
         if (engine.real) {
           void report({ kind: "synthesis", characters: outcome.characters });
           if (outcome.played) options.onPlayed?.();

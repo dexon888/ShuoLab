@@ -88,6 +88,7 @@ export function renderApp(path: string, routes: Record<string, Responder>, optio
       "/api/v1/reviews/due?limit=20": () => json(noCards),
       "/api/v1/my-data": () => json({ counts: {}, transcriptRetentionDays: null, sessionsPastRetention: 0 }),
       "/api/v1/usage/monthly": () => json(quietMonth),
+      "/api/v1/onramp": () => json({ units: [], checkPassed: true, checkBest: 1 }),
     };
     const key = method === "GET" ? url : `${method} ${url}`;
     const responder = routes[key] ?? defaults[key];

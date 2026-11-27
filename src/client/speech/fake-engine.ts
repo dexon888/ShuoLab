@@ -5,7 +5,7 @@
  *
  * Browser tests can script what it "hears" through `window.__shuolabFakeSpeech`.
  */
-import { SpeechFailure, type RecognitionOutcome, type SpeakOutcome, type SpeechEngine, type SpeechFailureKind } from "./types";
+import { SpeechFailure, type RecognitionOutcome, type SpeakOptions, type SpeakOutcome, type SpeechEngine, type SpeechFailureKind } from "./types";
 
 export interface FakeRecognition {
   text?: string;
@@ -61,10 +61,10 @@ export class FakeSpeechEngine implements SpeechEngine {
     };
   }
 
-  async speak(text: string, _rate: number, signal: AbortSignal): Promise<SpeakOutcome> {
+  async speak(text: string, _rate: number, signal: AbortSignal, options: SpeakOptions = {}): Promise<SpeakOutcome> {
     if (typeof window !== "undefined") {
       const script = (window.__shuolabFakeSpeech ??= {});
-      (script.spoken ??= []).push(text);
+      (script.spoken ??= []).push(options.voice ? `${text} [${options.voice}]` : text);
     }
     await wait(this.delayMs, signal);
     return { characters: text.length, played: false };

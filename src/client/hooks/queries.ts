@@ -1,3 +1,4 @@
+import { z } from "zod";
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   colloquialResponseSchema,
@@ -15,6 +16,7 @@ import { materialsResponseSchema, type MaterialsResponse } from "../../shared/le
 import { listeningResponseSchema, type ListeningEvent, type ListeningResponse } from "../../shared/listening";
 import { DELETE_ALL_PHRASE, dataSummaryResponseSchema, deletionResponseSchema } from "../../shared/owner-data";
 import { progressSummarySchema, type ProgressWindow } from "../../shared/progress";
+import { onrampResultSchema, onrampStatusSchema } from "../../shared/onramp";
 import { assessmentListResponseSchema, assessmentResponseSchema } from "../../shared/assessment";
 import { flagListResponseSchema, flagResponseSchema, taskCheckResponseSchema } from "../../shared/task-check";
 import { dueResponseSchema, rateResponseSchema, type ReviewRating } from "../../shared/review";
@@ -464,5 +466,21 @@ export function useFinishAssessment(id: string) {
       void client.invalidateQueries({ queryKey: ["tests", "list"] });
       void client.invalidateQueries({ queryKey: ["progress"] });
     },
+  });
+}
+
+// --- Sound-system on-ramp (SPEC §5.9) ------------------------------------------------
+
+const onrampAnswerResponseSchema = z.object({ result: onrampResultSchema });
+
+export function useOnramp() {
+  return useQuery({ queryKey: ["onramp"], queryFn: () => apiGet("/onramp", onrampStatusSchema) });
+}
+
+export function useAnswerUnit() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { unitId: string; answers: (number | string | null)[] }) => apiPost("/onramp/answers", body, onrampAnswerResponseSchema),
+    onSuccess: () => void client.invalidateQueries({ queryKey: ["onramp"] }),
   });
 }

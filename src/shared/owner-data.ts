@@ -21,6 +21,7 @@ export const OWNER_TABLES = [
   "task_checks",
   "item_flags",
   "assessment_runs",
+  "onramp_results",
   "conversation_turns",
   "listening_exercises",
   "review_cards",

@@ -13,6 +13,7 @@ import { AZURE_VOICE, RECOGNITION_LANGUAGE, buildSsml, readConfidence, utterance
 import {
   SpeechFailure,
   type RecognitionOutcome,
+  type SpeakOptions,
   type SpeakOutcome,
   type SpeechCredentials,
   type SpeechEngine,
@@ -116,8 +117,8 @@ export class AzureSpeechEngine implements SpeechEngine {
     }
   }
 
-  async speak(text: string, rate: number, signal: AbortSignal): Promise<SpeakOutcome> {
-    const ssml = buildSsml(text, rate);
+  async speak(text: string, rate: number, signal: AbortSignal, options: SpeakOptions = {}): Promise<SpeakOutcome> {
+    const ssml = buildSsml(text, rate, options.voice, options.phoneme);
     // Counted as the whole SSML document, which errs high for the free-tier count.
     const characters = Math.min(MAX_SYNTHESIS_CHARS_PER_EVENT, ssml.length);
     const sdk = await loadSdk();

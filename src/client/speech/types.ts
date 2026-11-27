@@ -51,6 +51,15 @@ export interface SpeechEngine {
   readonly real: boolean;
   /** Listens for one utterance; stops by itself at a pause. Abort to cancel. */
   recognize(signal: AbortSignal): Promise<RecognitionOutcome>;
-  /** Speaks a reply aloud at the given rate (1 is normal). Abort to stop. */
-  speak(text: string, rate: number, signal: AbortSignal): Promise<SpeakOutcome>;
+  /**
+   * Speaks text aloud at the given rate (1 is normal). Abort to stop. `voice`
+   * picks another Azure voice; `phoneme` gives the exact pinyin with tone
+   * numbers (e.g. "ma 1") so a drill plays precisely the sound intended.
+   */
+  speak(text: string, rate: number, signal: AbortSignal, options?: SpeakOptions): Promise<SpeakOutcome>;
+}
+
+export interface SpeakOptions {
+  voice?: string;
+  phoneme?: string;
 }
