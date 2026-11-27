@@ -826,3 +826,19 @@ words sharing their characters, then syllabus order. The topic is paired to
 the task by shared characters. Frequency ordering from a licensed corpus can
 later refine the last group.
 
+## 121. Coverage is always measured, enforced only from 100 known words
+
+With a handful of known words no natural reply can reach 90% coverage, so
+regenerating would double the cost for nothing. Coverage is measured and
+shown on every reply from the start; from 100 known words a reply, listening
+exchange or reading below target is regenerated once, naming the unknown
+words to avoid, and the second answer is kept either way. Beginners are
+carried by scaffolds instead: one short sentence, yes/no or either-or
+questions, sentence frames, and English answers recast into Mandarin.
+
+## 122. Text is segmented against the syllabus itself
+
+Longest match against the 11,000 imported words needs no outside
+segmenter or model, and treats any word outside the syllabus as its
+separate characters, which errs toward calling text harder than it is.
+

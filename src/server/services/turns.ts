@@ -7,7 +7,9 @@
  * second charge.
  */
 import type { D1Database } from "@cloudflare/workers-types";
+import { BEGINNER_WORDS, coverage, coverageTarget, replySentences } from "../../shared/coverage";
 import { ELICIT_AFTER_TURNS, grammarMarkers, usesGrammar } from "../../shared/lesson";
+import { knownWords, meanLearnerChars, vocabularySet } from "./known-words";
 import { parseItemDetails } from "../../shared/sections";
 import {
   MAX_TURNS_PER_SESSION,
@@ -59,7 +61,7 @@ const TURN_COLUMNS =
 /** What is stored in `ai_reply_json`: the validated reply, never raw model text. */
 type StoredReply = Pick<
   Turn,
-  "reply" | "referencedCurriculumItemIds" | "referencedColloquialIds" | "grammarUsedIds" | "grammarElicitedIds" | "learnerGrammarIds" | "feedback" | "fallback"
+  "reply" | "referencedCurriculumItemIds" | "referencedColloquialIds" | "grammarUsedIds" | "grammarElicitedIds" | "learnerGrammarIds" | "coverage" | "feedback" | "fallback"
 >;
 
 function toTurn(row: TurnRow, position: number): Turn {
@@ -306,6 +308,16 @@ export async function takeTurn(
       allowedGrammar(d1, sessionId),
     ]);
     const learnerGrammarIds = grammar.filter((g) => usesGrammar(request.transcript, g.markers)).map((g) => g.id);
+    // Pitch the reply at what the learner knows (SPEC §2.6 rule 4).
+    const [vocabulary, known] = await Promise.all([vocabularySet(d1), knownWords(d1, sessionId)]);
+    const learner = {
+      knownCount: known.set.size,
+      recent: known.recent,
+      sentences: replySentences(meanLearnerChars([...history.map((t) => t.learnerText), request.transcript])),
+      beginner: known.set.size < BEGINNER_WORDS,
+    };
+    const target = coverageTarget(known.set.size);
+    let avoid: string[] = [];
     // SPEC §6.3: a point neither used nor invited by the learner's 4th turn must be invited now.
     const mustElicit =
       turnIndex + 1 >= ELICIT_AFTER_TURNS
@@ -325,7 +337,7 @@ export async function takeTurn(
 
     let retryReason: RejectionReason | null = null;
     for (let attempt = 1; attempt <= MAX_ATTEMPTS && stored === null; attempt += 1) {
-      const instructions = buildInstructions({ plan: session.plan, targets, colloquial, grammar, mustElicit, asrUncertain: uncertain, retryReason });
+      const instructions = buildInstructions({ plan: session.plan, targets, colloquial, grammar, mustElicit, learner, avoid, asrUncertain: uncertain, retryReason });
       let result;
       try {
         result = await provider.generate({
@@ -359,6 +371,14 @@ export async function takeTurn(
         now,
       );
 
+      const measured = parsed.ok ? coverage(parsed.output.spoken_reply_zh, vocabulary, known.set) : null;
+      // Below the coverage target, ask once for a simpler reply; the second answer is kept either way.
+      // The local stand-in cannot rewrite its canned reply, so it is never asked to.
+      if (parsed.ok && measured && target !== null && !provider.mock && measured.total > 0 && measured.known / measured.total < target && attempt < MAX_ATTEMPTS) {
+        retryReason = "coverage";
+        avoid = measured.unknown;
+        continue;
+      }
       if (parsed.ok) {
         const refs = checkReferences(parsed.output, targets, colloquial);
         const feedback = parsed.output.semantic_feedback;
@@ -373,6 +393,7 @@ export async function takeTurn(
           grammarUsedIds: checkGrammar(parsed.output.used_grammar_ids, grammar, parsed.output.spoken_reply_zh),
           grammarElicitedIds: checkGrammar(parsed.output.elicited_grammar_ids, grammar, parsed.output.spoken_reply_zh),
           learnerGrammarIds,
+          coverage: measured ? { known: measured.known, total: measured.total } : null,
           feedback: {
             understoodIntent: feedback.understood_intent,
             // An unsure transcript is not evidence of a learner error (SPEC §6.3).
@@ -399,6 +420,7 @@ export async function takeTurn(
         grammarUsedIds: [],
         grammarElicitedIds: [],
         learnerGrammarIds,
+        coverage: null,
         feedback: { understoodIntent: null, corrections: [], encouragementZh: null, transcriptUncertain: uncertain },
         fallback: true,
       };

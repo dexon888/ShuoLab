@@ -171,6 +171,8 @@ export const turnSchema = z.object({
   grammarElicitedIds: z.array(z.string()).default([]),
   /** This session's grammar points whose pattern appears in what the learner said or typed. */
   learnerGrammarIds: z.array(z.string()).default([]),
+  /** Tokens of the reply the learner had met, of all tokens (SPEC §2.6 rule 4). Null for older turns. */
+  coverage: z.object({ known: z.number().int().nonnegative(), total: z.number().int().nonnegative() }).nullable().default(null),
   feedback: z.object({
     /** Null when there is no model feedback (a fallback reply). */
     understoodIntent: z.boolean().nullable(),

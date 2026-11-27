@@ -42,6 +42,10 @@ export interface PromptInput {
   grammar?: readonly AllowedGrammar[];
   /** Points that must be elicited in this reply: unused by the learner's 4th turn. */
   mustElicit?: readonly AllowedGrammar[];
+  /** What the learner knows (SPEC §2.6 rule 4): pitch replies at it. */
+  learner?: { knownCount: number; recent: readonly string[]; sentences: 1 | 2 | 3; beginner: boolean };
+  /** Words from a rejected reply that the learner has not met, to avoid on the retry. */
+  avoid?: readonly string[];
   asrUncertain: boolean;
   /** Why the previous answer was rejected, on the retry. */
   retryReason: RejectionReason | null;
@@ -56,6 +60,7 @@ const RETRY_NOTES: Readonly<Record<RejectionReason, string>> = {
   not_json: "Your previous answer was not valid JSON. Return only the JSON object.",
   schema: "Your previous answer did not match the required JSON fields or was too long. Keep the reply short and use exactly the required fields.",
   not_mandarin: "Your previous spoken_reply_zh was not in Mandarin. Write spoken_reply_zh in Simplified Chinese characters.",
+  coverage: "Your previous reply used too many words the learner has not met. Say the same thing more simply, with the learner's known words and today's words.",
 };
 
 export function buildInstructions(input: PromptInput): string {
@@ -65,7 +70,7 @@ export function buildInstructions(input: PromptInput): string {
     "",
     "How to talk:",
     "- Reply in natural spoken Mandarin, in Simplified Chinese characters.",
-    "- Keep spoken_reply_zh to 1-3 short sentences and ask exactly one relevant follow-up question.",
+    `- Keep spoken_reply_zh to ${input.learner ? `${input.learner.sentences} short sentence${input.learner.sentences === 1 ? "" : "s"}` : "1-3 short sentences"} and ask exactly one relevant follow-up question.`,
     "- Stay on the situation below. Use the listed words when they fit naturally; do not force them in.",
     "- Do not correct every sentence. Recast naturally in your reply; list at most 3 corrections, and only for real errors.",
     "- English belongs only in optional_translation_en and in correction notes.",
@@ -143,13 +148,33 @@ export function buildInstructions(input: PromptInput): string {
     "Return only the JSON object described by the schema.",
   );
 
+  if (input.learner) {
+    const l = input.learner;
+    lines.push(
+      "",
+      `The learner knows about ${l.knownCount} words. Build replies from these known words and today's words; avoid others where you can:`,
+      l.recent.slice(0, 200).join("、") || "(none yet)",
+    );
+    if (l.beginner) {
+      lines.push(
+        "The learner is a beginner:",
+        "- Ask yes/no or either-or questions (…吗？, A还是B？) they can answer with a word they know.",
+        "- Offer a sentence frame to complete, e.g. 我喜欢____。",
+        "- If they answer in English, say their answer naturally in Mandarin (a recast) in your reply, then invite them to try it in Mandarin. English answers are fine; do not scold.",
+      );
+    }
+  }
+
   if (input.retryReason) {
     lines.push("", RETRY_NOTES[input.retryReason]);
+    if (input.retryReason === "coverage" && input.avoid && input.avoid.length > 0) {
+      lines.push(`Avoid these words the learner has not met: ${input.avoid.slice(0, 20).join("、")}`);
+    }
   }
   return lines.join("\n");
 }
 
-export type RejectionReason = "no_output" | "not_json" | "schema" | "not_mandarin";
+export type RejectionReason = "no_output" | "not_json" | "schema" | "not_mandarin" | "coverage";
 
 export type ParsedOutput =
   | { ok: true; output: TutorOutput }

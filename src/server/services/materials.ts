@@ -23,6 +23,8 @@ import { countHan } from "../../shared/tutor";
 import { ProviderError, type TutorProvider } from "../providers/types";
 import { ApiError } from "../validation/errors";
 import { accrueSql, getSession } from "./sessions";
+import { coverage, coverageTarget } from "../../shared/coverage";
+import { knownWords, vocabularySet } from "./known-words";
 import { LISTENING_OPERATION, assertWithinBudget, assertWithinRate, recordUsage } from "./usage";
 
 const MAX_ATTEMPTS = 2;
@@ -75,7 +77,7 @@ const RETRY: Readonly<Record<MaterialsRejection, string>> = {
     "Your previous answer did not use every grammar pattern and enough of the words. The reading must contain each grammar pattern and at least two of the words; every practice model answer must use its pattern.",
 };
 
-export function buildMaterialsInstructions(plan: SessionPlan, retry: MaterialsRejection | null): string {
+export function buildMaterialsInstructions(plan: SessionPlan, retry: MaterialsRejection | null, known: readonly string[] = []): string {
   const lines = [
     "Write short practice materials in Mandarin for one adult learner.",
     "",
@@ -84,6 +86,7 @@ export function buildMaterialsInstructions(plan: SessionPlan, retry: MaterialsRe
   ];
   if (plan.targetBand) lines.push(`Keep everything close to ${bandName(plan.targetBand)}. Never state an HSK level.`);
   lines.push("", "Words to use:", ...words(plan).map((w) => `- ${w}`));
+  if (known.length > 0) lines.push("", `Words the learner already knows; write the reading with these and the words above, avoiding others where you can: ${known.slice(0, 200).join("、")}`);
   if (plan.grammar.length > 0) {
     lines.push("", "Grammar points, with an example of each:", ...plan.grammar.map((g) => `- ${g.itemId} = ${g.name}${g.example ? ` (example: ${g.example})` : ""}`));
   }
@@ -316,6 +319,8 @@ export async function createMaterials(
   await reserve(d1, session.id, existing, now);
 
   try {
+    const [vocabulary, known] = await Promise.all([vocabularySet(d1), knownWords(d1, session.id)]);
+    const target = provider.mock ? null : coverageTarget(known.set.size);
     let best: Stored | null = null;
     let covers = false;
     let retry: MaterialsRejection | null = null;
@@ -323,7 +328,7 @@ export async function createMaterials(
       let result;
       try {
         result = await provider.generate({
-          instructions: buildMaterialsInstructions(session.plan, retry),
+          instructions: buildMaterialsInstructions(session.plan, retry, known.recent),
           messages: [{ role: "user", content: "Write the materials." }],
           format: { name: MATERIALS_FORMAT_NAME, schema: MATERIALS_OUTPUT_JSON_SCHEMA, maxOutputTokens: MAX_OUTPUT_TOKENS, timeoutMs: TIMEOUT_MS },
           context: {
@@ -340,7 +345,9 @@ export async function createMaterials(
         throw error instanceof ProviderError ? providerFailure(error) : error;
       }
       const parsed = parseMaterials(result.text);
-      const ok = parsed.ok && coversPlan(parsed.output, session.plan);
+      const read = parsed.ok ? coverage(parsed.output.reading.lines.map((l) => l.zh).join(""), vocabulary, known.set) : null;
+      const pitched = target === null || !read || read.total === 0 || read.known / read.total >= target;
+      const ok = parsed.ok && coversPlan(parsed.output, session.plan) && pitched;
       await recordUsage(
         d1,
         { provider: provider.vendor, operation: LISTENING_OPERATION, model: provider.model, usage: result.usage, estimatedUsd: provider.estimateUsd(result.usage), status: parsed.ok ? "ok" : "invalid", sessionId: session.id },

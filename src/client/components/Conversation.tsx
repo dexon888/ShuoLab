@@ -120,6 +120,11 @@ function TutorReply({ turn, displayMode, words, audio, hidden, onReveal }: Tutor
           From today's words: <span lang="zh-Hans">{used.join("、")}</span>
         </p>
       ) : null}
+      {turn.coverage && turn.coverage.total > 0 && !hidden ? (
+        <p className="mt-1 text-xs text-mist">
+          You had met {turn.coverage.known} of the {turn.coverage.total} words in this reply.
+        </p>
+      ) : null}
     </div>
   );
 }
