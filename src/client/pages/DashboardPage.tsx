@@ -6,7 +6,7 @@ import { ProviderStatusList } from "../components/ProviderStatusList";
 import { Section } from "../components/Section";
 import { TodaySession } from "../components/TodaySession";
 import { UsageBudgetMeter } from "../components/UsageBudgetMeter";
-import { useCurriculumStatus, useDueReviews, useMe, useMonthlyUsage, useProgressSummary } from "../hooks/queries";
+import { useCurriculumStatus, useDueReviews, useMe, useMonthlyUsage, useOnramp, useProgressSummary } from "../hooks/queries";
 import { MIN_OBSERVATIONS, type ProgressSummary } from "../../shared/progress";
 
 /** This week's communication evidence, kept apart from HSK coverage. */
@@ -53,6 +53,7 @@ export function DashboardPage() {
   const week = useProgressSummary(7);
   const due = useDueReviews();
   const usage = useMonthlyUsage();
+  const onramp = useOnramp();
 
   return (
     <>
@@ -64,6 +65,16 @@ export function DashboardPage() {
           length, reading help and study band.{" "}
           <Link to="/onboarding" className="font-medium text-cobalt underline">
             Get started
+          </Link>
+        </p>
+      ) : null}
+
+      {onramp.data && !onramp.data.checkPassed ? (
+        <p className="mb-6 border-l-4 border-cobalt bg-wash px-4 py-3">
+          <span className="font-semibold">New to Chinese? Start with the sounds.</span> Pinyin, the four tones and
+          typing Chinese, before your first sessions{onramp.data.units.length > 0 ? " (you have started)" : ""}.{" "}
+          <Link to="/start" className="font-medium text-cobalt underline">
+            Start here
           </Link>
         </p>
       ) : null}

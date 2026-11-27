@@ -786,3 +786,17 @@ Band tests and checkpoints shuffled the first 400 entries of a band, which
 are its alphabetically first words, so most of bands 4 to 7–9 were never
 asked about. They now shuffle the whole band with the same seed.
 
+## 116. Drill sounds are named exactly and heard in several voices
+
+Each listening item carries its pinyin with a tone number, sent as an SSML
+sapi phoneme, so the voice says precisely the syllable and tone intended
+whatever the character's usual reading. Items alternate two Azure voices and
+the tone check uses a third with syllables the units never use, following
+high-variability phonetic training. Voices and phonemes are only ever taken
+from authored content and checked against a fixed list and pattern.
+
+## 117. The on-ramp is advice, not a lock
+
+Today recommends it until the tone check is passed, but sessions stay open:
+the owner may already know some Chinese, or want to mix the two.
+

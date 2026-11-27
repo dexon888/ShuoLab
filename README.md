@@ -33,6 +33,7 @@ is summarised with sample sizes; export is **not built yet**.
 | Curriculum status | Working on local D1 |
 | HSK vocabulary import | Working: the real 11,000-entry list imported and verified locally on 2026-11-26; not yet run against a deployed database |
 | Grammar, characters, topics and tasks | Imported locally from a second-hand transcription (CC BY 4.0) after its vocabulary matched entry for entry; browsable, used in lesson plans, review, tests and their own progress figures, always labelled unverified and kept apart from verified vocabulary coverage; any row can be flagged as wrong |
+| Sound-system on-ramp | Eight units at /start on pinyin, tones, tone changes and typing, with a tone check in a new voice; recommended on Today until passed |
 | Tests | Band practice tests and a monthly checkpoint built in code from imported items; personal tracking, never an HSK score |
 | Browsing entries | Working and tested with generated placeholder data |
 | Colloquial expressions (separate from HSK) | Working and tested with generated placeholder rows; not yet run on the real dataset file |

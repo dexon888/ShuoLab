@@ -574,3 +574,21 @@ export const assessmentRuns = sqliteTable(
   },
   (t) => [index("assessment_runs_kind_idx").on(t.kind, t.startedAt), check("assessment_runs_kind_check", sql`${t.kind} IN ('band_test','checkpoint')`)],
 );
+
+/**
+ * Answers to the sound-system on-ramp (SPEC §5.9): one row per attempt at a
+ * unit or the tone check, scored by the authored keys.
+ */
+export const onrampResults = sqliteTable(
+  "onramp_results",
+  {
+    id: text("id").primaryKey(),
+    unitId: text("unit_id").notNull(),
+    correct: integer("correct").notNull(),
+    total: integer("total").notNull(),
+    passed: integer("passed").notNull(),
+    answersJson: text("answers_json").notNull(),
+    answeredAt: text("answered_at").notNull(),
+  },
+  (t) => [index("onramp_results_unit_idx").on(t.unitId, t.answeredAt)],
+);

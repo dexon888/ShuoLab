@@ -11,6 +11,7 @@ import { NotFoundPage } from "../pages/NotFoundPage";
 import { OnboardingPage } from "../pages/OnboardingPage";
 import { ProgressPage } from "../pages/ProgressPage";
 import { TestPage, TestsPage } from "../pages/TestsPage";
+import { StartPage, StartUnitPage } from "../pages/StartPage";
 import { ReviewPage } from "../pages/ReviewPage";
 import { SessionPage } from "../pages/SessionPage";
 import { SettingsPage } from "../pages/SettingsPage";
@@ -45,6 +46,8 @@ export function AppRoutes() {
         <Route path="curriculum/item/:itemId" element={<CurriculumItemPage />} />
         <Route path="review" element={<ReviewPage />} />
         <Route path="progress" element={<ProgressPage />} />
+        <Route path="start" element={<StartPage />} />
+        <Route path="start/:unitId" element={<StartUnitPage />} />
         <Route path="tests" element={<TestsPage />} />
         <Route path="tests/:testId" element={<TestPage />} />
         <Route path="settings" element={<SettingsPage />} />
