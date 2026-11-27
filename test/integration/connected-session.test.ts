@@ -239,3 +239,16 @@ describe("grammar in the conversation (SPEC §6.3)", () => {
     expect(tutor.requests.at(-1)?.instructions).not.toContain("must end with a question");
   });
 });
+
+describe("words that belong with the task (SPEC §2.6 rule 3, FR-034)", () => {
+  it("takes the new words the task and topic mention before syllabus order", async () => {
+    // Make the first task of the band mention two words from far down the list.
+    await database.db
+      .prepare("UPDATE curriculum_items SET metadata_json = json_set(metadata_json, '$.canDo', '能用样例词201和样例词250完成样例任务。') WHERE item_type = 'task' AND hsk_band = '1' AND hanzi = '样例任务甲'")
+      .run();
+    const session = await plan(20);
+    const words = session.plan.targets.filter((t) => t.role === "active").map((t) => t.hanzi);
+    expect(words.slice(0, 2).sort()).toEqual(["样例词201", "样例词250"]);
+    expect(session.plan.task?.canDo).toContain("样例词201");
+  });
+});

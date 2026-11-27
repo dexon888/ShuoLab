@@ -4,6 +4,7 @@ import {
   buildFreeChatPlan,
   buildHskPlan,
   nextBand,
+  rankByAnchor,
   targetMix,
   weakestSkill,
   type CandidateItem,
@@ -267,5 +268,27 @@ describe("connected plan (SPEC §2.5, §6.2)", () => {
         { skill: "writing", attempts: 5, successes: 5 },
       ]),
     ).toBe("speaking");
+  });
+});
+
+describe("words that belong together (SPEC §2.6 rule 3, FR-034)", () => {
+  const w = (n: number, hanzi: string) => ({ id: `w:${n}`, sourceId: n, hskBand: "1" as const, hanzi, pinyin: null });
+  const band = [w(1, "爱"), w(2, "八"), w(3, "名字"), w(4, "年龄"), w(5, "国家"), w(6, "名"), w(7, "家"), w(8, "白天"), w(9, "年")];
+
+  it("puts words written in the task and topic first, then words sharing their characters, then the rest in order", () => {
+    const ranked = rankByAnchor(band, "能问答姓名、国籍、年龄。名字").map((c) => c.hanzi);
+    expect(ranked.slice(0, 2).sort()).toEqual(["名字", "年龄"]);
+    // 名 and 年 share characters with what is written; 国家 shares 国 with the anchor text.
+    expect(ranked.slice(2, 5).sort()).toEqual(["名", "国家", "年"]);
+    expect(ranked.slice(5)).toEqual(["爱", "八", "家", "白天"]);
+  });
+
+  it("does not count a one-character word inside a longer word that is already written", () => {
+    expect(rankByAnchor(band, "名字").map((c) => c.hanzi)[0]).toBe("名字");
+    expect(rankByAnchor(band, "名字").map((c) => c.hanzi).indexOf("名")).toBeGreaterThan(0);
+  });
+
+  it("keeps syllabus order when there is no anchor", () => {
+    expect(rankByAnchor(band, "").map((c) => c.sourceId)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9]);
   });
 });

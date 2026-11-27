@@ -14,6 +14,7 @@ import { correctedItemIds } from "./review";
 import { achievedTasks } from "./task-check";
 
 const DAY_MS = 86_400_000;
+const HAN = /\p{Script=Han}/u;
 
 /** Dates as YYYY-MM-DD, `days` before `date`. */
 export function daysBefore(date: string, days: number): string {
@@ -248,11 +249,27 @@ WHERE edition_id = ?1 AND item_type IN ('topic','task') AND hsk_band = ?2
     const rotated = rotate(list);
     return [...rotated.filter((x) => !avoid(x.itemId)), ...rotated.filter((x) => avoid(x.itemId))];
   };
+  // Tasks not achieved come first (SPEC §6.2 step 3); achieved ones come round again only when all are.
+  const rankedTasks = [...rank(tasks.filter((t) => !achieved.has(t.itemId)), (id) => recentTasks.has(id)), ...rank(tasks.filter((t) => achieved.has(t.itemId)), (id) => recentTasks.has(id))];
   return {
-    topics: rank(topics, (id) => recentTopics.has(id) || avoidTopics.has(id)),
-    // Tasks not achieved come first (SPEC §6.2 step 3); achieved ones come round again only when all are.
-    tasks: [...rank(tasks.filter((t) => !achieved.has(t.itemId)), (id) => recentTasks.has(id)), ...rank(tasks.filter((t) => achieved.has(t.itemId)), (id) => recentTasks.has(id))],
+    topics: fitTopics(rank(topics, (id) => recentTopics.has(id) || avoidTopics.has(id)), rankedTasks[0], (id) => recentTopics.has(id) || avoidTopics.has(id)),
+    tasks: rankedTasks,
   };
+}
+
+/**
+ * SPEC §6.2 step 3: a topic that fits the task. Among topics not to be
+ * avoided, the one sharing the most characters with the task comes first;
+ * ties keep the rotation. Avoided topics stay last.
+ */
+export function fitTopics(topics: PlanTopic[], task: PlanTask | undefined, avoided: (id: string) => boolean): PlanTopic[] {
+  if (!task) return topics;
+  const taskChars = new Set([...(task.canDo + task.task)].filter((c) => HAN.test(c)));
+  const score = (t: PlanTopic) => new Set([...(t.area + t.subject + t.details)].filter((c) => taskChars.has(c))).size;
+  const ok = topics.filter((t) => !avoided(t.itemId));
+  const rest = topics.filter((t) => avoided(t.itemId));
+  const ordered = ok.map((t, i) => ({ t, i, s: score(t) })).sort((a, b) => b.s - a.s || a.i - b.i).map((x) => x.t);
+  return [...ordered, ...rest];
 }
 
 /** Successful and total qualifying attempts per skill over the last 14 days. */
