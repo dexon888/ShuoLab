@@ -15,6 +15,7 @@ import { materialsResponseSchema, type MaterialsResponse } from "../../shared/le
 import { listeningResponseSchema, type ListeningEvent, type ListeningResponse } from "../../shared/listening";
 import { DELETE_ALL_PHRASE, dataSummaryResponseSchema, deletionResponseSchema } from "../../shared/owner-data";
 import { progressSummarySchema, type ProgressWindow } from "../../shared/progress";
+import { assessmentListResponseSchema, assessmentResponseSchema } from "../../shared/assessment";
 import { flagListResponseSchema, flagResponseSchema, taskCheckResponseSchema } from "../../shared/task-check";
 import { dueResponseSchema, rateResponseSchema, type ReviewRating } from "../../shared/review";
 import { planResponseSchema, sessionListResponseSchema, type PlanRequest } from "../../shared/session";
@@ -428,6 +429,40 @@ export function useFlagItem(itemId: string) {
         : apiDelete(`/curriculum/items/${encodeURIComponent(itemId)}/flag`, undefined, flagResponseSchema),
     onSuccess: () => {
       void client.invalidateQueries({ queryKey: ["curriculum"] });
+    },
+  });
+}
+
+// --- Tests (SPEC §6.5) --------------------------------------------------------------
+
+export function useAssessments() {
+  return useQuery({ queryKey: ["tests", "list"], queryFn: () => apiGet("/tests", assessmentListResponseSchema) });
+}
+
+export function useAssessment(id: string) {
+  return useQuery({ queryKey: ["tests", id], queryFn: () => apiGet(`/tests/${encodeURIComponent(id)}`, assessmentResponseSchema) });
+}
+
+export function useStartAssessment() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { band: HskBand; kind: "band_test" | "checkpoint" }) => apiPost("/tests", body, assessmentResponseSchema),
+    onSuccess: (result) => {
+      client.setQueryData(["tests", result.assessment.id], result);
+      void client.invalidateQueries({ queryKey: ["tests", "list"] });
+    },
+  });
+}
+
+export function useFinishAssessment(id: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { answers: (number | string | null)[]; spoken: boolean[] }) =>
+      apiPost(`/tests/${encodeURIComponent(id)}/answers`, body, assessmentResponseSchema),
+    onSuccess: (result) => {
+      client.setQueryData(["tests", id], result);
+      void client.invalidateQueries({ queryKey: ["tests", "list"] });
+      void client.invalidateQueries({ queryKey: ["progress"] });
     },
   });
 }

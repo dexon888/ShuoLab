@@ -76,7 +76,7 @@ production evidence, a flag-as-wrong control and meaningful days (DECISIONS 97).
 | C | `phase-5/section-review` | Grammar and character cards (characters shown in words), speaking and writing production cards, corrections feeding cards and the next plan, production mastery only from production evidence; section progress, skill balance and meaningful days (FR-025, FR-026, FR-029). Done |
 | D | `phase-5/task-check` | Task check with 2–3 criteria and a stored scorer version, tasks achieved per band; flag an unverified row as wrong (FR-030, FR-031). Done |
 | E | `phase-5/speaking-writing-review` | Folded into C. Done there |
-| F | `phase-5/tests` | Band practice tests from imported items set in band tasks and topics, unverified keys labelled; the monthly unseen checkpoint (FR-027, FR-022) |
+| F | `phase-5/tests` | Band practice tests from imported items set in band tasks and topics, unverified keys labelled; the monthly unseen checkpoint (FR-027, FR-022). Done |
 
 Each is tested, documented and shipped on its own, in this order.
 

@@ -734,3 +734,22 @@ A flag is the owner's judgement about a source row, so it is exported,
 restored and deleted with the owner's data, and never changes the imported
 row itself.
 
+## 109. Tests are built in code, not by a model
+
+Every question comes from imported rows with a fixed key, chosen by a seeded
+generator from the band, kind and day, so the same test can be rebuilt and a
+result traced to exactly what was asked. No model writes questions or judges
+choices; the written task is scored by length and the band's words
+(`band-test-v1`). Grammar keys come from the second-hand examples and say so.
+
+## 110. The checkpoint measures unseen words
+
+A monthly checkpoint uses the band-test form but only words never targeted in
+a session or reviewed, and adds one spontaneous speaking task, so months can be
+compared on material that practice has not touched. One per calendar month.
+
+## 111. Tests get their own tab
+
+Tests sit between Review and Progress in the main navigation, because they are
+something to do rather than something to read.
+

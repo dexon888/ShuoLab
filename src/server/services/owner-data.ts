@@ -32,6 +32,7 @@ const ORDER: Readonly<Record<OwnerTable, string>> = {
   session_materials: "created_at, session_id",
   task_checks: "checked_at, session_id",
   item_flags: "flagged_at, curriculum_item_id",
+  assessment_runs: "started_at, id",
   conversation_turns: "session_id, created_at, id",
   listening_exercises: "created_at, id",
   review_cards: "created_at, id",
@@ -205,6 +206,7 @@ export async function deleteAllOwnerData(d1: D1Database, now: Date = new Date())
     d1.prepare("DELETE FROM practice_attempts"),
     d1.prepare("DELETE FROM mastery_states"),
     d1.prepare("DELETE FROM item_flags"),
+    d1.prepare("DELETE FROM assessment_runs"),
     d1.prepare("DELETE FROM owner_settings"),
     d1.prepare("DELETE FROM usage_events WHERE recorded_at < ?1").bind(start),
   ]);
