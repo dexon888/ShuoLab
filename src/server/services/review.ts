@@ -383,7 +383,7 @@ function toView(row: CardRow, now: Date): ReviewCard {
 export async function listDue(d1: D1Database, limit: number, now: Date = new Date()): Promise<DueResponse> {
   const at = now.toISOString();
   const [due, counts] = await d1.batch<CardRow | { due: number; total: number; next: string | null }>([
-    d1.prepare(`${CARD_SELECT} WHERE rc.owner_id = ?1 AND rc.due_at <= ?2 ORDER BY rc.due_at, rc.id LIMIT ?3`).bind(OWNER_ID, at, limit),
+    d1.prepare(`${CARD_SELECT} WHERE rc.owner_id = ?1 AND rc.curriculum_item_id NOT IN (SELECT curriculum_item_id FROM item_flags) AND rc.due_at <= ?2 ORDER BY rc.due_at, rc.id LIMIT ?3`).bind(OWNER_ID, at, limit),
     d1
       .prepare(
         `SELECT SUM(CASE WHEN due_at <= ?2 THEN 1 ELSE 0 END) AS due, COUNT(*) AS total,

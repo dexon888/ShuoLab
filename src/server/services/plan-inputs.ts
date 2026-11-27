@@ -11,6 +11,7 @@ import { isCheckableGrammar, type PlanTask, type PlanTopic } from "../../shared/
 import { parseItemDetails } from "../../shared/sections";
 import type { CandidateItem, CharacterCandidate, GrammarCandidate } from "./planner";
 import { correctedItemIds } from "./review";
+import { achievedTasks } from "./task-check";
 
 const DAY_MS = 86_400_000;
 
@@ -86,7 +87,8 @@ async function grammarRows(d1: D1Database, editionId: string, band: HskBand) {
   const rows = await d1
     .prepare(
       `SELECT id, source_id, hsk_band, hanzi, metadata_json FROM curriculum_items
-WHERE edition_id = ?1 AND item_type = 'grammar' AND hsk_band = ?2 ORDER BY source_id`,
+WHERE edition_id = ?1 AND item_type = 'grammar' AND hsk_band = ?2
+  AND id NOT IN (SELECT curriculum_item_id FROM item_flags) ORDER BY source_id`,
     )
     .bind(editionId, band)
     .all<{ id: string; source_id: number; hsk_band: string; hanzi: string; metadata_json: string | null }>();
@@ -159,7 +161,8 @@ export async function characterLists(d1: D1Database, editionId: string, band: Hs
   const rows = await d1
     .prepare(
       `SELECT id, hanzi, metadata_json FROM curriculum_items
-WHERE edition_id = ?1 AND item_type = 'character' AND hsk_band IN (SELECT value FROM json_each(?2))`,
+WHERE edition_id = ?1 AND item_type = 'character' AND hsk_band IN (SELECT value FROM json_each(?2))
+  AND id NOT IN (SELECT curriculum_item_id FROM item_flags)`,
     )
     .bind(editionId, JSON.stringify(bands))
     .all<{ id: string; hanzi: string; metadata_json: string | null }>();
@@ -226,11 +229,12 @@ export async function topicsAndTasks(
   const rows = await d1
     .prepare(
       `SELECT id, item_type, metadata_json FROM curriculum_items
-WHERE edition_id = ?1 AND item_type IN ('topic','task') AND hsk_band = ?2 ORDER BY source_id`,
+WHERE edition_id = ?1 AND item_type IN ('topic','task') AND hsk_band = ?2
+  AND id NOT IN (SELECT curriculum_item_id FROM item_flags) ORDER BY source_id`,
     )
     .bind(editionId, band)
     .all<{ id: string; item_type: "topic" | "task"; metadata_json: string | null }>();
-  const [recentTopics, recentTasks] = await Promise.all([recentlyUsed(d1, "topic", 3), recentlyUsed(d1, "task", 3)]);
+  const [recentTopics, recentTasks, achieved] = await Promise.all([recentlyUsed(d1, "topic", 3), recentlyUsed(d1, "task", 3), achievedTasks(d1)]);
 
   const rotate = <T>(list: T[]): T[] => (list.length === 0 ? list : [...list.slice(sessionIndex % list.length), ...list.slice(0, sessionIndex % list.length)]);
   const topics: PlanTopic[] = [];
@@ -246,7 +250,8 @@ WHERE edition_id = ?1 AND item_type IN ('topic','task') AND hsk_band = ?2 ORDER 
   };
   return {
     topics: rank(topics, (id) => recentTopics.has(id) || avoidTopics.has(id)),
-    tasks: rank(tasks, (id) => recentTasks.has(id)),
+    // Tasks not achieved come first (SPEC §6.2 step 3); achieved ones come round again only when all are.
+    tasks: [...rank(tasks.filter((t) => !achieved.has(t.itemId)), (id) => recentTasks.has(id)), ...rank(tasks.filter((t) => achieved.has(t.itemId)), (id) => recentTasks.has(id))],
   };
 }
 

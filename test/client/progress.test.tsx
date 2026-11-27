@@ -143,7 +143,7 @@ describe("grammar, characters, topics and tasks on Progress (SPEC §2.5, FR-026)
             grammar: { unverified: true, bands: [], total: { entries: 593, introduced: 4, bySkill: { ...zero, reading: { introduced: 2, practiced: 0, developing: 2, mastered: 1 } } } },
             character: null,
             topics: { met: 3, imported: 427 },
-            tasks: { met: 2, imported: 678 },
+            tasks: { met: 2, imported: 678, achieved: 1 },
           },
           meaningfulDays: { count: 4, dates: [] },
           skillBalance: [
@@ -157,7 +157,8 @@ describe("grammar, characters, topics and tasks on Progress (SPEC §2.5, FR-026)
     const sections = await screen.findByRole("region", { name: "Grammar, characters, topics and tasks" });
     expect(sections).toHaveTextContent("Grammar points: met 4 of 593.");
     expect(sections).toHaveTextContent("reading 1 (developing 2)");
-    expect(sections).toHaveTextContent("Tasks: 2 of 678 practised. Practising a task is not achieving it.");
+    expect(sections).toHaveTextContent("Tasks: 2 of 678 practised, 1 achieved by the task check");
+    expect(sections).toHaveTextContent("Practising a task is not achieving it.");
     expect(sections).toHaveTextContent(/second-hand transcription/);
     const balance = screen.getByRole("region", { name: "Skill balance" });
     expect(balance).toHaveTextContent("4 meaningful days in the last 30");

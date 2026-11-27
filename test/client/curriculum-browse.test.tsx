@@ -199,6 +199,7 @@ describe("entry page (FR-016)", () => {
         definition: null,
         definitionProvenance: null,
         details: null,
+        flag: null,
       },
       edition: { id: "synthetic-fixture", publisher: "ShuoLab test fixture", editionDate: "2025-11", synthetic: true, isActive: true },
       homographs: [entry(11, { hanzi: "样例同形", homograph: "2" })],
@@ -401,5 +402,44 @@ describe("grammar, characters, topics and tasks (FR-016)", () => {
     expect(screen.queryByRole("region", { name: "Meaning" })).not.toBeInTheDocument();
     expect(screen.getByRole("link", { name: /HSK 1.*Grammar/ })).toHaveAttribute("href", "/curriculum/1?type=grammar");
     expect(screen.getByText("Licensed CC BY 4.0.")).toBeInTheDocument();
+  });
+});
+
+describe("flagging an unverified row (SPEC §2.5 rule 8, FR-031)", () => {
+  it("flags a grammar point with a note from its page", async () => {
+    const id = "hsk3-2025-11:grammar:7";
+    const url = `/api/v1/curriculum/items/${encodeURIComponent(id)}`;
+    let flagged: { note: string | null; flaggedAt: string } | null = null;
+    const sent: unknown[] = [];
+    renderApp(`/curriculum/item/${encodeURIComponent(id)}`, {
+      "/api/v1/me": () => json(me),
+      [url]: () =>
+        json({
+          item: {
+            ...entry(7, { id, itemType: "grammar", hanzi: "样例语法", pinyin: null, partOfSpeech: null, note: "词类" }),
+            entryRaw: null,
+            sourcePdfPage: null,
+            definition: null,
+            definitionProvenance: null,
+            details: { kind: "grammar", grammarType: "词类", category: null, detail: null, examples: ["样例。"] },
+            flag: flagged,
+          },
+          edition: { id: "hsk3-2025-11", publisher: "Test", editionDate: "2025-11", synthetic: false, isActive: true },
+          homographs: [],
+          sources: [],
+          progress: { bySkill: ["listening", "speaking", "reading", "writing"].map((skill) => ({ skill, state: "unseen", successDays: 0, failureCount: 0, lastAttemptAt: null, lastSuccessAt: null })) },
+        }),
+      [`POST ${url}/flag`]: (init) => {
+        sent.push(JSON.parse(String(init?.body)));
+        flagged = { note: "Wrong example", flaggedAt: "2026-03-04T10:00:00.000Z" };
+        return json({ flag: { itemId: id, ...flagged } }, 201);
+      },
+    });
+    await userEvent.click(await screen.findByRole("button", { name: "Flag as wrong…" }));
+    await userEvent.type(screen.getByLabelText("What is wrong? (optional)"), "Wrong example");
+    await userEvent.click(screen.getByRole("button", { name: "Flag it" }));
+    expect(await screen.findByText(/You flagged this as wrong on 2026-03-04/)).toBeInTheDocument();
+    expect(screen.getByText("Note: Wrong example")).toBeInTheDocument();
+    expect(sent).toEqual([{ note: "Wrong example" }]);
   });
 });

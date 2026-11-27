@@ -18,6 +18,8 @@ export const OWNER_TABLES = [
   "session_targets",
   "session_items",
   "session_materials",
+  "task_checks",
+  "item_flags",
   "conversation_turns",
   "listening_exercises",
   "review_cards",

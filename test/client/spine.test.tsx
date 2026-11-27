@@ -263,3 +263,48 @@ describe("the session spine (SPEC §5.3)", () => {
     expect(await screen.findByRole("region", { name: "Warm-up" })).toBeInTheDocument();
   });
 });
+
+describe("the task check in the summary (SPEC §6.1, FR-030)", () => {
+  const checked = {
+    check: {
+      sessionId: ID,
+      taskItemId: "synthetic-fixture:task:1",
+      canDo: "能完成样例任务。",
+      criteria: [
+        { label: "Stated a time", met: true, evidence: "三点见" },
+        { label: "Asked a question", met: false, evidence: null },
+      ],
+      passed: false,
+      scorerModel: "fake-tutor-1",
+      scorerVersion: "task-check-v1",
+      standIn: true,
+      checkedAt: "2026-03-04T10:30:00.000Z",
+      task: { passes: 0, topics: 0, achieved: false },
+    },
+  };
+
+  it("offers the check once the session is finished, then shows each criterion with the learner's own words", async () => {
+    let ran = false;
+    open(
+      "summary",
+      { session: { ...session("complete"), endedAt: "2026-03-04T10:20:00.000Z" } },
+      {
+        [`${SESSION}/task-check`]: () => json(ran ? checked : { check: null }),
+        [`POST ${SESSION}/task-check`]: () => ((ran = true), json(checked)),
+      },
+    );
+    const summary = await step("Summary");
+    await userEvent.click(await summary.findByRole("button", { name: "Check the task" }));
+    expect(await summary.findByText(/Stated a time: yes/)).toBeInTheDocument();
+    expect(summary.getByText("“三点见”")).toBeInTheDocument();
+    expect(summary.getByText(/Asked a question: not shown/)).toBeInTheDocument();
+    expect(summary.getByText(/Passed on 0 of the 2 days needed/)).toBeInTheDocument();
+    expect(summary.getByText(/practice stand-in/)).toBeInTheDocument();
+    expect(summary.getByText(/not an HSK result/)).toBeInTheDocument();
+  });
+
+  it("says the task is checked after finishing while the session is open", async () => {
+    open("summary");
+    expect(await (await step("Summary")).findByText(/checked after you finish/)).toBeInTheDocument();
+  });
+});

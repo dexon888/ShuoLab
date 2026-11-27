@@ -203,6 +203,8 @@ export const curriculumItemDetailResponseSchema = z.object({
     definitionProvenance: z.string().nullable(),
     /** Section details for grammar, characters, topics and tasks; null for vocabulary. */
     details: itemDetailsSchema.nullable().default(null),
+    /** The owner's flag on an unverified row, if any (SPEC §2.5 rule 8). */
+    flag: z.object({ note: z.string().nullable(), flaggedAt: z.string() }).nullable().default(null),
   }),
   edition: z.object({
     id: z.string(),

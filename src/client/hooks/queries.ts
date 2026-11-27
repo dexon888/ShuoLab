@@ -15,6 +15,7 @@ import { materialsResponseSchema, type MaterialsResponse } from "../../shared/le
 import { listeningResponseSchema, type ListeningEvent, type ListeningResponse } from "../../shared/listening";
 import { DELETE_ALL_PHRASE, dataSummaryResponseSchema, deletionResponseSchema } from "../../shared/owner-data";
 import { progressSummarySchema, type ProgressWindow } from "../../shared/progress";
+import { flagListResponseSchema, flagResponseSchema, taskCheckResponseSchema } from "../../shared/task-check";
 import { dueResponseSchema, rateResponseSchema, type ReviewRating } from "../../shared/review";
 import { planResponseSchema, sessionListResponseSchema, type PlanRequest } from "../../shared/session";
 import { monthlyUsageResponseSchema, turnResponseSchema, type SourceMode } from "../../shared/tutor";
@@ -389,5 +390,44 @@ export function useAnswerWriting(sessionId: string) {
   return useMutation({
     mutationFn: (answer: string) => apiPost(`/sessions/${encodeURIComponent(sessionId)}/materials/writing`, { answer }, materialsResponseSchema),
     onSuccess: store,
+  });
+}
+
+// --- Task check and flags (SPEC §6.1, §2.5 rule 8) ---------------------------------
+
+export function useTaskCheck(sessionId: string, enabled: boolean) {
+  return useQuery({
+    queryKey: ["sessions", sessionId, "task-check"],
+    queryFn: () => apiGet(`/sessions/${encodeURIComponent(sessionId)}/task-check`, taskCheckResponseSchema),
+    enabled,
+  });
+}
+
+export function useRunTaskCheck(sessionId: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: () => apiPost(`/sessions/${encodeURIComponent(sessionId)}/task-check`, {}, taskCheckResponseSchema),
+    onSuccess: (result) => {
+      client.setQueryData(["sessions", sessionId, "task-check"], result);
+      void client.invalidateQueries({ queryKey: ["usage"] });
+      void client.invalidateQueries({ queryKey: ["progress"] });
+    },
+  });
+}
+
+export function useFlags() {
+  return useQuery({ queryKey: ["curriculum", "flags"], queryFn: () => apiGet("/curriculum/flags", flagListResponseSchema) });
+}
+
+export function useFlagItem(itemId: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (flag: { on: true; note: string } | { on: false }) =>
+      flag.on
+        ? apiPost(`/curriculum/items/${encodeURIComponent(itemId)}/flag`, flag.note ? { note: flag.note } : {}, flagResponseSchema)
+        : apiDelete(`/curriculum/items/${encodeURIComponent(itemId)}/flag`, undefined, flagResponseSchema),
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: ["curriculum"] });
+    },
   });
 }

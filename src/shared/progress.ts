@@ -56,6 +56,8 @@ const exposureSchema = z.object({
   /** Distinct items used by a finished session: exposure, never mastery. */
   met: count,
   imported: count,
+  /** Tasks only: achieved by the task check (SPEC §6.1). */
+  achieved: count.default(0),
 });
 
 export const progressSummarySchema = z.object({
@@ -108,7 +110,7 @@ export const progressSummarySchema = z.object({
       topics: exposureSchema,
       tasks: exposureSchema,
     })
-    .default({ grammar: null, character: null, topics: { met: 0, imported: 0 }, tasks: { met: 0, imported: 0 } }),
+    .default({ grammar: null, character: null, topics: { met: 0, imported: 0, achieved: 0 }, tasks: { met: 0, imported: 0, achieved: 0 } }),
   /** Attempts and successes per skill in the window (SPEC §8.3 skill balance). */
   skillBalance: z.array(z.object({ skill: z.enum(SKILLS), attempts: count, successes: count })).default([]),
   /**

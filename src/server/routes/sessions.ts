@@ -15,6 +15,7 @@ import { getSession } from "../services/sessions";
 import { answerListening, createListening, recordListeningEvent } from "../services/listening";
 import { answerPractice, answerReading, answerWriting, createMaterials, revealReading } from "../services/materials";
 import { deleteSession } from "../services/owner-data";
+import { checkTask, getTaskCheck } from "../services/task-check";
 import { recordTurnEvent, takeTurn } from "../services/turns";
 import { readJsonBody } from "../validation/body";
 import { ApiError } from "../validation/errors";
@@ -104,6 +105,9 @@ export function createSessionRoutes(deps: SessionRouteDeps = {}) {
       if (!parsed.success) throw new ApiError("BAD_REQUEST", 'Send {"answer": "…"} with up to 1,000 characters.');
       return c.json(await answerWriting(c.env.DB, c.req.param("id"), parsed.data.answer));
     })
+    // The task check (SPEC §6.1): judged once after the session is finished.
+    .get("/:id/task-check", async (c) => c.json({ check: await getTaskCheck(c.env.DB, c.req.param("id")) }))
+    .post("/:id/task-check", async (c) => c.json({ check: await checkTask(c.env.DB, tutorFor(c.env), c.req.param("id")) }))
     // Idempotent: completing a complete session returns the same summary.
     .post("/:id/complete", async (c) => c.json(await completeSession(c.env.DB, c.req.param("id"))))
     .post("/:id/turn", async (c) => {

@@ -5,6 +5,7 @@ import { parseCurriculumItemId } from "../../shared/curriculum";
 import { SECTION_NAMES, type ItemDetails } from "../../shared/sections";
 import { AsyncStatus } from "../components/AsyncStatus";
 import { Section } from "../components/Section";
+import { FlagControl } from "../components/TaskCheck";
 import { SyntheticDataNotice } from "../components/SyntheticDataNotice";
 import { useCurriculumItem } from "../hooks/queries";
 import { NotFoundPage } from "./NotFoundPage";
@@ -178,6 +179,9 @@ function ItemDetail({ data }: { data: CurriculumItemDetailResponse }) {
         {!vocab ? (
           <Section title="Details">
             <SectionDetails details={item.details} />
+            <div className="mt-4">
+              <FlagControl itemId={item.id} flag={item.flag} />
+            </div>
           </Section>
         ) : null}
         {vocab ? (

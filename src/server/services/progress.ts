@@ -9,6 +9,7 @@ import { MIN_OBSERVATIONS, rateOrNull, type ProgressSummary, type ProgressWindow
 import { localStudyDate } from "../../shared/session";
 import { OWNER_ID } from "../db/schema";
 import { getSettings } from "./settings";
+import { achievedTasks } from "./task-check";
 
 const DAY_MS = 86_400_000;
 
@@ -94,7 +95,7 @@ function fill(
 
 async function sections(d1: D1Database): Promise<ProgressSummary["sections"]> {
   const edition = await d1.prepare("SELECT id FROM curriculum_editions WHERE is_active = 1 LIMIT 1").first<{ id: string }>();
-  const none = { grammar: null, character: null, topics: { met: 0, imported: 0 }, tasks: { met: 0, imported: 0 } };
+  const none = { grammar: null, character: null, topics: { met: 0, imported: 0, achieved: 0 }, tasks: { met: 0, imported: 0, achieved: 0 } };
   if (!edition) return none;
   const exposure = async (type: "topic" | "task") => {
     const row = await d1
@@ -105,7 +106,8 @@ async function sections(d1: D1Database): Promise<ProgressSummary["sections"]> {
       )
       .bind(edition.id, type)
       .first<{ imported: number; met: number }>();
-    return { met: row?.met ?? 0, imported: row?.imported ?? 0 };
+    const achieved = type === "task" ? (await achievedTasks(d1)).size : 0;
+    return { met: row?.met ?? 0, imported: row?.imported ?? 0, achieved };
   };
   const [grammar, character, topics, tasks] = await Promise.all([
     sectionCoverage(d1, edition.id, "grammar"),
