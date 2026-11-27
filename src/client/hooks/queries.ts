@@ -8,7 +8,7 @@ import {
   meResponseSchema,
 } from "../../shared/api";
 import type { MeResponse } from "../../shared/api";
-import type { HskBand } from "../../shared/curriculum";
+import type { HskBand, ItemType } from "../../shared/curriculum";
 import { settingsResponseSchema, type SettingsUpdate } from "../../shared/settings";
 import { sessionStateResponseSchema, type SessionAction, type SessionStateResponse } from "../../shared/debrief";
 import { listeningResponseSchema, type ListeningEvent, type ListeningResponse } from "../../shared/listening";
@@ -36,6 +36,8 @@ export interface ItemFilters {
   q: string;
   /** An entry's most advanced state across skills; empty for any. */
   state?: string;
+  /** Syllabus section; vocabulary when absent. */
+  type?: ItemType;
 }
 
 /** Entries of one band, a page at a time; more are fetched only when asked for. */
@@ -45,6 +47,7 @@ export function useCurriculumItems(filters: ItemFilters) {
     initialPageParam: null as string | null,
     queryFn: ({ pageParam }) => {
       const params = new URLSearchParams({ band: filters.band });
+      if (filters.type && filters.type !== "vocab") params.set("type", filters.type);
       if (filters.pos) params.set("pos", filters.pos);
       if (filters.q) params.set("q", filters.q);
       if (filters.state) params.set("state", filters.state);

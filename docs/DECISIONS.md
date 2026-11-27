@@ -622,3 +622,35 @@ Grammar type, category, detail and example sentences; the character's skill
 statement. These go in `metadata_json` rather than new columns, because no
 feature reads them yet and the schema already allows it.
 
+## 95. The owner allows the unverified sections in study
+
+SPEC §5.2 allows only verified grammar in lesson plans. On 2026-11-26 the owner
+asked for grammar, characters, topics and tasks to be used in study, review,
+progress and tests anyway. They are used, but every place they appear says
+they come from a second-hand transcription, and their progress is reported
+apart from verified HSK vocabulary coverage. SPEC v2.3 records this as §2.5,
+with requirements FR-023 to FR-027 and a new Phase 5; the former P1 phase is
+now Phase 6.
+
+## 96. Sections are browsed on the band pages
+
+Each band page has a tab per section rather than five separate page trees, so
+a band reads as one unit of the syllabus. Search in grammar, topics and tasks
+matches anywhere, including details and examples, because they are phrases
+rather than headwords. The list shows a one-line note per item (kind, skill,
+area or can-do statement) worked out from the stored details.
+
+## 97. Every session follows one learning cycle
+
+An adversarial review of the spec found the sections stayed siloed: grammar
+appeared once and left, corrections went nowhere, tasks were only labels, and
+a session could hold more than fits in 15 minutes. SPEC §5.3 now fixes the
+order (warm-up retrieval, listen, notice, read, guided practice, a
+conversation that carries out the task, write, summary), §6.2 a priority with
+caps and a topic change when items are recycled, §6.3 a server check of the
+tutor's grammar claims, §2.5 rules that feedback flows into the next plan and
+that the owner can flag a wrong row, §6.1 a task check, §5.5 separate
+recognition and production evidence, and §8.3 meaningful days instead of a
+streak. Character "writing" is named typed or self-rated, because handwriting
+recognition is out of scope.
+

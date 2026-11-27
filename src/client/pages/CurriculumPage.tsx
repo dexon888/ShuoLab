@@ -78,7 +78,18 @@ function DimensionList({ status }: { status: CurriculumStatusResponse }) {
     <ul className="divide-y divide-line">
       {status.dimensions.map((dimension) => (
         <li key={dimension.itemType} className="flex flex-wrap justify-between gap-x-4 py-2">
-          <span className="font-medium">{DIMENSION_NAMES[dimension.itemType]}</span>
+          <span className="font-medium">
+            {dimension.importedCount > 0 ? (
+              <Link
+                to={dimension.itemType === "vocab" ? "/curriculum/1" : `/curriculum/1?type=${dimension.itemType}`}
+                className="text-cobalt underline"
+              >
+                {DIMENSION_NAMES[dimension.itemType]}
+              </Link>
+            ) : (
+              DIMENSION_NAMES[dimension.itemType]
+            )}
+          </span>
           <span
             className={dimension.status === "verified" && !synthetic ? "text-jade" : "text-mist"}
           >

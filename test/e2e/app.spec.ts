@@ -62,7 +62,7 @@ test.describe("first launch (FR-001, FR-005)", () => {
   test("a band with nothing imported says so and points to the import steps", async ({ page }) => {
     await page.goto("/curriculum/1");
     await expect(page.getByText("No entries are imported for this band.")).toBeVisible();
-    await page.getByRole("link", { name: /how to import the vocabulary/ }).click();
+    await page.getByRole("link", { name: /how to import it/ }).click();
     await expect(page).toHaveURL(/\/curriculum$/);
   });
 });

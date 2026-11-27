@@ -169,6 +169,29 @@ describe("storing the sections (FR-016)", () => {
     expect(status.dimensions.find((d) => d.itemType === "grammar")).toMatchObject({ status: "imported", importedCount: 8, expectedCount: null });
   });
 
+  it("lists and searches each section through the API, with a note and full details", async () => {
+    await importSections();
+    const app = createApp();
+    const env = { DB: database.db, APP_ENV: "development", DEV_AUTH_BYPASS: "true" };
+    const get = async (path: string) => (await app.request(`http://localhost/api/v1${path}`, {}, env)).json() as Promise<Record<string, unknown>>;
+
+    const list = (await get("/curriculum/items?band=1&type=grammar")) as { items: { id: string; hanzi: string; note: string }[]; total: number };
+    expect(list.total).toBe(2);
+    expect(list.items[0]).toMatchObject({ hanzi: "样例语法0", note: "词类 · 名词" });
+
+    const found = (await get(`/curriculum/items?band=1&type=grammar&q=${encodeURIComponent("句三")}`)) as { items: { hanzi: string }[] };
+    expect(found.items.map((i) => i.hanzi)).toEqual(["样例陈述句"]);
+
+    const chars = (await get("/curriculum/items?band=2&type=character")) as { items: { note: string }[] };
+    expect(chars.items.map((i) => i.note)).toEqual(["To recognise", "To write"]);
+
+    const detail = (await get(`/curriculum/items/${encodeURIComponent(list.items[0]?.id ?? "")}`)) as { item: { details: unknown } };
+    expect(detail.item.details).toEqual({ kind: "grammar", grammarType: "词类", category: "名词", detail: null, examples: ["样例句一。", "样例句二。"] });
+
+    const vocab = (await get("/curriculum/items?band=1")) as { items: { note: unknown }[] };
+    expect(vocab.items[0]?.note).toBeNull();
+  });
+
   it("can be run again without duplicating anything", async () => {
     await importSections();
     await importSections();

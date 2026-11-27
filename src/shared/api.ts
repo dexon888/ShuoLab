@@ -5,6 +5,7 @@
 import { z } from "zod";
 import { HSK_BANDS, ITEM_TYPES } from "./curriculum";
 import { MASTERY_STATES, SKILLS } from "./learning";
+import { itemDetailsSchema } from "./sections";
 import { ownerSettingsSchema } from "./settings";
 import { COLLOQUIAL_CHANNELS, COLLOQUIAL_REGISTERS, CURRENCY_STATUSES } from "./colloquial";
 
@@ -166,6 +167,8 @@ export const curriculumItemSummarySchema = z.object({
   levelLabel: z.string().nullable(),
   /** The most advanced of the four skills' states, from evidence. `unseen` with no evidence. */
   state: z.enum(MASTERY_STATES).default("unseen"),
+  /** One line for a grammar, character, topic or task item; null for vocabulary. */
+  note: z.string().nullable().default(null),
 });
 export type CurriculumItemSummary = z.infer<typeof curriculumItemSummarySchema>;
 
@@ -198,6 +201,8 @@ export const curriculumItemDetailResponseSchema = z.object({
     /** Null unless a gloss was imported from a separate, named source. */
     definition: z.string().nullable(),
     definitionProvenance: z.string().nullable(),
+    /** Section details for grammar, characters, topics and tasks; null for vocabulary. */
+    details: itemDetailsSchema.nullable().default(null),
   }),
   edition: z.object({
     id: z.string(),

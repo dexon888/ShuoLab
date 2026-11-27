@@ -16,6 +16,7 @@ import {
   type ItemType,
 } from "../../shared/curriculum";
 import { MASTERY_STATES, SKILLS, type MasteryState } from "../../shared/learning";
+import { itemNote, parseItemDetails } from "../../shared/sections";
 import { OWNER_ID, curriculumEditions, curriculumItems, sourceManifests } from "../db/schema";
 import { ApiError } from "../validation/errors";
 
@@ -47,6 +48,7 @@ function toSummary(row: ItemRow): CurriculumItemSummary {
     homograph: row.homograph,
     levelLabel: row.levelLabel,
     state: stateOf(row.rank),
+    note: itemNote(parseItemDetails(row.itemType as ItemType, row.metadataJson)),
   };
 }
 
@@ -122,7 +124,10 @@ export async function listCurriculumItems(
   if (query.q) {
     const text = likeLiteral(query.q);
     filters.push(
-      sql`(${curriculumItems.hanzi} LIKE ${`${text}%`} ESCAPE '\\' OR ${curriculumItems.pinyin} LIKE ${`%${text}%`} ESCAPE '\\')`,
+      query.type === "vocab"
+        ? sql`(${curriculumItems.hanzi} LIKE ${`${text}%`} ESCAPE '\\' OR ${curriculumItems.pinyin} LIKE ${`%${text}%`} ESCAPE '\\')`
+        : // Grammar points, topics and tasks are phrases: match anywhere, details included.
+          sql`(${curriculumItems.hanzi} LIKE ${`%${text}%`} ESCAPE '\\' OR ${curriculumItems.metadataJson} LIKE ${`%${text}%`} ESCAPE '\\')`,
     );
   }
 
@@ -261,6 +266,7 @@ export async function getCurriculumItem(
       definition: row.definition,
       // A definition is never shown without saying where it came from.
       definitionProvenance: row.definition ? row.definitionProvenance : null,
+      details: parseItemDetails(row.itemType as ItemType, row.metadataJson),
     },
     edition: {
       id: edition.id,
