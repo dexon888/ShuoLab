@@ -1,8 +1,8 @@
 # ShuoLab — Chinese Immersion Learning Assistant
 ## Technical Requirements & Implementation Specification (TRD)
 
-**Version:** 2.3  
-**Date:** 2026-11-26 (v2.2 of 2026-11-13 amended by the owner: connected syllabus, §2.5)  
+**Version:** 2.4  
+**Date:** 2026-11-27 (v2.2 of 2026-11-13 amended by the owner: connected syllabus §2.5 on 2026-11-26; zero to fluent §2.6 on 2026-11-27)  
 **Audience:** Claude Code / implementing developer  
 **Status:** Build-ready MVP specification; existing private GitHub repository is owned and created by the user; credentials and provider accounts are supplied by the owner  
 **Product type:** ShuoLab — single-user, private, cross-device Mandarin learning PWA  
@@ -20,7 +20,8 @@ Traditional gamified language-learning apps tend to reward completion and recall
 ### 1.2 User and environment
 - Exactly **one owner account**; no public sign-ups, teams, payments, social feed, or admin portal.
 - Runs in a modern desktop browser and as an installable **Progressive Web App (PWA)** on iOS and Android where supported.
-- Intended use: **15–30 minutes per day**, with phone-first microphone usability and keyboard-friendly desktop UI.
+- Intended use: a **15–30 minute core session per day**, plus optional extensive listening and reading in graded stories (§2.6, §5.10) for as long as the owner wants, with phone-first microphone usability and keyboard-friendly desktop UI.
+- The owner starts from **no knowledge of Chinese** and aims for fluency in speaking, listening, reading and writing (§2.6).
 - Target language: **standard spoken Mandarin (`zh-CN`)**, Simplified Chinese characters by default; pinyin and English are *optional scaffolding*, not always-on translations.
 - The owner may customize initial placement, native-language help, daily length, speech rate, and comfort with natural/colloquial language.
 - HSK progress and actual speaking/listening progress are different measurements and must remain separate.
@@ -31,6 +32,7 @@ Traditional gamified language-learning apps tend to reward completion and recall
 3. Build HSK-grounded vocabulary, grammar, character reading and writing knowledge.
 4. Encounter natural fillers, conversational register, idioms, and current slang **with usage warnings**.
 5. See evidence-based progress over weeks and months, not an invented “fluent” badge.
+6. Go from zero to fluent in all four skills, where fluent has an operational definition (§2.6) checked against external anchors, not declared by the app.
 
 ### 1.4 Non-goals for MVP
 - Official HSK certification or guaranteed HSK passing scores.
@@ -134,6 +136,20 @@ Rules:
 7. **Feedback flows forward.** Every correction in a summary creates or advances a review card for that item and skill and is the first priority of the next plan (§6.2).
 8. **Owner can flag a row as wrong.** A flagged row from an unverified section is excluded from plans, cards and test keys; the flag is kept with a note and listed on the Curriculum page.
 
+### 2.6 Zero to fluent — P0 (owner amendment, 2026-11-27)
+The owner starts with no Chinese and wants fluency in all four skills. An adversarial review (DECISIONS 113) found that a true beginner stalls in week 1 and that daily input is far too small. These rules apply on top of §2.5:
+
+1. **A sound-system on-ramp comes first** (§5.9). Pinyin, the four tones and the neutral tone, the common tone changes (3-3, 一, 不) and typing with a pinyin keyboard are taught before HSK sessions, with tone drills across several voices. Sessions stay available, but Today recommends the on-ramp until its check is passed.
+2. **Every new word is met with its sound and a sourced meaning** (§5.3 Introduce step). Meanings come from a separately imported, licensed dictionary (CC-CEDICT, CC BY-SA), stored in `definition` with `definition_provenance` naming it, shown with that label, never as HSK content (§2.2 #5). When a word has several senses, all are shown.
+3. **A session's words belong together** (§6.2). The task and topic are chosen first; new words are then taken from those that appear in the task's and topic's own text, then words sharing characters with them, then the rest of the band, rather than in syllabus (alphabetical) order.
+4. **Input is pitched at what the learner knows** (§6.3). The tutor's replies and generated texts are measured against the learner's met words; below the coverage target (90% while the learner knows under 300 words, 95% after) a reply or text is regenerated once and the measured coverage is stored. Beginners get yes/no and either-or questions, sentence frames, and may answer in English, which the tutor recasts into Mandarin.
+5. **Extensive input sits outside the core session** (§5.10). Graded stories and dialogues at the coverage target, in several voices, with generated audio cached so a replay costs nothing; their minutes are logged apart from session minutes.
+6. **Placement and promotion are measured** (§5.1, §6.2). A placement test samples every band, not the start of its list; moving to the next band is suggested, never forced, when most of the band is recalled and its practice test is passed twice.
+7. **Tests sample across the whole band** (§6.5): items are drawn at random (seeded) from all of a band's entries; a word question asks for meaning or sound in context, not only pinyin.
+8. **Provenance stays visible.** Dictionary glosses, generated stories and any model-made tags are labelled with their source and never enter verified HSK coverage.
+
+Fluent, for this app, means all of: understanding an unscripted native podcast or video at 90% or more by the learner's own check; a 10-minute conversation with few breakdowns at 120 or more characters a minute; reading a novel chapter at 150 or more characters a minute; and writing a page that a native reader understands. It is anchored once a year by an official HSK and HSKK exam taken outside the app. The app reports progress toward each, never "fluent" on its own say-so.
+
 ---
 
 ## 3. Technology decisions (optimized for one-user cost)
@@ -231,6 +247,7 @@ Do not infer actual fluency or HSK test readiness from a streak.
 A session is a sequence of activities on a **single communicative theme** (e.g. organizing dinner plans) with connected vocabulary:
 Every session follows this spine, in this order, all set in the session's topic and aimed at its task:
 1. **Warm-up retrieval:** 2–4 due cards or last session's corrections, answered before anything new.
+1a. **Introduce** (§2.6 rule 2): each new word with its audio, syllabus pinyin, a sourced meaning and one example sentence; then each new grammar point with its syllabus example. Short, and skipped for words already met.
 2. **Listen first** to a new short exchange carrying out the task, containing at least one instance of each target grammar point and at least half the new target words; no default translation; optionally replay slower, show pinyin or transcript *after an attempt*. The generated script is checked against the plan before use.
 3. **Notice:** the transcript with the target words and the grammar pattern highlighted, the grammar point's name and one syllabus example (labelled unverified where it is); the target characters shown inside their words.
 4. **Read:** a short new text in the same topic reusing the targets, answered before any translation is shown.
@@ -281,6 +298,12 @@ Owner preferences, AI provider model, speed, pinyin/translation reveal rules, de
 - Offline review caching with indexedDB and safe reconciliation; notifications on user-selected schedule (opt in), calendar history.
 - Topic personalization (food, errands, travel, work, family, media) and manual vocab bookmark import.
 
+### 5.9 Sound-system on-ramp — P0 (§2.6 rule 1)
+About ten short units: initials and finals, the four tones and the neutral tone, tone pairs, the 3-3 tone change and 一 and 不, pinyin spelling rules (ü, iu/ui), and typing Chinese with a pinyin keyboard. Each unit has a listen-and-choose drill using audio in at least two voices, and a typing drill. The tone check (identify the tone of unseen syllables in a voice not used in the drills) is passed at 85% or more; it is advice, not a lock. Results are kept as practice attempts.
+
+### 5.10 Extensive input — P0 (§2.6 rule 5)
+A library of graded stories and dialogues at the learner's band and known words, generated on request, with comprehension questions answered before translation, a tap-for-meaning gloss per word (labelled with its source), and audio read in several voices and cached. Minutes and texts read or heard are logged as input time, separate from sessions.
+
 ---
 
 ## 6. Learning logic, progression and evidence model
@@ -299,7 +322,7 @@ The above mastery threshold is a product-defined *heuristic*, not an official HS
 Deterministic inputs: owner's settings, current local date, available minutes, imported HSK bands, due FSRS reviews, mastery evidence, weak skills, topic repetition, last N sessions, offline/provider state.
 
 1. Select target band: onboarding/placement or manually pinned by owner. If none, start HSK 1 as a **study suggestion**, not a measured level.
-2. Select targets in this fixed priority until the caps are reached: (a) items corrected or failed in the last 3 sessions, at most 3; (b) items in `introduced`/`practiced`/`developing` that are due, weakest skill first, re-targeted 2–7 days after their last session in a **different topic**; (c) new items at the study band, up to the daily-new limit; (d) stretch content, 0–20%. Caps per session: 3–8 vocabulary targets with at most 5 new; at most 1 new and 1 recycled grammar point (verified, or imported unverified under §2.5); a 15-minute session has at most 1 grammar point and no slang. Put ≥50% of targets in the active level. Add the target words' characters on the band's lists, and up to 3 more band characters that appear in words already met. Rows flagged as wrong are never selected.
+2. Pick the task and topic first (step 3), then select targets in this fixed priority until the caps are reached, taking new words (c) in this order: words that appear in the task's or topic's own text, words sharing a character with those, then the rest of the band (§2.6 rule 3): (a) items corrected or failed in the last 3 sessions, at most 3; (b) items in `introduced`/`practiced`/`developing` that are due, weakest skill first, re-targeted 2–7 days after their last session in a **different topic**; (c) new items at the study band, up to the daily-new limit; (d) stretch content, 0–20%. Caps per session: 3–8 vocabulary targets with at most 5 new; at most 1 new and 1 recycled grammar point (verified, or imported unverified under §2.5); a 15-minute session has at most 1 grammar point and no slang. Put ≥50% of targets in the active level. Add the target words' characters on the band's lists, and up to 3 more band characters that appear in words already met. Rows flagged as wrong are never selected.
 3. Pick one task of the study band not achieved yet and not used in the last 3 sessions, and a topic of the band that fits it and differs from the topics in which the recycled items were introduced. The task's can-do statement is the session goal (§2.4).
    *Weakest skill* = the skill with the lowest share of qualifying successful attempts over the last 14 days (ties: fewest attempts); it receives the time shift in §5.3. When the topic and task catalogues are not imported, use a small **clearly authored** local situation list with `source_type=app-authored`, not fake HSK task IDs.
 4. Choose up to 1 slang expression in sessions of 20 minutes or more (more only when learner opts in); warn if texting-only, regional, rude, or fading.
@@ -312,6 +335,7 @@ Tutor should respond primarily in natural Mandarin, tuned to comprehension; spea
 Rules enforced in server-side prompt and validation:
 - The selected `target_item_ids` are supplied by the planner and are immutable for the session.
 - Use source words naturally; don't forcibly include all targets in one utterance.
+- The tutor receives the learner's met words and is held to the coverage target of §2.6 rule 4: each reply is segmented, its share of known tokens measured and stored, and a reply below target is regenerated once. While the learner knows fewer than 300 words, replies are 1 short sentence with a yes/no or either-or question and a sentence frame, and an English answer is accepted and recast in Mandarin. Reply length grows with the learner's mean turn length.
 - The tutor receives the target grammar points (name, pattern, one example) and the task. Each reply reports `used_grammar_ids` and `elicited_grammar_ids`; the server keeps a claimed id only if the point's pattern is found in the reply. If a planned point has been neither used nor elicited by the learner's 4th turn, the next reply must elicit it. Whether the learner used each point is recorded as a guided-practice or conversation attempt for that point and skill.
 - `spoken_reply_zh` is 1–3 concise sentences for beginner dialogue and grows with proficiency; avoid unnatural literary prose.
 - Feedback differentiates actual user transcript, semantic errors, grammar errors, and *possible* recognition uncertainty. Do not interpret low-confidence transcription as proof of learner error.
@@ -348,6 +372,7 @@ This is **an illustrative shape only**. Build a shared Zod schema and infer Type
 - Reading: unseen comprehension prompt answered before translation reveal.
 - HSK lexical skill mastery: recall attempts by skill + FSRS schedule; passive appearance is not mastery.
 - Monthly checkpoint: at least 1 unseen listening and 1 unseen spontaneous speaking task, comparable rubric and topic difficulty, store model/scorer version. Scores are *personal tracking*, not standardized HSK exam scores.
+- Placement (§2.6 rule 6): a vocabulary-size test sampling every band at random, giving a suggested starting band and a size estimate with its sample size.
 - Band practice test (P0 under §2.5): a fixed-length test per band built deterministically from imported items (vocabulary, grammar, characters; passages framed by band topics and tasks), with listening, reading and writing parts. Questions are generated from stored items and checked against them; test passages carry out band tasks in band topics, so results also count as transfer evidence; answer keys built from unverified examples are labelled “unverified key”, and flagged rows are never used; answers are scored by fixed keys where possible and by a rubric with stored scorer version otherwise. Store the run in `assessment_runs` with item ids, per-section scores and sample sizes. Correct answers count as recall evidence for mastery; the result is never called an HSK score or pass.
 
 ---
@@ -544,6 +569,13 @@ Reusable components: `AudioRecordButton`, `AudioPlaybackBar`, `MandarinText` (Ha
 | FR-026 | P0 | Section progress | Mastery per section and skill from evidence; unverified sections labelled and kept apart from verified coverage |
 | FR-030 | P0 | Task check | 2–3 criteria per task judged with a stored scorer version; achieved after two passes on different days in different topics |
 | FR-031 | P0 | Flag as wrong | A flagged unverified row leaves plans, cards and test keys and is listed with its note |
+| FR-032 | P0 | Sound-system on-ramp | Units, multi-voice tone drills and the tone check work from zero; Today recommends it until passed |
+| FR-033 | P0 | Sourced meanings and Introduce | A licensed dictionary imports with provenance; new words are introduced with sound, pinyin and labelled meaning; recognition cards reveal it |
+| FR-034 | P0 | Coherent targets | New words come from the task and topic text first, never only by syllabus order |
+| FR-035 | P0 | Pitched input | Tutor replies and generated texts are measured against known words, regenerated below target, with coverage stored; beginner mode scaffolds |
+| FR-036 | P0 | Extensive input | Graded stories with audio cached, glosses, questions before translation, input minutes logged |
+| FR-037 | P0 | Placement and promotion | Placement samples every band; promotion is suggested by stated rules |
+| FR-038 | P0 | Whole-band tests | Test items are sampled from the whole band; word questions test meaning or sound in context |
 | FR-027 | P0 | Band practice test | Deterministic test per band from imported items, scored and stored with sample sizes; feeds mastery; never presented as an HSK score |
 
 ---
@@ -745,10 +777,18 @@ Implement FSRS review cards/events, evidence-based mastery per skill, HSK and co
 ### Phase 5 — Connected syllabus (owner amendment, 2026-11-26)
 Implement §2.5: browse all sections; lesson plans, tutor and session activities using grammar, characters, topics and tasks; grammar and character review cards; speaking and writing review prompts; per-section mastery and progress; band practice tests and the monthly checkpoint.
 
-**Gate:** FR-023 to FR-031 satisfied with tests; a full session runs every step of the §5.3 spine; every place an unverified section is used labels it; verified vocabulary coverage unchanged by section data.
+**Gate:** FR-023 to FR-031 satisfied with tests; a full session runs every step of the §5.3 spine (the Introduce step arrives in Phase 6); every place an unverified section is used labels it; verified vocabulary coverage unchanged by section data.
 
-### Phase 6 — P1 enhancements
-Pronunciation assessment drill, varied licensed listening voices, deeper analytics, and optional offline recall review.
+### Phase 6 — Zero to fluent, foundations (owner amendment, 2026-11-27)
+Implement §2.6 rules 1–7: the sound-system on-ramp, sourced meanings and the Introduce step, coherent targets, pitched input, extensive input, placement and promotion, whole-band tests.
+
+**Gate:** FR-032 to FR-038 satisfied with tests; a learner with no Chinese can complete the on-ramp and a first session using only what the app has shown them; every gloss, generated text and model-made tag is labelled with its source.
+
+### Phase 7 — Zero to fluent, skills
+Shadowing with pronunciation assessment (§7.3 promoted), speaking fluency tasks (retelling, timed narration) with speech-rate and pause measures, the character system (components, phonetic series, frequency order, homophone choice, optional stroke check kept apart from "typed"), a bridge to real Mandarin (paste a text to see coverage and mine sentences; an outside-input log), and measurement fixes (vocabulary size over time, rubric-scored writing).
+
+### Phase 8 — Later
+Progress toward the operational definition of fluent (§2.6) with external anchors, tutor memory of the learner, 5-minute days and a review cap, a frequency track beyond HSK, licensed native audio, pronunciation drills of FR-021, deeper analytics, and optional offline recall review.
 
 **Order rule:** Build one complete vertical slice at a time; do not invest in P1 before P0 foundations are functional. At each phase: show what changed, tests executed, known gaps and exact next steps.
 
