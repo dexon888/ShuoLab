@@ -12,6 +12,7 @@ const PAGES: [string, RegExp][] = [
   ["/curriculum/colloquial", /Colloquial expressions/],
   ["/review", /Review/],
   ["/progress", /Progress/],
+  ["/tests", /Tests/],
   ["/settings", /Settings/],
   ["/no-such-page", /Page not found/],
 ];

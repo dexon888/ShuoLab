@@ -547,3 +547,30 @@ export const itemFlags = sqliteTable("item_flags", {
   note: text("note"),
   flaggedAt: text("flagged_at").notNull(),
 });
+
+/**
+ * Band practice tests and monthly checkpoints (SPEC §6.5, §8.2). The
+ * questions, with their keys, are built from imported items and stored with
+ * the run, so a result can always be traced to exactly what was asked.
+ */
+export const assessmentRuns = sqliteTable(
+  "assessment_runs",
+  {
+    id: text("id").primaryKey(),
+    ownerId: text("owner_id").notNull().default(OWNER_ID),
+    editionId: text("edition_id")
+      .notNull()
+      .references(() => curriculumEditions.id),
+    /** `band_test` or `checkpoint`. */
+    kind: text("kind").notNull(),
+    hskBand: text("hsk_band").notNull(),
+    rubricVersion: text("rubric_version").notNull(),
+    startedAt: text("started_at").notNull(),
+    finishedAt: text("finished_at"),
+    /** The questions with their keys and item ids. */
+    metadataJson: text("metadata_json").notNull(),
+    /** Answers, per-section scores and sample sizes, once finished. */
+    resultsJson: text("results_json"),
+  },
+  (t) => [index("assessment_runs_kind_idx").on(t.kind, t.startedAt), check("assessment_runs_kind_check", sql`${t.kind} IN ('band_test','checkpoint')`)],
+);

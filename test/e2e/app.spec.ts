@@ -94,7 +94,7 @@ test.describe("navigation and accessibility", () => {
   test("navigation targets are large enough to tap", async ({ page }) => {
     await page.goto("/");
     const links = page.getByRole("navigation", { name: "Main" }).getByRole("link");
-    await expect(links).toHaveCount(5);
+    await expect(links).toHaveCount(6);
     for (const link of await links.all()) {
       const box = await link.boundingBox();
       expect(box?.height ?? 0).toBeGreaterThanOrEqual(44);

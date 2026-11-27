@@ -5,6 +5,7 @@ const DESTINATIONS = [
   { to: "/", zh: "今天", en: "Today" },
   { to: "/curriculum", zh: "课程", en: "Curriculum" },
   { to: "/review", zh: "复习", en: "Review" },
+  { to: "/tests", zh: "测试", en: "Tests" },
   { to: "/progress", zh: "进度", en: "Progress" },
   { to: "/settings", zh: "设置", en: "Settings" },
 ] as const;

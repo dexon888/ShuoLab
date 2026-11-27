@@ -253,6 +253,7 @@ describe("navigation", () => {
       "今天Today",
       "课程Curriculum",
       "复习Review",
+      "测试Tests",
       "进度Progress",
       "设置Settings",
     ]);

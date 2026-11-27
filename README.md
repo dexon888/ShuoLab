@@ -32,7 +32,8 @@ is summarised with sample sizes; export is **not built yet**.
 | Owner authentication (Cloudflare Access JWT) | Working against locally signed test tokens; not yet verified on a deployment |
 | Curriculum status | Working on local D1 |
 | HSK vocabulary import | Working: the real 11,000-entry list imported and verified locally on 2026-11-26; not yet run against a deployed database |
-| Grammar, characters, topics and tasks | Imported locally from a second-hand transcription (CC BY 4.0) after its vocabulary matched entry for entry; shown as not verified and not used for coverage or planning |
+| Grammar, characters, topics and tasks | Imported locally from a second-hand transcription (CC BY 4.0) after its vocabulary matched entry for entry; browsable, used in lesson plans, review, tests and their own progress figures, always labelled unverified and kept apart from verified vocabulary coverage; any row can be flagged as wrong |
+| Tests | Band practice tests and a monthly checkpoint built in code from imported items; personal tracking, never an HSK score |
 | Browsing entries | Working and tested with generated placeholder data |
 | Colloquial expressions (separate from HSK) | Working and tested with generated placeholder rows; not yet run on the real dataset file |
 | Preferences (onboarding, Settings) | Working locally; saved in the database, so they follow you across devices once deployed |
@@ -42,7 +43,7 @@ is summarised with sample sizes; export is **not built yet**.
 | Speech tokens and free-tier count | Working locally with a stand-in token issuer: `POST /speech/token`, usage reports, the Azure F0 allowance enforced and shown in Settings. The Azure issuer is written and unit-tested; **no real Azure call has been made** |
 | Speaking and listening in a session | Working locally with the stand-in: Speak, read replies aloud, Play, listen first with recorded reveals, unsure transcripts checked before sending, typed fallback for every failure. Real Azure recognition and voice tried by the owner on a computer (2026-11-25); **not yet on a phone** |
 | Separate listen-first exercise | Working locally: a short exchange written by the tutor for the session's situation and words, played before any text, with 2–3 questions scored before the text is shown. Tried once with the real OpenAI tutor; Azure playback of the exchange **not yet heard by the owner** |
-| Review and mastery | Working locally on generated placeholder words: a finished session gives each targeted word (not stretch words) a reading card and a listening card, scheduled with FSRS; your own Again/Hard/Good/Easy ratings are the evidence, and mastery per skill follows this app's rule (three days of recall, one a day or more later). Not yet used on the real HSK list |
+| Review and mastery | Working locally: words get reading and listening cards when a session finishes, then speaking and writing cards after their first recall; grammar points get four cards and characters a recognition card (and a typing card on writing lists). Mastery per skill follows this app's rule from your own ratings and test answers |
 | Progress | Working locally: practice minutes per day over 7, 30 or 90 days, listening accuracy from checks answered before the text, spoken and typed turns, review recall, and HSK coverage per band and skill against the imported counts. Below five observations a rate says "insufficient evidence". Today shows the week in brief and the cards due |
 | Export and deletion | Working locally: Settings → Your data downloads everything as JSON or one table as CSV, sets how long conversation text is kept, and deletes everything after you type a phrase; each session can be deleted from its page. `pnpm data:import` loads an export into a local copy |
 
