@@ -753,3 +753,11 @@ compared on material that practice has not touched. One per calendar month.
 Tests sit between Review and Progress in the main navigation, because they are
 something to do rather than something to read.
 
+## 112. Speed is checked on every browser-test run
+
+PERF-01 is a browser test against the production build, so a change that
+makes the dashboard or a non-model read slow fails the build rather than
+being found on the phone. It measures on the local runtime, which leaves out
+network time as the requirement does; the deployed figures are the owner's
+check.
+

@@ -7,7 +7,7 @@ const FLOW_MOBILE_PORT = 4176;
 // A whole session from start to summary. A day has one session, so each
 // screen size runs against a database of its own.
 const FLOW_SPECS = /conversation\.spec\.ts$/;
-const SEEDED_SPECS = /(a11y|curriculum|sessions-seeded|turns-seeded)\.spec\.ts$/;
+const SEEDED_SPECS = /(a11y|perf|curriculum|sessions-seeded|turns-seeded)\.spec\.ts$/;
 
 const desktop = { ...devices["Desktop Chrome"] };
 const mobile = { ...devices["Desktop Chrome"], viewport: { width: 320, height: 640 }, hasTouch: true };
