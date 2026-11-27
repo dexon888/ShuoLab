@@ -37,6 +37,8 @@ export function buildListeningInstructions(
   plan: SessionPlan,
   targets: readonly Pick<AllowedTarget, "hanzi" | "pinyin">[],
   retry: ListeningRejection | null,
+  /** Words the learner has met, most recent first (SPEC §2.6 rule 4). */
+  known: readonly string[] = [],
 ): string {
   const lines = [
     "Write a short listening exercise for one adult learner of Mandarin.",
@@ -71,6 +73,7 @@ export function buildListeningInstructions(
 
   lines.push(
     "",
+    ...(known.length > 0 ? [`The learner knows these words; build the exchange from them and today's words, avoiding others where you can: ${known.slice(0, 200).join("、")}`, ""] : []),
     "The questions:",
     "- 2 or 3 questions in English about what was said, each answerable only by understanding the audio.",
     "- Exactly 3 options per question, in English, all plausible, with exactly one correct.",

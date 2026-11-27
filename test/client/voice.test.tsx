@@ -73,6 +73,7 @@ function turn(n: number, over: Partial<Turn> = {}): Turn {
     grammarUsedIds: [],
     grammarElicitedIds: [],
     learnerGrammarIds: [],
+    coverage: null,
     feedback: { understoodIntent: true, corrections: [], encouragementZh: null, transcriptUncertain: false },
     fallback: false,
     createdAt: "2026-03-04T10:02:00.000Z",

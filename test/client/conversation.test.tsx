@@ -79,6 +79,7 @@ function turn(n: number, over: Partial<Turn> = {}): Turn {
     grammarUsedIds: [],
     grammarElicitedIds: [],
     learnerGrammarIds: [],
+    coverage: null,
     feedback: { understoodIntent: true, corrections: [], encouragementZh: null, transcriptUncertain: false },
     fallback: false,
     createdAt: "2026-03-04T10:02:00.000Z",
@@ -253,6 +254,11 @@ describe("a reload or a failed request never loses or doubles a message (FR-010,
     expect(items).toHaveLength(2);
     expect(items[0]).toHaveTextContent("我的第1句话。");
     expect(items[1]).toHaveTextContent("你周末喜欢做什么？（2）");
+  });
+
+  it("says how many of a reply's words the learner had met (SPEC §2.6 rule 4)", async () => {
+    open(state("active", [turn(1, { coverage: { known: 7, total: 9 } })]));
+    expect(await screen.findByText("You had met 7 of the 9 words in this reply.")).toBeInTheDocument();
   });
 
   it("keeps the message after a failure and resends it with the same id", async () => {

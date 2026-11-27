@@ -252,3 +252,51 @@ describe("words that belong with the task (SPEC §2.6 rule 3, FR-034)", () => {
     expect(session.plan.task?.canDo).toContain("样例词201");
   });
 });
+
+describe("pitched at what the learner knows (SPEC §2.6 rule 4, FR-035)", () => {
+  const reply = (zh: string) =>
+    JSON.stringify({
+      spoken_reply_zh: zh,
+      optional_pinyin: null,
+      optional_translation_en: null,
+      referenced_curriculum_item_ids: [],
+      referenced_colloquial_ids: [],
+      used_grammar_ids: [],
+      elicited_grammar_ids: [],
+      semantic_feedback: { understood_intent: true, corrections: [], encouragement_zh: null },
+      suggested_followup_topic: null,
+    });
+
+  it("gives a beginner scaffolds and the known words, and stores the reply's coverage", async () => {
+    const session = await plan(20);
+    const res = await send("POST", `/sessions/${session.id}/turn`, { clientTurnId: crypto.randomUUID(), transcript: "hello", sourceMode: "typed", asrUncertain: false });
+    const { turn } = turnResponseSchema.parse(await res.json());
+    const instructions = tutor.requests.at(-1)?.instructions ?? "";
+    expect(instructions).toContain("The learner is a beginner");
+    expect(instructions).toContain("English answers are fine");
+    expect(instructions).toContain(session.plan.targets[0]?.hanzi ?? "?");
+    expect(turn.coverage?.total).toBeGreaterThan(0);
+  });
+
+  it("asks once for a simpler reply when one falls below the target, once the learner knows 100 words", async () => {
+    // 150 words with evidence: a 90% target applies.
+    await database.db
+      .prepare(
+        `INSERT INTO mastery_states (owner_id, curriculum_item_id, skill, state, first_seen_at, updated_at)
+SELECT 'owner', id, 'reading', 'introduced', '2026-11-01', '2026-11-01' FROM curriculum_items WHERE item_type = 'vocab' ORDER BY source_id LIMIT 150`,
+      )
+      .run();
+    const session = await plan(20);
+    const known = session.plan.targets[0]?.hanzi ?? "样例词1";
+    let call = 0;
+    tutor = new FakeTutorProvider({ respond: () => reply(call++ === 0 ? "鹦鹉螺号潜艇今天浮出水面了吗？" : `你喜欢${known}吗？`) });
+    Object.defineProperty(tutor, "mock", { value: false });
+    const res = await send("POST", `/sessions/${session.id}/turn`, { clientTurnId: crypto.randomUUID(), transcript: "我很好。", sourceMode: "typed", asrUncertain: false });
+    const { turn } = turnResponseSchema.parse(await res.json());
+    expect(tutor.requests).toHaveLength(2);
+    expect(tutor.requests[1]?.instructions).toContain("too many words the learner has not met");
+    expect(tutor.requests[1]?.instructions).toMatch(/Avoid these words the learner has not met: .*鹦/);
+    expect(turn.reply.spokenZh).toContain(known);
+    await database.db.prepare("DELETE FROM mastery_states").run();
+  });
+});

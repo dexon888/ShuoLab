@@ -25,6 +25,8 @@ import {
   type StoredListening,
 } from "./listening-prompt";
 import { accrueSql, getSession } from "./sessions";
+import { coverage, coverageTarget } from "../../shared/coverage";
+import { knownWords, vocabularySet } from "./known-words";
 import { LISTENING_OPERATION, assertWithinBudget, assertWithinRate, recordUsage } from "./usage";
 
 const PENDING_STALE_MS = 60_000;
@@ -202,6 +204,10 @@ export async function createListening(
 
   try {
     const targets = await targetsFor(d1, session.id);
+    // Pitched at what the learner knows (SPEC §2.6 rule 4).
+    const [vocabulary, known] = await Promise.all([vocabularySet(d1), knownWords(d1, session.id)]);
+    const target = provider.mock ? null : coverageTarget(known.set.size);
+    let measured: { known: number; total: number } | null = null;
     let stored: StoredListening | null = null;
     let covers = false;
     let retry: ListeningRejection | null = null;
@@ -209,7 +215,7 @@ export async function createListening(
       let result;
       try {
         result = await provider.generate({
-          instructions: buildListeningInstructions(session.plan, targets, retry),
+          instructions: buildListeningInstructions(session.plan, targets, retry, known.recent),
           messages: [{ role: "user", content: "Write the listening exercise." }],
           format: { name: LISTENING_FORMAT_NAME, schema: LISTENING_OUTPUT_JSON_SCHEMA, maxOutputTokens: MAX_OUTPUT_TOKENS, timeoutMs: TIMEOUT_MS },
           context: {
@@ -245,7 +251,10 @@ export async function createListening(
       if (parsed.ok) {
         // A usable exchange is kept even if it misses a pattern; the retry asks for one that covers the plan.
         stored = toStored(parsed.output, random);
-        covers = listeningCovers(parsed.output.lines, session.plan);
+        const c = coverage(parsed.output.lines.map((l) => l.zh).join(""), vocabulary, known.set);
+        measured = { known: c.known, total: c.total };
+        const pitched = target === null || c.total === 0 || c.known / c.total >= target;
+        covers = listeningCovers(parsed.output.lines, session.plan) && pitched;
         if (!covers) retry = "coverage";
       } else {
         retry = parsed.reason;
@@ -253,7 +262,7 @@ export async function createListening(
     }
 
     const source = stored === null ? "prepared" : "generated";
-    const content = { ...(stored ?? toStored(PREPARED_LISTENING, random)), coversTargets: stored === null ? false : covers };
+    const content = { ...(stored ?? toStored(PREPARED_LISTENING, random)), coversTargets: stored === null ? false : covers, coverage: stored === null ? null : measured };
     const at = now.toISOString();
     await d1.batch([
       d1
