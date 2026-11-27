@@ -16,7 +16,7 @@ import type { Turn, TurnCorrection } from "../../shared/tutor";
 import { ApiError } from "../validation/errors";
 import { getListening } from "./listening";
 import { getMaterials } from "./materials";
-import { introduceSessionWords } from "./review";
+import { advanceCorrected, introduceSessionWords } from "./review";
 import { accrueSql, getSession } from "./sessions";
 import { listTurns } from "./turns";
 
@@ -128,7 +128,9 @@ WHERE id = ?1 AND status IN ('active','paused')`,
     )
     .bind(id, at)
     .run();
-  // The words it targeted now have review cards. Safe to repeat.
+  // The words, grammar and characters it targeted now have review cards, and
+  // whatever its corrections touched is due now (SPEC §2.5 rule 7). Safe to repeat.
   await introduceSessionWords(d1, id, now);
+  await advanceCorrected(d1, id, now);
   return getSessionState(d1, id);
 }

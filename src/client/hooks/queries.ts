@@ -279,13 +279,15 @@ export interface OutgoingRating {
   rating: ReviewRating;
   /** Made once per rating and reused on a retry, so it is recorded once. */
   clientEventId: string;
+  /** What was typed on a writing card. */
+  answer?: string;
 }
 
 export function useRateCard() {
   const client = useQueryClient();
   return useMutation({
     mutationFn: (r: OutgoingRating) =>
-      apiPost(`/reviews/${encodeURIComponent(r.cardId)}/rate`, { rating: r.rating, clientEventId: r.clientEventId }, rateResponseSchema),
+      apiPost(`/reviews/${encodeURIComponent(r.cardId)}/rate`, { rating: r.rating, clientEventId: r.clientEventId, ...(r.answer ? { answer: r.answer } : {}) }, rateResponseSchema),
     onSuccess: () => {
       void client.invalidateQueries({ queryKey: dueKey });
       void client.invalidateQueries({ queryKey: ["progress"] });

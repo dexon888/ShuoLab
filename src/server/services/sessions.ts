@@ -28,7 +28,7 @@ import {
 } from "./planner";
 import { getSettings } from "./settings";
 import { applyRetention } from "./owner-data";
-import { characterLists, daysBefore, grammarCandidates, introTopics, metWords, missedWords, skillStats, topicsAndTasks } from "./plan-inputs";
+import { characterLists, correctedItems, daysBefore, grammarCandidates, introTopics, metWords, missedWords, skillStats, topicsAndTasks } from "./plan-inputs";
 import { FREE_CHAT_SITUATION, situationFor } from "./situations";
 
 const UNFINISHED: readonly SessionStatus[] = ["planned", "active", "paused"];
@@ -391,17 +391,20 @@ export async function planSession(d1: D1Database, request: PlanRequest, now: Dat
       .first<{ n: number }>();
     const sessionIndex = prior?.n ?? 0;
 
-    const [active, review, stretch, colloquial, missed, grammar, characters, met, stats] = await Promise.all([
+    const corrected = await correctedItems(d1, editionId);
+    const [active, review, stretch, colloquial, missedReviews, grammar, characters, met, stats] = await Promise.all([
       bandCandidates(d1, editionId, targetBand, wanted),
       reviewCandidates(d1, editionId, wanted, daysBefore(date, 2)),
       stretchBand ? bandCandidates(d1, editionId, stretchBand, 1) : Promise.resolve([]),
       pickColloquial(d1, settings.slangIntensity, sessionIndex),
       missedWords(d1, editionId, now),
-      grammarCandidates(d1, editionId, targetBand, date),
+      grammarCandidates(d1, editionId, targetBand, date, corrected.grammarIds),
       characterLists(d1, editionId, targetBand),
       metWords(d1, editionId),
       skillStats(d1, now),
     ]);
+    // Corrections first, then words missed in review (SPEC §6.2 priority a).
+    const missed = [...corrected.words, ...missedReviews.filter((m) => !corrected.words.some((c) => c.id === m.id))];
     const avoid = await introTopics(d1, [...missed, ...review].map((c) => c.id));
     const { topics, tasks } = await topicsAndTasks(d1, editionId, targetBand, sessionIndex, avoid);
     if (active.length === 0) {

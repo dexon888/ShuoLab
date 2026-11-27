@@ -130,3 +130,38 @@ describe("Today's progress cards (SPEC §5.2)", () => {
     expect(screen.queryByRole("region", { name: "Review" })).not.toBeInTheDocument();
   });
 });
+
+describe("grammar, characters, topics and tasks on Progress (SPEC §2.5, FR-026)", () => {
+  it("shows each section against its imported rows, labelled unverified, with meaningful days and skill balance", async () => {
+    const base = emptyProgress(30);
+    const zero = base.hsk.total.bySkill;
+    open("/progress", {
+      "/api/v1/progress/summary?days=30": () =>
+        json({
+          ...base,
+          sections: {
+            grammar: { unverified: true, bands: [], total: { entries: 593, introduced: 4, bySkill: { ...zero, reading: { introduced: 2, practiced: 0, developing: 2, mastered: 1 } } } },
+            character: null,
+            topics: { met: 3, imported: 427 },
+            tasks: { met: 2, imported: 678 },
+          },
+          meaningfulDays: { count: 4, dates: [] },
+          skillBalance: [
+            { skill: "listening", attempts: 3, successes: 2 },
+            { skill: "speaking", attempts: 0, successes: 0 },
+            { skill: "reading", attempts: 10, successes: 8 },
+            { skill: "writing", attempts: 5, successes: 4 },
+          ],
+        }),
+    });
+    const sections = await screen.findByRole("region", { name: "Grammar, characters, topics and tasks" });
+    expect(sections).toHaveTextContent("Grammar points: met 4 of 593.");
+    expect(sections).toHaveTextContent("reading 1 (developing 2)");
+    expect(sections).toHaveTextContent("Tasks: 2 of 678 practised. Practising a task is not achieving it.");
+    expect(sections).toHaveTextContent(/second-hand transcription/);
+    const balance = screen.getByRole("region", { name: "Skill balance" });
+    expect(balance).toHaveTextContent("4 meaningful days in the last 30");
+    expect(balance).toHaveTextContent("Reading: 10 attempts, 8 successful");
+    expect(balance).toHaveTextContent("Speaking: 0 attempts");
+  });
+});
