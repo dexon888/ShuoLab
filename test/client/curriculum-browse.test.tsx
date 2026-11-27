@@ -28,6 +28,7 @@ function entry(sourceId: number, over: Partial<CurriculumItemSummary> = {}): Cur
     partOfSpeech: "名",
     homograph: null,
     levelLabel: "1（1）",
+    note: null,
     state: "unseen",
     ...over,
   };
@@ -149,7 +150,7 @@ describe("band page (FR-016)", () => {
       [ITEMS]: () => json(page([], { editionId: null, synthetic: false })),
     });
     expect(await screen.findByText("No entries are imported for this band.")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /how to import the vocabulary/ })).toHaveAttribute("href", "/curriculum");
+    expect(screen.getByRole("link", { name: /how to import it/ })).toHaveAttribute("href", "/curriculum");
   });
 
   it("shows an error with a retry when the list fails to load", async () => {
@@ -197,6 +198,7 @@ describe("entry page (FR-016)", () => {
         sourcePdfPage: 80,
         definition: null,
         definitionProvenance: null,
+        details: null,
       },
       edition: { id: "synthetic-fixture", publisher: "ShuoLab test fixture", editionDate: "2025-11", synthetic: true, isActive: true },
       homographs: [entry(11, { hanzi: "样例同形", homograph: "2" })],
@@ -332,5 +334,72 @@ describe("entry page (FR-016)", () => {
     const fetchMock = renderApp("/curriculum/item/example", { "/api/v1/me": () => json(me) });
     expect(screen.getByRole("heading", { level: 1, name: /Page not found/ })).toBeInTheDocument();
     expect(fetchMock.mock.calls.some(([u]) => String(u).includes("/curriculum/"))).toBe(false);
+  });
+});
+
+describe("grammar, characters, topics and tasks (FR-016)", () => {
+  const grammar = (n: number) =>
+    entry(n, { id: `hsk3-2025-11:grammar:${n}`, itemType: "grammar", hanzi: `样例语法${n}`, pinyin: null, partOfSpeech: null, levelLabel: "HSK1", note: "词类 · 名词" });
+
+  it("switches sections with tabs, lists grammar points with their kind, and says the source is not verified", async () => {
+    renderApp("/curriculum/1", {
+      ...base,
+      [ITEMS]: () => json(page([entry(1)])),
+      "/api/v1/curriculum/items?band=1&type=grammar": () => json(page([grammar(1)], { editionId: "hsk3-2025-11", synthetic: false })),
+    });
+    const tabs = await screen.findByRole("navigation", { name: "Syllabus sections" });
+    expect(within(tabs).getByRole("link", { name: /Vocabulary/ })).toHaveAttribute("aria-current", "page");
+    await userEvent.click(within(tabs).getByRole("link", { name: /Grammar/ }));
+
+    expect(await screen.findByText("样例语法1")).toBeInTheDocument();
+    expect(screen.getByText("词类 · 名词")).toBeInTheDocument();
+    expect(screen.getByText("1 grammar point, showing 1.")).toBeInTheDocument();
+    expect(screen.getByText(/second-hand transcription/)).toBeInTheDocument();
+    expect(screen.queryByLabelText("Part of speech")).not.toBeInTheDocument();
+    expect(within(tabs).getByRole("link", { name: /Grammar/ })).toHaveAttribute("aria-current", "page");
+  });
+
+  it("keeps the section when filtering", async () => {
+    const asked: string[] = [];
+    renderApp("/curriculum/1?type=task", {
+      ...base,
+      "/api/v1/curriculum/items?band=1&type=task": () => (asked.push("all"), json(page([]))),
+      "/api/v1/curriculum/items?band=1&type=task&q=%E9%97%AE": () => (asked.push("q"), json(page([]))),
+    });
+    await screen.findByText("No tasks are imported for this band.");
+    await userEvent.type(screen.getByLabelText("Search"), "问");
+    await userEvent.click(screen.getByRole("button", { name: "Filter" }));
+    expect(await screen.findByText("No tasks match these filters.")).toBeInTheDocument();
+    expect(asked).toEqual(["all", "q"]);
+  });
+
+  it("shows a grammar point's details and examples", async () => {
+    const id = "hsk3-2025-11:grammar:3";
+    renderApp(`/curriculum/item/${encodeURIComponent(id)}`, {
+      "/api/v1/me": () => json(me),
+      [`/api/v1/curriculum/items/${encodeURIComponent(id)}`]: () =>
+        json({
+          item: {
+            ...grammar(3),
+            id,
+            entryRaw: null,
+            sourcePdfPage: null,
+            definition: null,
+            definitionProvenance: null,
+            details: { kind: "grammar", grammarType: "词类", category: "名词", detail: "方位名词", examples: ["桌子上有几本书？", "他们都在国外。"] },
+          },
+          edition: { id: "hsk3-2025-11", publisher: "Test", editionDate: "2025-11", synthetic: false, isActive: true },
+          homographs: [],
+          sources: [{ sourceUrl: "https://example.test/sections", commitSha: "f".repeat(40), rightsNote: "Licensed CC BY 4.0.", importedAt: "2026-11-26T00:00:00.000Z" }],
+          progress: { bySkill: ["listening", "speaking", "reading", "writing"].map((skill) => ({ skill, state: "unseen", successDays: 0, failureCount: 0, lastAttemptAt: null, lastSuccessAt: null })) },
+        }),
+    });
+    expect(await screen.findByRole("heading", { level: 1, name: "样例语法3" })).toBeInTheDocument();
+    expect(screen.getByText("方位名词")).toBeInTheDocument();
+    expect(screen.getByText("桌子上有几本书？")).toBeInTheDocument();
+    expect(screen.getByText(/not checked against the official document/)).toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "Meaning" })).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /HSK 1.*Grammar/ })).toHaveAttribute("href", "/curriculum/1?type=grammar");
+    expect(screen.getByText("Licensed CC BY 4.0.")).toBeInTheDocument();
   });
 });

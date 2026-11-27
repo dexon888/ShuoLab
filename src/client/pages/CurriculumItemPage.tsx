@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { Link, useParams } from "react-router";
 import type { CurriculumItemDetailResponse } from "../../shared/api";
 import { parseCurriculumItemId } from "../../shared/curriculum";
+import { SECTION_NAMES, type ItemDetails } from "../../shared/sections";
 import { AsyncStatus } from "../components/AsyncStatus";
 import { Section } from "../components/Section";
 import { SyntheticDataNotice } from "../components/SyntheticDataNotice";
@@ -42,22 +43,104 @@ function SourceLink({ url }: { url: string }) {
   );
 }
 
+/** Grammar, character, topic and task details (sections-v1). */
+function SectionDetails({ details }: { details: ItemDetails | null }) {
+  if (!details) return <p className="text-mist">No details were imported for this item.</p>;
+  switch (details.kind) {
+    case "grammar":
+      return (
+        <>
+          <dl className="border-t border-line">
+            <Fact label="Kind">
+              <span lang="zh-Hans">{details.grammarType}</span>
+            </Fact>
+            {details.category ? (
+              <Fact label="Category">
+                <span lang="zh-Hans">{details.category}</span>
+              </Fact>
+            ) : null}
+            {details.detail ? (
+              <Fact label="Detail">
+                <span lang="zh-Hans">{details.detail}</span>
+              </Fact>
+            ) : null}
+          </dl>
+          <h3 className="mt-5 font-semibold">Examples from the syllabus</h3>
+          <ul className="mt-2 space-y-2">
+            {details.examples.map((example) => (
+              <li key={example} lang="zh-Hans" className="border-l-4 border-line pl-3 text-lg">
+                {example}
+              </li>
+            ))}
+          </ul>
+        </>
+      );
+    case "character":
+      return (
+        <p>
+          {details.skill === "writing"
+            ? "On the syllabus list of characters to write by hand at this band."
+            : "On the syllabus list of characters to recognise at this band."}
+        </p>
+      );
+    case "topic":
+      return (
+        <dl className="border-t border-line">
+          <Fact label="Area">
+            <span lang="zh-Hans">{details.area}</span>
+          </Fact>
+          <Fact label="Subject">
+            <span lang="zh-Hans">{details.subject}</span>
+          </Fact>
+          <Fact label="Covers">
+            <span lang="zh-Hans">{details.details}</span>
+          </Fact>
+        </dl>
+      );
+    case "task":
+      return (
+        <>
+          <p className="text-mist">What you should be able to do:</p>
+          <p lang="zh-Hans" className="mt-2 text-lg">
+            {details.canDo}
+          </p>
+        </>
+      );
+  }
+}
+
 function ItemDetail({ data }: { data: CurriculumItemDetailResponse }) {
   const { item, edition, homographs, sources } = data;
+  const vocab = item.itemType === "vocab";
+  const names = SECTION_NAMES[item.itemType];
   return (
     <article>
       <p className="mb-2">
-        <Link to={`/curriculum/${item.hskBand}`} className="font-medium text-cobalt underline">
+        <Link
+          to={vocab ? `/curriculum/${item.hskBand}` : `/curriculum/${item.hskBand}?type=${item.itemType}`}
+          className="font-medium text-cobalt underline"
+        >
           {bandName(item.hskBand)}
+          {vocab ? "" : `: ${names.many}`}
         </Link>
       </p>
 
       <header className="mb-6">
-        <h1 lang="zh-Hans" className="font-kai text-title text-cobalt-deep">
+        {vocab ? null : <p className="mb-1 text-sm font-medium uppercase tracking-wide text-mist">{names.one}</p>}
+        <h1 lang="zh-Hans" className={vocab || item.itemType === "character" ? "font-kai text-title text-cobalt-deep" : "text-2xl font-semibold text-cobalt-deep"}>
           {item.hanzi}
         </h1>
-        <p className="mt-2 text-xl">{item.pinyin}</p>
-        <p className="text-sm text-mist">Pinyin as printed in the syllabus</p>
+        {vocab ? (
+          <>
+            <p className="mt-2 text-xl">{item.pinyin}</p>
+            <p className="text-sm text-mist">Pinyin as printed in the syllabus</p>
+          </>
+        ) : (
+          <p className="mt-3 border-l-4 border-line bg-wash px-4 py-3">
+            From a second-hand transcription of the syllabus, not checked against the official document. It is not
+            counted as verified HSK coverage.
+          </p>
+        )}
       </header>
 
       {edition.synthetic ? (
@@ -78,18 +161,26 @@ function ItemDetail({ data }: { data: CurriculumItemDetailResponse }) {
             <span lang="zh-Hans">{item.levelLabel}</span>
           </Fact>
         ) : null}
-        <Fact label="Part of speech">
-          {item.partOfSpeech ? <span lang="zh-Hans">{item.partOfSpeech}</span> : "Not given"}
-        </Fact>
+        {vocab ? (
+          <Fact label="Part of speech">
+            {item.partOfSpeech ? <span lang="zh-Hans">{item.partOfSpeech}</span> : "Not given"}
+          </Fact>
+        ) : null}
         {item.entryRaw && item.entryRaw !== item.hanzi ? (
           <Fact label="Entry as printed">
             <span lang="zh-Hans">{item.entryRaw}</span>
           </Fact>
         ) : null}
-        <Fact label="Entry number">{item.sourceId}</Fact>
+        <Fact label={vocab ? "Entry number" : "Row in the source file"}>{item.sourceId}</Fact>
       </dl>
 
       <div className="mt-8">
+        {!vocab ? (
+          <Section title="Details">
+            <SectionDetails details={item.details} />
+          </Section>
+        ) : null}
+        {vocab ? (
         <Section title="Meaning">
           {item.definition ? (
             <>
@@ -106,8 +197,9 @@ function ItemDetail({ data }: { data: CurriculumItemDetailResponse }) {
             </p>
           )}
         </Section>
+        ) : null}
 
-        {homographs.length > 0 ? (
+        {vocab && homographs.length > 0 ? (
           <Section title="Same written form">
             <p className="mb-2 text-mist">
               The syllabus numbers these separately. They are different entries, not duplicates.

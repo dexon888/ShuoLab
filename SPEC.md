@@ -1,8 +1,8 @@
 # ShuoLab — Chinese Immersion Learning Assistant
 ## Technical Requirements & Implementation Specification (TRD)
 
-**Version:** 2.2  
-**Date:** 2026-11-13  
+**Version:** 2.3  
+**Date:** 2026-11-26 (v2.2 of 2026-11-13 amended by the owner: connected syllabus, §2.5)  
 **Audience:** Claude Code / implementing developer  
 **Status:** Build-ready MVP specification; existing private GitHub repository is owned and created by the user; credentials and provider accounts are supplied by the owner  
 **Product type:** ShuoLab — single-user, private, cross-device Mandarin learning PWA  
@@ -61,7 +61,7 @@ The official framework covers **tasks, topics, vocabulary, grammar and Chinese c
 
 **Import-friendly vocabulary source:** <https://github.com/uranbekanarbaev/hsk-3.0-vocabulary-dataset>. It transcribes all 11,000 numbered entries from the November 2025 edition and includes `id`, `level`, `hanzi`, `pinyin`, `part_of_speech`, `entry`, `homograph`, `level_label`, and `source_pdf_page`. English definitions are **not** included. The repo distinguishes cumulative and newly introduced vocabulary lists; import only the **new entries per level** or a de-duplicated canonical complete file so each numbered source ID is inserted exactly once.
 
-**Additional structured data candidate:** <https://github.com/profesorm/hsk30> contains grammar, characters, and vocabulary datasets; inspect source fields and use only data that can be mapped to the official edition, with attribution and validation. Treat this independent extraction as an **unverified secondary transcription** until checked; do not conflate it with the official publisher.
+**Additional structured data candidate:** <https://github.com/profesorm/hsk30> contains grammar, characters, and vocabulary datasets; inspect source fields and use only data that can be mapped to the official edition, with attribution and validation. Treat this independent extraction as an **unverified secondary transcription** until checked; do not conflate it with the official publisher. **Owner decision (2026-11-26):** its grammar, character, topic and task lists are imported and used in study under the rules of §2.5, after its own vocabulary list matches the verified vocabulary entry for entry.
 
 **HSK first-introduction totals to validate against:**
 
@@ -90,8 +90,9 @@ Requirements:
 5. Never claim user-visible English definitions are “official” when they come from a separate lexicon or AI-generated gloss. Track a `definition_provenance` field; a missing definition is acceptable.
 6. Use **upsert or staging-table + transaction** semantics so re-running the identical import is idempotent, does not duplicate rows, and does not erase learner evidence.
 7. Maintain edition history rather than rewriting source IDs in place; all progress references immutable `(edition, item_type, source_item_id)` keys.
-8. Report **verified/imported/missing** status for grammar, topics, tasks, characters individually. If secondary datasets are unavailable, do not claim coverage for those dimensions; ship vocabulary-first and display an honest “not imported” state.
+8. Report **verified/imported/missing** status for grammar, topics, tasks, characters individually. If secondary datasets are unavailable, do not claim coverage for those dimensions; ship vocabulary-first and display an honest “not imported” state. An imported but unverified section may be used in study only as §2.5 allows, and is never reported as verified.
 9. Keep bulk official syllabus files out of public Git repositories by default (`private-data/` in `.gitignore`). A single-user local import is not a grant to republish copyrighted examination material.
+10. Before importing a secondary source for grammar, characters, topics or tasks, check that its own vocabulary list (if any) matches the verified vocabulary of the active edition; refuse the import on any difference. Store each section's rows with their details (e.g. grammar kind and example sentences, character skill) and a manifest marked `unverified`.
 
 **Rights caveat:** Source repositories can make files publicly readable without granting redistribution rights to the underlying official syllabus. Include source attribution, inspect each repository's license and original-content rights, and do not bundle the full syllabus in public app assets. Do not automate scraping of protected sites or paywall bypasses. If licensing is unclear, require the owner to acquire/download the source and import it locally; provide fixture data for tests only.
 
@@ -102,7 +103,8 @@ Implement `colloquial_expressions` as a **separate namespace** (`hsk_level = NUL
 
 ### 2.4 Curriculum-to-practice contract — P0
 Each session plan has:
-- `syllabus_edition`, `target_hsk_band`, `target_item_ids[]`, `target_grammar_ids[]` (when verified/imported), `communicative_goal`, `topic_id` (when imported), `colloquial_ids[]` separately, and `level_constraints`.
+- `syllabus_edition`, `target_hsk_band`, `target_item_ids[]`, `target_grammar_ids[]` (when imported; unverified grammar under §2.5), `target_character_ids[]` (characters of the target words that are on the band's lists), `communicative_goal`, `topic_id` and `task_id` (when imported; otherwise an app-authored situation), `colloquial_ids[]` separately, and `level_constraints`.
+- When a task is imported, `communicative_goal` is that task's can-do statement; the conversation and the writing step both aim at it, and the task check (§6.1) judges it. Otherwise it is the app-authored situation's goal.
 - Session topic and phrase suggestions chosen by a **deterministic planner querying the local curriculum database** before the AI is invoked.
 - The AI receives a small list of **valid source IDs and actual words** as context, NOT instructions to invent level assignments.
 - Generated exercises and feedback must be schema-validated and checked for allowed IDs. A generated item missing a valid HSK source ID can still be displayed as **“natural language / extra”**, never as official HSK.
@@ -110,6 +112,27 @@ Each session plan has:
 - Authentic dialogs can include unknown words to support immersion; unfamiliar content is tagged `stretch` and is **not** counted toward target-level mastery unless explicitly tested.
 
 **Acceptance test:** If HSK 2 item `source_id=9999` is requested, the backend must reject the mapping if the imported row is in a different band; it must not rely on the language model's assertion.
+
+### 2.5 Connected syllabus — P0 (owner amendment, 2026-11-26)
+Vocabulary, grammar, characters, topics and tasks are one connected curriculum. Every imported section must be usable end to end, not only stored:
+
+| Section | Browse (§5.4) | Lesson plan (§6.2) | Tutor and activities (§5.3, §6.3) | Review (§5.5) | Mastery and progress (§5.6, §6.1) | Tests (§6.5) |
+|---|---|---|---|---|---|---|
+| Vocabulary | by band, search, filters | up to 5 new + review (§6.2) | in the listening exchange, reading, guided practice, conversation and writing (§5.3) | recognition (reading, listening) and production (speaking, writing) cards | per skill | band practice test, checkpoint |
+| Grammar | by band, search, kind, examples | 1 new + 1 recycled at most | heard in the exchange, shown in the notice step, drilled in guided practice, elicited in conversation, required in writing | understand an example (listening, reading); make a sentence (speaking, writing) | per skill | band practice test |
+| Characters | by band, recognise/write lists | characters of the target words, plus up to 3 band characters met in known words | highlighted in the reading text inside their words | recognise (shown in 1–3 known words); produce by typing or self-rated copying | reading; writing as “typed/self-rated” | band practice test |
+| Topics | by band, area, subject | one per session; recycled items change topic | the setting of the exchange, reading and conversation | — | exposure count per band | test passages set in band topics |
+| Tasks | by band, can-do statement | one per session; it is the session's goal | what the conversation and writing must accomplish | — | **achieved** by the task check (§6.1) | test items framed as band tasks |
+
+Rules:
+1. **Provenance is always visible.** Anything built on an unverified section says so where it appears (plan, tutor context, review card, progress, test) and links to its source credit.
+2. **Separate figures.** Progress on unverified sections is reported per section, beside but never merged into verified vocabulary coverage, and never as an HSK score.
+3. **Allowed ids only.** The planner picks section items from the database; the tutor receives their ids and text and may not invent others. Model output referring to an id outside the plan is dropped, as for vocabulary (§2.4).
+4. **Evidence, not exposure.** A grammar point or character is mastered by the same rule as a word (§6.1), from rated recall and scored test items, never from appearing in a lesson. A task is achieved only by passing its task check; a topic only ever counts as exposure.
+5. **Optional by data.** With a section not imported, everything else keeps working and that section's parts are hidden or show “not imported”.
+6. **One cycle, every session.** Each target passes through input → noticing → guided practice → use in the task → feedback → spaced retrieval (§5.3, §5.5); items still being learned return in a different topic within 2–7 days to test transfer (§6.2).
+7. **Feedback flows forward.** Every correction in a summary creates or advances a review card for that item and skill and is the first priority of the next plan (§6.2).
+8. **Owner can flag a row as wrong.** A flagged row from an unverified section is excluded from plans, cards and test keys; the flag is kept with a note and listed on the Curriculum page.
 
 ---
 
@@ -206,16 +229,21 @@ Do not infer actual fluency or HSK test readiness from a streak.
 
 ### 5.3 `/session/:sessionId` — Guided immersion — P0
 A session is a sequence of activities on a **single communicative theme** (e.g. organizing dinner plans) with connected vocabulary:
-1. Warm-up review / familiar conversation.
-2. **Listen first** to a new short exchange, no default translation; optionally replay slower, show pinyin or transcript *after an attempt*.
-3. **Speak** with AI in turn-based conversation. Press-and-hold or tap-to-record, status cues for listening/processing/speaking; finish automatically after silence or manually.
-4. Short **reading** task featuring theme vocabulary.
-5. Short **writing** or typed free-response task.
-6. Summary: 1–3 high-impact corrections, new vocabulary, successes, recommended reviews.
+Every session follows this spine, in this order, all set in the session's topic and aimed at its task:
+1. **Warm-up retrieval:** 2–4 due cards or last session's corrections, answered before anything new.
+2. **Listen first** to a new short exchange carrying out the task, containing at least one instance of each target grammar point and at least half the new target words; no default translation; optionally replay slower, show pinyin or transcript *after an attempt*. The generated script is checked against the plan before use.
+3. **Notice:** the transcript with the target words and the grammar pattern highlighted, the grammar point's name and one syllabus example (labelled unverified where it is); the target characters shown inside their words.
+4. **Read:** a short new text in the same topic reusing the targets, answered before any translation is shown.
+5. **Guided practice:** 2–3 controlled prompts that require the grammar point and target words (e.g. complete, transform, answer with the pattern), spoken or typed, with immediate feedback.
+6. **Conversation that carries out the task** with the AI, turn-based. Press-and-hold or tap-to-record, status cues for listening/processing/speaking; finish automatically after silence or manually. The tutor elicits any target grammar not yet used (§6.3).
+7. **Write:** a short typed response that completes the task in writing and must use the grammar point; checked against stated criteria.
+8. **Summary:** 1–3 high-impact corrections (each becoming a card and a next-session priority, §2.5 rule 7), the task check result, targets met, and what comes back when.
+
+The plan JSON lists every step with its targets, so a session can be checked for completeness.
 
 Controls: replay, speed, transcript reveal, optional English help, repeat last prompt, skip/hide, pause and resume, report wrong feedback, toggle “more natural speech”. Never interrupt every sentence for corrections; use recasts during speaking, coaching during debrief.
 
-**Duration allocation target for 25 minutes:** 5 listening, 12 speaking, 4 reading, 4 writing/review. Session planner adapts to 15/20/30 minute targets; timing is a guide, not a hard auto-stop. Keep ≥40% session time devoted to listening/speaking combined, aim ~60–70% where feasible.
+**Duration allocation target for 25 minutes:** warm-up 3, listen 4, notice 2, read 3, guided practice 3, conversation 7, write 3 (summary is read afterwards). For 15 minutes: 2, 3, 1, 2, 2, 4, 1. The planner shifts up to 20% of the time toward the owner's weakest skill (§6.2) without dropping listening and speaking below 40% combined; aim ~55–70%. Timing is a guide, not a hard auto-stop.
 
 **Natural conversation:** AI can use common discourse markers (`那个`, `就是`, etc.) where appropriate, paraphrases, colloquial phrasing, everyday pace and filler words. Do not fill beginner audio with unnatural slang. All slang introduced must be labeled colloquial with social register/context.
 
@@ -226,6 +254,7 @@ Controls: replay, speed, transcript reveal, optional English help, repeat last p
 - Filter by topic, part of speech, first-introduction level, learned/not learned, and overdue items.
 - Click an item for Hanzi, syllabus pinyin, optional sourced gloss, example(s), variants/homographs, recorded evidence and source link/page; clearly distinguish generated examples from official content.
 - Import-status banner for unavailable grammar/topics/tasks/characters; **never silently report 100%** for missing categories.
+- Each band page browses all five sections: vocabulary, grammar (kind, category, syllabus examples), characters (to recognise / to write), topics (area, subject, coverage) and tasks (can-do statements), each with search, learner state and source credit (§2.5). Rows from an unverified section have a “flag as wrong” control (§2.5 rule 8).
 - No HSK score or badge unless backed by a named assessment and method.
 
 ### 5.5 `/review` — P0
@@ -233,18 +262,22 @@ Controls: replay, speed, transcript reveal, optional English help, repeat last p
 - Label prompts by skill. Spaced repetition schedule is per item+skill (or per card template), not one universal “word learned” flag.
 - Review ratings: Again / Hard / Good / Easy, recorded by user or explicit assessment, mapped to FSRS. AI qualitative feedback is supportive but **must not automatically mark mastery**.
 - Rate limit newly introduced vocabulary per day by setting, default 5–8; emphasize repeated meaningful exposure over hoarding words.
+- Grammar cards: understand a syllabus example (listening, reading) and produce a sentence using the point (speaking, writing). Character cards: recognise the character shown in 1–3 words that contain it, preferring words already met; produce it by typing from a pinyin-and-meaning prompt or by copying a shown model and rating yourself — named “typed” or “self-rated”, never “handwriting”. Speaking prompts are answered aloud; a typed answer is accepted but recorded as writing, not speaking. Cards come from items targeted in a finished session and from summary corrections.
+- **Recognition and production are separate.** Reading and listening cards are recognition; speaking and writing cards are production. Production skills reach `developing` or `mastered` only from production cards, guided-practice prompts, task-check criteria or test items, never from recognition cards.
 
 ### 5.6 `/progress` — P0
 Charts: rolling 7/30 day practice minutes, skill-specific practice coverage, objective listening accuracy (unseen recordings/questions), speaking-turn completion, average self-rating, mastered HSK vocabulary entries by skill, recent mistakes/repetition hotspots. Show actual denominator, assessment dates, and sample size; use “insufficient evidence” when <5 qualifying observations.
 
-**HSK readiness:** per band a coverage profile for verified sections rather than a pass/fail prediction; optionally add mock-test style assessments in P1. **Conversational fluency:** separate longitudinal tasks on *unseen* prompts and audio; do not let familiar practice transcripts contaminate benchmark scores.
+Show weekly **skill balance** (minutes and qualifying attempts per skill) and **meaningful days** (§8.3), and tasks achieved per band.
+
+**HSK readiness:** per band a coverage profile for verified sections rather than a pass/fail prediction, plus separately labelled profiles for unverified sections (§2.5) and results of band practice tests (§6.5). **Conversational fluency:** separate longitudinal tasks on *unseen* prompts and audio; do not let familiar practice transcripts contaminate benchmark scores.
 
 ### 5.7 `/settings` — P0
 Owner preferences, AI provider model, speed, pinyin/translation reveal rules, default duration, slang intensity, text/mic fallback, privacy/log retention, export JSON/CSV, deletion, monthly soft/hard limits, data source and import manifest, attribution/licenses, build version. All settings persist to D1. Explicitly label if a feature requires a paid/third-party account.
 
 ### 5.8 P1 extras
 - Imported/recorded native human audio with suitable license; multiple conversational speakers, accent/register/dialect notes; difficulty calibrated by speech rate and lexical density.
-- Benchmark speech samples, repeat-after-me shadowing, dedicated `zh-CN` pronunciation drills, grammar/character curriculum once verified.
+- Benchmark speech samples, repeat-after-me shadowing, dedicated `zh-CN` pronunciation drills.
 - Offline review caching with indexedDB and safe reconciliation; notifications on user-selected schedule (opt in), calendar history.
 - Topic personalization (food, errands, travel, work, family, media) and manual vocab bookmark import.
 
@@ -260,15 +293,16 @@ Store five mutually distinguishable states at a skill-specific level:
 - `developing`: at least one correct qualifying recall but not enough spaced evidence;
 - `mastered`: configurable minimum of **3 successful recall attempts on different days**, including at least one delayed review (≥24 hours after introduction) for that specific skill and item.
 
-The above mastery threshold is a product-defined *heuristic*, not an official HSK requirement. Failed recall can lower the mastery state; do not reset historical evidence. Progress denominator = valid imported numbered source entries at the current edition / selected band, with explicit distinction between cumulative vs newly introduced.
+The above mastery threshold is a product-defined *heuristic*, not an official HSK requirement. It applies to every item type: grammar points use all four skills; characters use reading (recognise) and, when on the band's writing list, writing; topics have no mastery state, only an exposure count. A **task check** has 2–3 yes/no criteria derived from the task's can-do statement (e.g. “stated a time”, “proposed an alternative”), stored with the session and judged against the conversation transcript and the written answer by a rubric with a stored scorer version. A task is `achieved` after passing on two different days, at least one in a topic other than the first; it is labelled a personal can-do check, not an HSK task result. Failed recall can lower the mastery state; do not reset historical evidence. Progress denominator = valid imported numbered source entries at the current edition / selected band, with explicit distinction between cumulative vs newly introduced.
 
 ### 6.2 Daily planner (`planDailySession`)
 Deterministic inputs: owner's settings, current local date, available minutes, imported HSK bands, due FSRS reviews, mastery evidence, weak skills, topic repetition, last N sessions, offline/provider state.
 
 1. Select target band: onboarding/placement or manually pinned by owner. If none, start HSK 1 as a **study suggestion**, not a measured level.
-2. Select 3–8 target vocab IDs and up to 2 verified grammar objectives. Put ≥50% of targets in the active level, balance reviews and 0–20% stretch content.
-3. Pick one communicative task/topic that can plausibly feature those IDs. When topic catalogue is not imported, use a small **clearly authored** local situation list with `source_type=app-authored`, not fake HSK task IDs.
-4. Choose up to 1 slang expression in beginner sessions (more only when learner opts in); warn if texting-only, regional, rude, or fading.
+2. Select targets in this fixed priority until the caps are reached: (a) items corrected or failed in the last 3 sessions, at most 3; (b) items in `introduced`/`practiced`/`developing` that are due, weakest skill first, re-targeted 2–7 days after their last session in a **different topic**; (c) new items at the study band, up to the daily-new limit; (d) stretch content, 0–20%. Caps per session: 3–8 vocabulary targets with at most 5 new; at most 1 new and 1 recycled grammar point (verified, or imported unverified under §2.5); a 15-minute session has at most 1 grammar point and no slang. Put ≥50% of targets in the active level. Add the target words' characters on the band's lists, and up to 3 more band characters that appear in words already met. Rows flagged as wrong are never selected.
+3. Pick one task of the study band not achieved yet and not used in the last 3 sessions, and a topic of the band that fits it and differs from the topics in which the recycled items were introduced. The task's can-do statement is the session goal (§2.4).
+   *Weakest skill* = the skill with the lowest share of qualifying successful attempts over the last 14 days (ties: fewest attempts); it receives the time shift in §5.3. When the topic and task catalogues are not imported, use a small **clearly authored** local situation list with `source_type=app-authored`, not fake HSK task IDs.
+4. Choose up to 1 slang expression in sessions of 20 minutes or more (more only when learner opts in); warn if texting-only, regional, rude, or fading.
 5. Assemble timeboxed activities and persist `session_plan` as JSON referencing valid IDs; subsequent model requests can only use this plan and related persisted context.
 6. If there is no imported syllabus, block official level scoring and display setup guidance; allow **uncategorized free chat** optionally, never pseudo-HSK lessons.
 
@@ -278,6 +312,7 @@ Tutor should respond primarily in natural Mandarin, tuned to comprehension; spea
 Rules enforced in server-side prompt and validation:
 - The selected `target_item_ids` are supplied by the planner and are immutable for the session.
 - Use source words naturally; don't forcibly include all targets in one utterance.
+- The tutor receives the target grammar points (name, pattern, one example) and the task. Each reply reports `used_grammar_ids` and `elicited_grammar_ids`; the server keeps a claimed id only if the point's pattern is found in the reply. If a planned point has been neither used nor elicited by the learner's 4th turn, the next reply must elicit it. Whether the learner used each point is recorded as a guided-practice or conversation attempt for that point and skill.
 - `spoken_reply_zh` is 1–3 concise sentences for beginner dialogue and grows with proficiency; avoid unnatural literary prose.
 - Feedback differentiates actual user transcript, semantic errors, grammar errors, and *possible* recognition uncertainty. Do not interpret low-confidence transcription as proof of learner error.
 - Provide 1–3 corrections after a conversation chunk or session, not a score on every utterance.
@@ -293,6 +328,8 @@ Rules enforced in server-side prompt and validation:
   "optional_translation_en": "What do you usually like to do on weekends?",
   "referenced_curriculum_item_ids": ["hsk3-2025-11:vocab:42"],
   "referenced_colloquial_ids": [],
+  "used_grammar_ids": [],
+  "elicited_grammar_ids": [],
   "semantic_feedback": {
     "understood_intent": true,
     "corrections": [],
@@ -311,6 +348,7 @@ This is **an illustrative shape only**. Build a shared Zod schema and infer Type
 - Reading: unseen comprehension prompt answered before translation reveal.
 - HSK lexical skill mastery: recall attempts by skill + FSRS schedule; passive appearance is not mastery.
 - Monthly checkpoint: at least 1 unseen listening and 1 unseen spontaneous speaking task, comparable rubric and topic difficulty, store model/scorer version. Scores are *personal tracking*, not standardized HSK exam scores.
+- Band practice test (P0 under §2.5): a fixed-length test per band built deterministically from imported items (vocabulary, grammar, characters; passages framed by band topics and tasks), with listening, reading and writing parts. Questions are generated from stored items and checked against them; test passages carry out band tasks in band topics, so results also count as transfer evidence; answer keys built from unverified examples are labelled “unverified key”, and flagged rows are never used; answers are scored by fixed keys where possible and by a rubric with stored scorer version otherwise. Store the run in `assessment_runs` with item ids, per-section scores and sample sizes. Correct answers count as recall evidence for mastery; the result is never called an HSK score or pass.
 
 ---
 
@@ -377,8 +415,10 @@ If the owner changes syllabi, keep mastery keyed by edition. Provide an optional
 - `HSK band coverage by skill = count(distinct mastered source item IDs first-introduced ≤ selected band in applicable range) / cumulative source entry count`.
 - `Introduced count = distinct IDs with a session reference`, not all words presented to the LLM.
 - `Practice minutes = sum(actual_seconds) / 60`; cap client event durations and prevent duplicate accounting.
-- `Daily streak = consecutive local calendar dates with ≥ configurable meaningful practice minimum` (default ≥5 minutes), computed using owner time zone.
+- `Meaningful day` = a local calendar date (owner time zone) with at least one oral or written production attempt and at least one retrieval (review card or warm-up). Show meaningful days per week instead of a streak; minutes alone never make a day meaningful.
+- `Skill balance` = qualifying attempts per skill per week, shown together.
 - `Listening accuracy = correct answers / attempted unseen questions` and show `n`.
+- `Section coverage by skill` (grammar, characters) uses the same formula with that section's imported rows as the denominator, labelled unverified when its manifest is; topics and tasks report `practised / imported` per band.
 - `AI feedback != official HSK score`; no fake CEFR alignment or guaranteed fluency timeline.
 
 ---
@@ -496,6 +536,15 @@ Reusable components: `AudioRecordButton`, `AudioPlaybackBar`, `MandarinText` (Ha
 | FR-020 | P0 | Device switching | Session history, settings and progress consistent across authenticated devices |
 | FR-021 | P1 | Pronunciation drill | `zh-CN` reference phrase assessed; label service limits and don't grade spontaneous tones |
 | FR-022 | P1 | Monthly unseen checkpoint | Comparable listening/speaking form recorded with sample size and scorer version |
+| FR-023 | P0 | Browse every section | Grammar, characters, topics and tasks listed and searchable by band, with details and source credit |
+| FR-024 | P0 | Connected lesson plan | Plan follows the §5.3 spine with targets per step, the §6.2 priority, caps and topic change for recycled items; ids only from the database; ids outside the plan are dropped |
+| FR-028 | P0 | Grammar in use | Listening script contains each target pattern; tutor's grammar claims checked against reply text; an unused point is elicited by turn 5; learner use recorded as an attempt |
+| FR-029 | P0 | Feedback flows forward | Each summary correction creates or advances a card and is priority 1 in the next plan |
+| FR-025 | P0 | Section review | Grammar and character cards (characters shown in words) created from finished sessions and corrections, rated with FSRS, history kept; production mastery only from production evidence |
+| FR-026 | P0 | Section progress | Mastery per section and skill from evidence; unverified sections labelled and kept apart from verified coverage |
+| FR-030 | P0 | Task check | 2–3 criteria per task judged with a stored scorer version; achieved after two passes on different days in different topics |
+| FR-031 | P0 | Flag as wrong | A flagged unverified row leaves plans, cards and test keys and is listed with its note |
+| FR-027 | P0 | Band practice test | Deterministic test per band from imported items, scored and stored with sample sizes; feeds mastery; never presented as an HSK score |
 
 ---
 
@@ -693,8 +742,13 @@ Implement FSRS review cards/events, evidence-based mastery per skill, HSK and co
 
 **Gate:** all `P0` FR IDs satisfied, e2e session passes, exported data can round-trip, no secret exposure, Cloudflare Access protection verified, deployment guide accurate.
 
-### Phase 5 — P1 enhancements (do not build until MVP gate passes)
-Pronunciation assessment drill, varied licensed listening voices, grammar/task import enhancement, unseen monthly checkpoints, deeper analytics, and optional offline recall review.
+### Phase 5 — Connected syllabus (owner amendment, 2026-11-26)
+Implement §2.5: browse all sections; lesson plans, tutor and session activities using grammar, characters, topics and tasks; grammar and character review cards; speaking and writing review prompts; per-section mastery and progress; band practice tests and the monthly checkpoint.
+
+**Gate:** FR-023 to FR-031 satisfied with tests; a full session runs every step of the §5.3 spine; every place an unverified section is used labels it; verified vocabulary coverage unchanged by section data.
+
+### Phase 6 — P1 enhancements
+Pronunciation assessment drill, varied licensed listening voices, deeper analytics, and optional offline recall review.
 
 **Order rule:** Build one complete vertical slice at a time; do not invest in P1 before P0 foundations are functional. At each phase: show what changed, tests executed, known gaps and exact next steps.
 
