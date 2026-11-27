@@ -33,6 +33,11 @@ function card(n: number, over: Partial<ReviewCard> = {}): ReviewCard {
       pinyin: ["zhōumò", "péngyou", "huǒguō"][n - 1] ?? null,
       definition: null,
       definitionProvenance: null,
+      itemType: "vocab",
+      details: null,
+      example: null,
+      words: [],
+      unverified: false,
     },
     state: "new",
     dueAt: later(-5),
@@ -199,5 +204,64 @@ describe("due time text", () => {
     ["2026-03-12T10:00:00.000Z", "in 8 days"],
   ])("%s is %s", (iso, text) => {
     expect(untilText(iso, now)).toBe(text);
+  });
+});
+
+describe("grammar, character and production cards (SPEC §5.5, FR-025)", () => {
+  const grammarItem = {
+    id: "synthetic-fixture:grammar:1",
+    itemType: "grammar" as const,
+    hanzi: "是……的",
+    pinyin: null,
+    example: "我是坐车来的。",
+    details: { kind: "grammar" as const, grammarType: "特殊表达法", category: null, detail: null, examples: ["我是坐车来的。"] },
+    unverified: true,
+  };
+
+  it("a grammar writing card checks the typed sentence for the pattern and sends it with the rating", async () => {
+    const c = card(1, { template: "grammar_write", skill: "writing", item: { ...card(1).item, ...grammarItem } });
+    const { ratings } = open([due([c]), due([])]);
+    const view = within(await cardView());
+    expect(view.getByText("Writing (typed)")).toBeInTheDocument();
+    expect(view.getByText(/second-hand transcription/)).toBeInTheDocument();
+    await userEvent.type(view.getByLabelText("Your answer"), "我是走路来的。");
+    await userEvent.click(view.getByRole("button", { name: "Show answer" }));
+    expect(view.getByText(/✓ That matches\./)).toBeInTheDocument();
+    expect(view.getByText("Example: 我是坐车来的。")).toBeInTheDocument();
+    await userEvent.click(view.getByRole("button", { name: /^Good/ }));
+    await waitFor(() => expect(ratings[0]?.body).toMatchObject({ rating: "good", answer: "我是走路来的。" }));
+  });
+
+  it("a grammar reading card shows the syllabus example first", async () => {
+    open([due([card(1, { template: "grammar_read", item: { ...card(1).item, ...grammarItem } })])]);
+    const view = within(await cardView());
+    expect(view.getByText("我是坐车来的。")).toBeInTheDocument();
+    expect(view.getByText("Read the example. What does the pattern do here?")).toBeInTheDocument();
+  });
+
+  it("a character typing card blanks the character in a word you met and checks it", async () => {
+    const c = card(1, {
+      template: "char_type",
+      skill: "writing",
+      item: { ...card(1).item, id: "synthetic-fixture:character:1", itemType: "character", hanzi: "周", pinyin: null, words: [{ hanzi: "周末", pinyin: "zhōumò" }], unverified: true },
+    });
+    open([due([c])]);
+    const view = within(await cardView());
+    expect(view.getByText("＿末")).toBeInTheDocument();
+    expect(view.getByText(/not handwriting/)).toBeInTheDocument();
+    await userEvent.type(view.getByLabelText("Your answer"), "末");
+    await userEvent.click(view.getByRole("button", { name: "Show answer" }));
+    expect(view.getByText(/✗ Not quite\./)).toBeInTheDocument();
+  });
+
+  it("a character reading card lists the words you know it from", async () => {
+    const c = card(1, {
+      template: "char_recognise",
+      item: { ...card(1).item, id: "synthetic-fixture:character:2", itemType: "character", hanzi: "朋", pinyin: null, words: [{ hanzi: "朋友", pinyin: "péngyou" }], unverified: true },
+    });
+    open([due([c])]);
+    const view = within(await cardView());
+    await userEvent.click(view.getByRole("button", { name: "Show answer" }));
+    expect(view.getByText("péngyou")).toBeInTheDocument();
   });
 });

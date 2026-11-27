@@ -11,11 +11,15 @@
  */
 import type { D1Database } from "@cloudflare/workers-types";
 import { Rating, State, createEmptyCard, fsrs, type Card, type Grade } from "ts-fsrs";
-import { getEdition, type HskBand } from "../../shared/curriculum";
+import { getEdition, type HskBand, type ItemType } from "../../shared/curriculum";
+import { grammarMarkers, usesGrammar } from "../../shared/lesson";
+import { parseItemDetails } from "../../shared/sections";
 import type { MasteryState, Skill } from "../../shared/learning";
 import {
-  REVIEW_TEMPLATES,
+  GRAMMAR_TEMPLATES,
   TEMPLATE_SKILL,
+  WORD_PRODUCTION_TEMPLATES,
+  WORD_RECOGNITION_TEMPLATES,
   deriveMastery,
   type CardState,
   type DueResponse,
@@ -114,8 +118,13 @@ export function preview(card: Card, now: Date): ReviewCard["preview"] {
 async function introducedAt(d1: D1Database, itemId: string): Promise<string | null> {
   const row = await d1
     .prepare(
-      `SELECT MIN(COALESCE(s.started_at, s.ended_at)) AS at FROM session_targets st JOIN sessions s ON s.id = st.session_id
-WHERE st.curriculum_item_id = ?1 AND st.role <> 'stretch' AND s.status = 'complete'`,
+      `SELECT MIN(at) AS at FROM (
+  SELECT COALESCE(s.started_at, s.ended_at) AS at FROM session_targets st JOIN sessions s ON s.id = st.session_id
+  WHERE st.curriculum_item_id = ?1 AND st.role <> 'stretch' AND s.status = 'complete'
+  UNION ALL
+  SELECT COALESCE(s.started_at, s.ended_at) AS at FROM session_items si JOIN sessions s ON s.id = si.session_id
+  WHERE si.curriculum_item_id = ?1 AND si.item_type IN ('grammar','character') AND s.status = 'complete'
+)`,
     )
     .bind(itemId)
     .first<{ at: string | null }>();
@@ -163,50 +172,130 @@ ON CONFLICT (owner_id, curriculum_item_id, skill) DO UPDATE SET
   return summary.state;
 }
 
-/**
- * Called when a session is finished: the words it targeted (stretch words
- * excepted) get review cards, due now, and become `introduced`. Repeating it
- * creates nothing twice.
- */
-export async function introduceSessionWords(d1: D1Database, sessionId: string, now: Date = new Date()): Promise<number> {
-  const [rows, session] = await Promise.all([
-    d1
-      .prepare("SELECT curriculum_item_id AS id FROM session_targets WHERE session_id = ?1 AND role <> 'stretch' ORDER BY position")
-      .bind(sessionId)
-      .all<{ id: string }>(),
-    d1.prepare("SELECT started_at FROM sessions WHERE id = ?1").bind(sessionId).first<{ started_at: string | null }>(),
-  ]);
-  if (rows.results.length === 0) return 0;
+/** The cards an item gets when a finished session first targets it. */
+function templatesFor(itemType: string, characterSkill: string | null): ReviewTemplate[] {
+  if (itemType === "grammar") return [...GRAMMAR_TEMPLATES];
+  if (itemType === "character") return characterSkill === "writing" ? ["char_recognise", "char_type"] : ["char_recognise"];
+  return [...WORD_RECOGNITION_TEMPLATES];
+}
 
-  const at = now.toISOString();
-  const metAt = session?.started_at ?? at;
+/** Inserts cards (due at `dueAt`) and `introduced` states; existing ones are left as they are. */
+function cardStatements(d1: D1Database, items: readonly { id: string; templates: readonly ReviewTemplate[] }[], dueAt: string, metAt: string, at: string, now: Date) {
   const empty = serializeCard(createEmptyCard(now));
-  const inserts = rows.results.flatMap(({ id }) =>
-    REVIEW_TEMPLATES.map((template) =>
+  const inserts = items.flatMap(({ id, templates }) =>
+    templates.map((template) =>
       d1
         .prepare(
           `INSERT INTO review_cards (id, owner_id, curriculum_item_id, skill, template, fsrs_state_json, due_at, created_at, updated_at)
-VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?7, ?7) ON CONFLICT (curriculum_item_id, template) DO NOTHING`,
+VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?8) ON CONFLICT (curriculum_item_id, template) DO NOTHING`,
         )
-        .bind(crypto.randomUUID(), OWNER_ID, id, TEMPLATE_SKILL[template], template, empty, at),
+        .bind(crypto.randomUUID(), OWNER_ID, id, TEMPLATE_SKILL[template], template, empty, dueAt, at),
     ),
   );
-  // Becoming introduced. A word that already has a state keeps it: attempts
-  // come only from cards, which exist only after a word was first met, so an
-  // earlier row already holds the right first-seen time. This gives the same
-  // result as deriving it again, in one batch.
-  const introductions = rows.results.flatMap(({ id }) =>
-    REVIEW_TEMPLATES.map((template) =>
+  // Becoming introduced. An item that already has a state keeps it: attempts
+  // come only after it was first met, so an earlier row already holds the right
+  // first-seen time.
+  const introductions = items.flatMap(({ id, templates }) =>
+    [...new Set(templates.map((t) => TEMPLATE_SKILL[t]))].map((skill) =>
       d1
         .prepare(
           `INSERT INTO mastery_states (owner_id, curriculum_item_id, skill, state, first_seen_at, updated_at)
 VALUES (?1, ?2, ?3, 'introduced', ?4, ?5) ON CONFLICT (owner_id, curriculum_item_id, skill) DO NOTHING`,
         )
-        .bind(OWNER_ID, id, TEMPLATE_SKILL[template], metAt, at),
+        .bind(OWNER_ID, id, skill, metAt, at),
     ),
   );
+  return { inserts, introductions };
+}
+
+/**
+ * Called when a session is finished. Its words (stretch excepted) get
+ * recognition cards; its grammar points get all four cards; its characters
+ * get a recognition card, and a typing card if they are on a writing list.
+ * All are due now and become `introduced`. Repeating it creates nothing twice.
+ */
+export async function introduceSessionWords(d1: D1Database, sessionId: string, now: Date = new Date()): Promise<number> {
+  const [words, sections, session] = await Promise.all([
+    d1
+      .prepare("SELECT curriculum_item_id AS id FROM session_targets WHERE session_id = ?1 AND role <> 'stretch' ORDER BY position")
+      .bind(sessionId)
+      .all<{ id: string }>(),
+    d1
+      .prepare(
+        `SELECT si.curriculum_item_id AS id, si.item_type, ci.metadata_json FROM session_items si JOIN curriculum_items ci ON ci.id = si.curriculum_item_id
+WHERE si.session_id = ?1 AND si.item_type IN ('grammar','character') ORDER BY si.position`,
+      )
+      .bind(sessionId)
+      .all<{ id: string; item_type: string; metadata_json: string | null }>(),
+    d1.prepare("SELECT started_at FROM sessions WHERE id = ?1").bind(sessionId).first<{ started_at: string | null }>(),
+  ]);
+  const items = [
+    ...words.results.map((w) => ({ id: w.id, templates: templatesFor("vocab", null) })),
+    ...sections.results.map((r) => {
+      const d = parseItemDetails(r.item_type as ItemType, r.metadata_json);
+      return { id: r.id, templates: templatesFor(r.item_type, d?.kind === "character" ? d.skill : null) };
+    }),
+  ];
+  if (items.length === 0) return 0;
+  const at = now.toISOString();
+  const { inserts, introductions } = cardStatements(d1, items, at, session?.started_at ?? at, at, now);
   const results = await d1.batch([...inserts, ...introductions]);
   return results.slice(0, inserts.length).reduce((n, r) => n + (r.meta.changes ?? 0), 0);
+}
+
+/**
+ * SPEC §2.5 rule 7: what a summary corrected comes back first. The session's
+ * words found in a correction, and grammar points whose pattern is in the
+ * corrected sentence, have every card made due now. Returns their ids.
+ */
+export async function advanceCorrected(d1: D1Database, sessionId: string, now: Date = new Date()): Promise<string[]> {
+  const ids = await correctedItemIds(d1, [sessionId]);
+  if (ids.length === 0) return [];
+  await d1
+    .prepare("UPDATE review_cards SET due_at = ?2 WHERE curriculum_item_id IN (SELECT value FROM json_each(?1)) AND due_at > ?2")
+    .bind(JSON.stringify(ids), now.toISOString())
+    .run();
+  return ids;
+}
+
+/** Items of the given sessions that their conversation corrections touched. */
+export async function correctedItemIds(d1: D1Database, sessionIds: readonly string[]): Promise<string[]> {
+  if (sessionIds.length === 0) return [];
+  const list = JSON.stringify(sessionIds);
+  const [turns, words, grammar] = await d1.batch<Record<string, unknown>>([
+    d1.prepare("SELECT ai_reply_json FROM conversation_turns WHERE session_id IN (SELECT value FROM json_each(?1)) AND status = 'complete'").bind(list),
+    d1
+      .prepare(
+        `SELECT ci.id, ci.hanzi FROM session_targets st JOIN curriculum_items ci ON ci.id = st.curriculum_item_id
+WHERE st.session_id IN (SELECT value FROM json_each(?1)) AND st.role <> 'stretch'`,
+      )
+      .bind(list),
+    d1
+      .prepare(
+        `SELECT ci.id, ci.hanzi FROM session_items si JOIN curriculum_items ci ON ci.id = si.curriculum_item_id
+WHERE si.session_id IN (SELECT value FROM json_each(?1)) AND si.item_type = 'grammar'`,
+      )
+      .bind(list),
+  ]);
+  const corrections: { original: string; corrected: string }[] = [];
+  for (const row of (turns?.results ?? []) as { ai_reply_json: string | null }[]) {
+    try {
+      const reply = JSON.parse(row.ai_reply_json ?? "null") as { feedback?: { corrections?: { original: string; corrected: string }[] } } | null;
+      corrections.push(...(reply?.feedback?.corrections ?? []));
+    } catch {
+      // An unreadable turn has no corrections to use.
+    }
+  }
+  if (corrections.length === 0) return [];
+  const out = new Set<string>();
+  for (const w of (words?.results ?? []) as { id: string; hanzi: string }[]) {
+    if (corrections.some((c) => c.original.includes(w.hanzi) || c.corrected.includes(w.hanzi))) out.add(w.id);
+  }
+  for (const g of (grammar?.results ?? []) as { id: string; hanzi: string }[]) {
+    const markers = grammarMarkers(g.hanzi);
+    if (corrections.some((c) => usesGrammar(c.corrected, markers))) out.add(g.id);
+  }
+  return [...out];
 }
 
 // --- Due cards -----------------------------------------------------------------
@@ -226,13 +315,39 @@ interface CardRow {
   definition: string | null;
   definition_provenance: string | null;
   mastery: string | null;
+  item_type: string;
+  metadata_json: string | null;
+  words_json: string | null;
+  verified_sources: number;
 }
 
 const CARD_SELECT = `SELECT rc.id, rc.template, rc.skill, rc.fsrs_state_json, rc.due_at, rc.updated_at, rc.curriculum_item_id,
-  ci.edition_id, ci.hsk_band, ci.hanzi, ci.pinyin, ci.definition, ci.definition_provenance, ms.state AS mastery
+  ci.edition_id, ci.hsk_band, ci.hanzi, ci.pinyin, ci.definition, ci.definition_provenance, ci.item_type, ci.metadata_json, ms.state AS mastery,
+  (SELECT json_group_array(json_object('hanzi', w.hanzi, 'pinyin', w.pinyin)) FROM (
+     SELECT DISTINCT v.hanzi, v.pinyin FROM session_targets st2 JOIN curriculum_items v ON v.id = st2.curriculum_item_id
+     WHERE ci.item_type = 'character' AND st2.role <> 'stretch' AND instr(v.hanzi, ci.hanzi) > 0 LIMIT 3) w) AS words_json,
+  (SELECT COUNT(*) FROM source_manifests sm WHERE sm.edition_id = ci.edition_id AND sm.dataset_kind = ci.item_type AND sm.verification_status = 'verified') AS verified_sources
 FROM review_cards rc
 JOIN curriculum_items ci ON ci.id = rc.curriculum_item_id
 LEFT JOIN mastery_states ms ON ms.owner_id = rc.owner_id AND ms.curriculum_item_id = rc.curriculum_item_id AND ms.skill = rc.skill`;
+
+/** A grammar point's first syllabus example that shows its pattern. */
+function exampleOf(row: CardRow): string | null {
+  if (row.item_type !== "grammar") return null;
+  const d = parseItemDetails("grammar", row.metadata_json);
+  if (d?.kind !== "grammar") return null;
+  const markers = grammarMarkers(row.hanzi);
+  return d.examples.find((e) => usesGrammar(e, markers)) ?? d.examples[0] ?? null;
+}
+
+function wordsOf(json: string | null): { hanzi: string; pinyin: string | null }[] {
+  try {
+    const parsed = JSON.parse(json ?? "[]") as { hanzi: string; pinyin: string | null }[];
+    return Array.isArray(parsed) ? parsed.filter((w) => typeof w?.hanzi === "string") : [];
+  } catch {
+    return [];
+  }
+}
 
 function toView(row: CardRow, now: Date): ReviewCard {
   const card = deserializeCard(row.fsrs_state_json);
@@ -250,6 +365,11 @@ function toView(row: CardRow, now: Date): ReviewCard {
       // A definition is shown only with its source recorded.
       definition: row.definition_provenance ? row.definition : null,
       definitionProvenance: row.definition ? row.definition_provenance : null,
+      itemType: row.item_type as ItemType,
+      details: parseItemDetails(row.item_type as ItemType, row.metadata_json),
+      example: exampleOf(row),
+      words: wordsOf(row.words_json),
+      unverified: row.item_type !== "vocab" && row.verified_sources === 0,
     },
     state: CARD_STATES[card.state] ?? "new",
     dueAt: row.due_at,
@@ -343,10 +463,10 @@ ON CONFLICT (client_event_id) DO NOTHING`,
       .bind(cardId, row.updated_at, serializeCard(after), after.due.toISOString(), at, eventId),
     d1
       .prepare(
-        `INSERT INTO practice_attempts (id, session_id, curriculum_item_id, skill, assessment_type, prompt_id, score, score_source, is_qualifying_recall, success, review_event_id, attempted_at)
-SELECT ?2, NULL, ?3, ?4, 'review_self_rating', ?5, ?6, 'self', 1, ?7, ?1, ?8 WHERE ${recorded}`,
+        `INSERT INTO practice_attempts (id, session_id, curriculum_item_id, skill, assessment_type, prompt_id, user_response, score, score_source, is_qualifying_recall, success, review_event_id, attempted_at)
+SELECT ?2, NULL, ?3, ?4, 'review_self_rating', ?5, ?9, ?6, 'self', 1, ?7, ?1, ?8 WHERE ${recorded}`,
       )
-      .bind(eventId, crypto.randomUUID(), row.curriculum_item_id, row.skill, row.template, RATINGS[request.rating], isSuccess(request.rating) ? 1 : 0, at),
+      .bind(eventId, crypto.randomUUID(), row.curriculum_item_id, row.skill, row.template, RATINGS[request.rating], isSuccess(request.rating) ? 1 : 0, at, request.answer ?? null),
   ]);
 
   const saved = await d1.prepare("SELECT 1 AS ok FROM review_events WHERE id = ?1").bind(eventId).first<{ ok: number }>();
@@ -359,6 +479,12 @@ SELECT ?2, NULL, ?3, ?4, 'review_self_rating', ?5, ?6, 'self', 1, ?7, ?1, ?8 WHE
 
   const { timezone: timeZone } = await getSettings(d1);
   const mastery = await recomputeMastery(d1, row.curriculum_item_id, row.skill as Skill, timeZone, now);
+  // Recognition before production (SPEC §5.5): a word's first recall adds its speaking and writing cards, due a day later.
+  if (isSuccess(request.rating) && (WORD_RECOGNITION_TEMPLATES as readonly string[]).includes(row.template)) {
+    const due = new Date(now.getTime() + 86_400_000).toISOString();
+    const { inserts, introductions } = cardStatements(d1, [{ id: row.curriculum_item_id, templates: [...WORD_PRODUCTION_TEMPLATES] }], due, at, at, now);
+    await d1.batch([...inserts, ...introductions]);
+  }
   return {
     cardId,
     rating: request.rating,

@@ -27,6 +27,9 @@ function WeekInBrief({ s }: { s: ProgressSummary }) {
       <li>
         {speaking.spokenTurns} spoken turn{speaking.spokenTurns === 1 ? "" : "s"}, {speaking.typedTurns} typed.
       </li>
+      <li>
+        {s.meaningfulDays.count} meaningful day{s.meaningfulDays.count === 1 ? "" : "s"}: you both produced something and recalled something in review.
+      </li>
     </ul>
   );
 }

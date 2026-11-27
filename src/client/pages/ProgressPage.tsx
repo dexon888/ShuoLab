@@ -144,13 +144,71 @@ function Summary({ s }: { s: ProgressSummary }) {
             </div>
             <p className="mt-3 text-sm text-mist">
               Met: entries a finished session targeted, or that you have reviewed. Meeting a word is not knowing it.
-              Speaking and writing have no review cards yet, so they stay at zero. Coverage is not a prediction of an
-              HSK exam result.
+              Speaking and writing move only with speaking and writing practice, which a word gets after its first
+              recall. Coverage is not a prediction of an HSK exam result.
             </p>
           </>
         )}
       </Section>
+
+      <SectionsProgress s={s} />
+
+      <Section title="Skill balance">
+        <p className="mb-2">
+          <span className="font-semibold tabular-nums">{s.meaningfulDays.count}</span> meaningful{" "}
+          {s.meaningfulDays.count === 1 ? "day" : "days"} in the last {s.window.days}: days on which you both produced
+          something (spoke or wrote) and recalled something in review.
+        </p>
+        <ul className="space-y-1">
+          {s.skillBalance.map((b) => (
+            <li key={b.skill}>
+              {SKILL_LABELS[b.skill]}: <span className="tabular-nums">{b.attempts}</span> {b.attempts === 1 ? "attempt" : "attempts"}
+              {b.attempts > 0 ? `, ${b.successes} successful` : ""}
+            </li>
+          ))}
+        </ul>
+        <p className="mt-2 text-sm text-mist">Attempts are review ratings, guided practice, writing and grammar used in conversation. Typed answers count as writing.</p>
+      </Section>
     </>
+  );
+}
+
+/** Grammar and characters against their imported rows, and topics and tasks as exposure (SPEC §2.5, §8.3). */
+function SectionsProgress({ s }: { s: ProgressSummary }) {
+  const { grammar, character, topics, tasks } = s.sections;
+  if (!grammar && !character && topics.imported === 0 && tasks.imported === 0) return null;
+  const rows = [
+    { name: "Grammar points", data: grammar },
+    { name: "Characters", data: character },
+  ].filter((r): r is { name: string; data: NonNullable<typeof grammar> } => r.data !== null);
+  return (
+    <Section title="Grammar, characters, topics and tasks">
+      {rows.some((r) => r.data.unverified) ? (
+        <p className="mb-3 text-mist">
+          From a second-hand transcription of the syllabus, not checked against the official document. Counted against
+          the imported rows, kept apart from verified vocabulary coverage, and never an HSK score.
+        </p>
+      ) : null}
+      <ul className="space-y-3">
+        {rows.map(({ name, data }) => (
+          <li key={name}>
+            <span className="font-medium">{name}:</span> met <span className="tabular-nums">{data.total.introduced}</span> of{" "}
+            <span className="tabular-nums">{data.total.entries}</span>. Mastered:{" "}
+            {SKILLS.filter((k) => data.total.bySkill[k].mastered + data.total.bySkill[k].developing > 0 || k === "reading")
+              .map((k) => `${SKILL_LABELS[k].toLowerCase()} ${data.total.bySkill[k].mastered} (developing ${data.total.bySkill[k].developing})`)
+              .join(", ")}
+            .
+          </li>
+        ))}
+        <li>
+          <span className="font-medium">Topics:</span> {topics.met} of {topics.imported} used in a finished session.
+        </li>
+        <li>
+          <span className="font-medium">Tasks:</span> {tasks.met} of {tasks.imported} practised. Practising a task is
+          not achieving it.
+        </li>
+      </ul>
+    </Section>
   );
 }
 

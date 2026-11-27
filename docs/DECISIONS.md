@@ -686,3 +686,31 @@ tutor's allowed grammar all read from it.
 New plan fields default when absent, so plans saved before the spine keep
 opening and show their old steps.
 
+## 102. Recognition first, then production
+
+A word starts with its reading and listening cards; its speaking and writing
+cards are added when it is first recalled, due a day later. That keeps a
+session from creating dozens of cards at once and follows the order SPEC §5.5
+asks for. Grammar points get all four cards at once, because a session has at
+most two and its guided practice and writing already asked for production.
+
+## 103. Typed production is checked in the browser, rated by the learner
+
+A typing card (a word from its sound, a character from a word's pinyin, a
+sentence with a pattern) is checked by the same pattern and equality rules as
+the session's practice, and the result is shown before rating. The rating is
+still the learner's own: the check informs it, and the typed answer is kept
+with it.
+
+## 104. Corrections are read from the turns, not stored again
+
+What a correction touched is worked out from the saved turns and the
+session's targets when a session finishes and when the next one is planned,
+so there is no second copy of the corrections to keep in step or delete.
+
+## 105. Meaningful days replace a streak
+
+A day counts when it has both something produced (spoken, written or typed)
+and something recalled in review. Minutes alone never make a day count, and
+there is no streak to break.
+

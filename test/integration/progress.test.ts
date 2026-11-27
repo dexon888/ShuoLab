@@ -196,9 +196,10 @@ describe("learner state on curriculum entries (SPEC §5.4)", () => {
     expect(detail.item.state).toBe("developing");
     expect(detail.progress.bySkill.map((s) => [s.skill, s.state])).toEqual([
       ["listening", "introduced"],
-      ["speaking", "unseen"],
+      // The first recall added the word's speaking and writing cards (SPEC §5.5).
+      ["speaking", "introduced"],
       ["reading", "developing"],
-      ["writing", "unseen"],
+      ["writing", "introduced"],
     ]);
     expect(detail.progress.bySkill.find((s) => s.skill === "reading")).toMatchObject({ successDays: 1, failureCount: 0 });
   });

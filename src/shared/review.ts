@@ -7,7 +7,8 @@
  * an HSK requirement.
  */
 import { z } from "zod";
-import { HSK_BANDS } from "./curriculum";
+import { HSK_BANDS, ITEM_TYPES } from "./curriculum";
+import { itemDetailsSchema } from "./sections";
 import { MASTERY_STATES, SKILLS, type MasteryState, type Skill } from "./learning";
 import { localStudyDate } from "./session";
 
@@ -15,17 +16,55 @@ export const REVIEW_RATINGS = ["again", "hard", "good", "easy"] as const;
 export type ReviewRating = (typeof REVIEW_RATINGS)[number];
 
 /**
- * Card templates. Each exercises one skill:
- * - `hanzi_to_meaning` (reading): see the characters, recall sound and meaning;
- * - `audio_to_meaning` (listening): hear the word, recall what it is.
+ * Card templates (SPEC §5.5). Each exercises one skill. Reading and listening
+ * cards are recognition; speaking and writing cards are production, and only
+ * production evidence moves the speaking and writing skills.
+ *
+ * Words:      hanzi_to_meaning (reading), audio_to_meaning (listening),
+ *             word_say (speaking: use it aloud), word_write (writing: type it from its sound).
+ * Grammar:    grammar_read (reading: understand a syllabus example),
+ *             grammar_listen (listening: hear the example),
+ *             grammar_say (speaking: say a sentence with the pattern),
+ *             grammar_write (writing: type a sentence with the pattern).
+ * Characters: char_recognise (reading: shown inside words you know),
+ *             char_type (writing, typed: produce it from a word's pinyin).
  */
-export const REVIEW_TEMPLATES = ["hanzi_to_meaning", "audio_to_meaning"] as const;
+export const REVIEW_TEMPLATES = [
+  "hanzi_to_meaning",
+  "audio_to_meaning",
+  "word_say",
+  "word_write",
+  "grammar_read",
+  "grammar_listen",
+  "grammar_say",
+  "grammar_write",
+  "char_recognise",
+  "char_type",
+] as const;
 export type ReviewTemplate = (typeof REVIEW_TEMPLATES)[number];
 
 export const TEMPLATE_SKILL: Readonly<Record<ReviewTemplate, Skill>> = {
   hanzi_to_meaning: "reading",
   audio_to_meaning: "listening",
+  word_say: "speaking",
+  word_write: "writing",
+  grammar_read: "reading",
+  grammar_listen: "listening",
+  grammar_say: "speaking",
+  grammar_write: "writing",
+  char_recognise: "reading",
+  char_type: "writing",
 };
+
+/** Templates made when a word is first met; its production cards follow its first recall (SPEC §5.5). */
+export const WORD_RECOGNITION_TEMPLATES = ["hanzi_to_meaning", "audio_to_meaning"] as const;
+export const WORD_PRODUCTION_TEMPLATES = ["word_say", "word_write"] as const;
+export const GRAMMAR_TEMPLATES = ["grammar_read", "grammar_listen", "grammar_say", "grammar_write"] as const;
+
+export function isProduction(template: ReviewTemplate): boolean {
+  const skill = TEMPLATE_SKILL[template];
+  return skill === "speaking" || skill === "writing";
+}
 
 export const CARD_STATES = ["new", "learning", "review", "relearning"] as const;
 export type CardState = (typeof CARD_STATES)[number];
@@ -120,6 +159,15 @@ export const reviewCardSchema = z.object({
     /** Only a definition with a recorded source; the syllabus itself has none. */
     definition: z.string().nullable(),
     definitionProvenance: z.string().nullable(),
+    itemType: z.enum(ITEM_TYPES).default("vocab"),
+    /** Grammar and character details, labelled unverified where they are. */
+    details: itemDetailsSchema.nullable().default(null),
+    /** For a grammar point: one syllabus example showing its pattern. */
+    example: z.string().nullable().default(null),
+    /** For a character: up to three words you have met that contain it. */
+    words: z.array(z.object({ hanzi: z.string(), pinyin: z.string().nullable() })).default([]),
+    /** True when the item comes from an unverified source (SPEC §2.5). */
+    unverified: z.boolean().default(false),
   }),
   state: z.enum(CARD_STATES),
   dueAt: isoSchema,
@@ -149,6 +197,8 @@ export const rateRequestSchema = z
   .object({
     rating: z.enum(REVIEW_RATINGS),
     clientEventId: z.uuid(),
+    /** What was typed on a writing card, kept with the rating. */
+    answer: z.string().trim().max(300).optional(),
   })
   .strict();
 export type RateRequest = z.infer<typeof rateRequestSchema>;

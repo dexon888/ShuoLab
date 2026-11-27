@@ -10,6 +10,7 @@ import { SKILLS, type Skill } from "../../shared/learning";
 import { isCheckableGrammar, type PlanTask, type PlanTopic } from "../../shared/lesson";
 import { parseItemDetails } from "../../shared/sections";
 import type { CandidateItem, CharacterCandidate, GrammarCandidate } from "./planner";
+import { correctedItemIds } from "./review";
 
 const DAY_MS = 86_400_000;
 
@@ -38,6 +39,27 @@ interface ItemRow {
 
 function toCandidate(row: ItemRow): CandidateItem | null {
   return isHskBand(row.hsk_band) ? { id: row.id, sourceId: row.source_id, hskBand: row.hsk_band, hanzi: row.hanzi, pinyin: row.pinyin } : null;
+}
+
+/**
+ * Items corrected in the last three finished sessions (SPEC §2.5 rule 7):
+ * their words come first in the next plan, and their grammar is recycled first.
+ */
+export async function correctedItems(d1: D1Database, editionId: string): Promise<{ words: CandidateItem[]; grammarIds: string[] }> {
+  const recent = await d1.prepare("SELECT id FROM sessions WHERE status = 'complete' ORDER BY ended_at DESC LIMIT 3").all<{ id: string }>();
+  const ids = await correctedItemIds(d1, recent.results.map((r) => r.id));
+  if (ids.length === 0) return { words: [], grammarIds: [] };
+  const rows = await d1
+    .prepare(
+      `SELECT id, source_id, hsk_band, hanzi, pinyin, item_type FROM curriculum_items
+WHERE edition_id = ?1 AND id IN (SELECT value FROM json_each(?2))`,
+    )
+    .bind(editionId, JSON.stringify(ids))
+    .all<ItemRow & { item_type: string }>();
+  return {
+    words: rows.results.filter((r) => r.item_type === "vocab").map(toCandidate).filter((c): c is CandidateItem => c !== null),
+    grammarIds: rows.results.filter((r) => r.item_type === "grammar").map((r) => r.id),
+  };
 }
 
 /** Words rated Again in the last 7 days, most recent first (priority a). */
@@ -81,6 +103,8 @@ export async function grammarCandidates(
   editionId: string,
   band: HskBand,
   date: string,
+  /** Corrected points come back first, whenever they were last met. */
+  corrected: readonly string[] = [],
 ): Promise<{ fresh: GrammarCandidate[]; recycled: GrammarCandidate[] }> {
   const unverified = (await unverifiedKinds(d1, editionId)).has("grammar");
   const rows = await grammarRows(d1, editionId, band);
@@ -121,6 +145,7 @@ GROUP BY curriculum_item_id HAVING COUNT(DISTINCT skill) >= 4`,
     };
     const seen = last.get(row.id);
     if (seen === undefined) fresh.push(candidate);
+    else if (corrected.includes(row.id)) recycled.push({ ...candidate, last: "" });
     else if (seen <= recycleBefore && !done.has(row.id)) recycled.push({ ...candidate, last: seen });
   }
   recycled.sort((a, b) => a.last.localeCompare(b.last) || a.sourceId - b.sourceId);
