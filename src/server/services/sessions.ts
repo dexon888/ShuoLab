@@ -22,6 +22,7 @@ import {
   buildFreeChatPlan,
   buildHskPlan,
   nextBand,
+  rankByAnchor,
   weakestSkill,
   type CandidateItem,
   type ColloquialPick,
@@ -392,8 +393,9 @@ export async function planSession(d1: D1Database, request: PlanRequest, now: Dat
     const sessionIndex = prior?.n ?? 0;
 
     const corrected = await correctedItems(d1, editionId);
-    const [active, review, stretch, colloquial, missedReviews, grammar, characters, met, stats] = await Promise.all([
-      bandCandidates(d1, editionId, targetBand, wanted),
+    const [fresh, review, stretch, colloquial, missedReviews, grammar, characters, met, stats] = await Promise.all([
+      // Every word of the band not yet targeted, so the ones that fit the task can be found (SPEC §2.6 rule 3).
+      bandCandidates(d1, editionId, targetBand, 6000),
       reviewCandidates(d1, editionId, wanted, daysBefore(date, 2)),
       stretchBand ? bandCandidates(d1, editionId, stretchBand, 1) : Promise.resolve([]),
       pickColloquial(d1, settings.slangIntensity, sessionIndex),
@@ -407,6 +409,9 @@ export async function planSession(d1: D1Database, request: PlanRequest, now: Dat
     const missed = [...corrected.words, ...missedReviews.filter((m) => !corrected.words.some((c) => c.id === m.id))];
     const avoid = await introTopics(d1, [...missed, ...review].map((c) => c.id));
     const { topics, tasks } = await topicsAndTasks(d1, editionId, targetBand, sessionIndex, avoid);
+    // The task and topic are chosen first; new words then follow them.
+    const anchor = [tasks[0]?.canDo, tasks[0]?.task, topics[0]?.subject, topics[0]?.details].filter(Boolean).join(" ");
+    const active = rankByAnchor(fresh, anchor).slice(0, Math.max(wanted * 2, 16));
     if (active.length === 0) {
       throw new ApiError("CURRICULUM_MISSING", "No vocabulary is imported for that band.");
     }

@@ -83,6 +83,45 @@ export function buildActivities(durationMinutes: SessionMinutes, weakest: Skill 
   return SPINE.map((kind) => ({ kind, skill: STEP_SKILL[kind], minutes: budget[kind], ...STEP_TEXT[kind] }));
 }
 
+/**
+ * SPEC §2.6 rule 3: new words that belong with the session's task and topic
+ * come first. In order: words written in the anchor text (the task's can-do
+ * statement and the topic), then words sharing a character with those or
+ * with the anchor, most shared first, then the rest in syllabus order. A
+ * one-character word counts as written only when the anchor uses it as a
+ * whole word candidate, which is approximated by requiring it to appear and
+ * no longer word in the list to cover that position.
+ */
+export function rankByAnchor(candidates: readonly CandidateItem[], anchor: string): CandidateItem[] {
+  const text = anchor.replace(/\s+/g, "");
+  if (!text) return [...candidates];
+  const longFirst = [...candidates].sort((a, b) => b.hanzi.length - a.hanzi.length || a.sourceId - b.sourceId);
+  const covered = new Array<boolean>(text.length).fill(false);
+  const written = new Set<string>();
+  for (const c of longFirst) {
+    let from = 0;
+    for (;;) {
+      const at = text.indexOf(c.hanzi, from);
+      if (at < 0) break;
+      const free = [...c.hanzi].every((_, k) => !covered[at + k]);
+      if (free) {
+        for (let k = 0; k < c.hanzi.length; k++) covered[at + k] = true;
+        written.add(c.id);
+      }
+      from = at + 1;
+    }
+  }
+  const anchorChars = new Set([...text, ...candidates.filter((c) => written.has(c.id)).flatMap((c) => [...c.hanzi])]);
+  const shared = (c: CandidateItem) => [...new Set(c.hanzi)].filter((ch) => anchorChars.has(ch)).length;
+  // Longer written words first: content words such as 朋友 before function words such as 的.
+  const first = candidates.filter((c) => written.has(c.id)).sort((a, b) => b.hanzi.length - a.hanzi.length || a.sourceId - b.sourceId);
+  const second = candidates
+    .filter((c) => !written.has(c.id) && shared(c) > 0)
+    .sort((a, b) => shared(b) - shared(a) || a.sourceId - b.sourceId);
+  const rest = candidates.filter((c) => !written.has(c.id) && shared(c) === 0);
+  return [...first, ...second, ...rest];
+}
+
 /** The band after `band`, or null for the last one. */
 export function nextBand(band: HskBand): HskBand | null {
   return HSK_BANDS[HSK_BANDS.indexOf(band) + 1] ?? null;

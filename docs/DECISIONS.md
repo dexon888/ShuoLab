@@ -817,3 +817,12 @@ uses it, so the listening is comprehensible input rather than noise. It takes
 two minutes from the warm-up and the conversation; listening and speaking
 stay above 50% of the session.
 
+## 120. A session's words come from its task and topic, read from their own text
+
+No model or outside word list is needed: the syllabus task and topic texts are
+written in HSK vocabulary, so the words they contain are the ones that fit.
+Those come first (longer words before one-character function words), then
+words sharing their characters, then syllabus order. The topic is paired to
+the task by shared characters. Frequency ordering from a licensed corpus can
+later refine the last group.
+
