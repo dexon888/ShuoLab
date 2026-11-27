@@ -28,8 +28,10 @@ export interface TutorRequest {
     grammar?: readonly { id: string; name: string; example: string | null }[];
     /** Grammar ids this reply must elicit. */
     mustElicit?: readonly string[];
-    /** The session's task, for the materials. */
+    /** The session's task, for the materials and the task check. */
     task?: { canDo: string } | null;
+    /** What the learner said and wrote, for the stand-in task check. */
+    learnerText?: readonly string[];
     /** 0 for the first turn of the session. */
     turnIndex: number;
     /** 1 for the first try, 2 for the retry after a rejected answer. */

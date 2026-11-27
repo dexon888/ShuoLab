@@ -49,7 +49,7 @@ export function emptyProgress(days = 7, over: Partial<ProgressSummary> = {}): Pr
       bands: HSK_BANDS.map((band) => ({ band, entries: 0, expectedEntries: VOCAB_NEW_ENTRIES_BY_BAND[band], introduced: 0, bySkill: zeroSkills() })),
       total: { entries: 0, introduced: 0, bySkill: zeroSkills() },
     },
-    sections: { grammar: null, character: null, topics: { met: 0, imported: 0 }, tasks: { met: 0, imported: 0 } },
+    sections: { grammar: null, character: null, topics: { met: 0, imported: 0, achieved: 0 }, tasks: { met: 0, imported: 0, achieved: 0 } },
     skillBalance: SKILLS.map((skill) => ({ skill, attempts: 0, successes: 0 })),
     meaningfulDays: { count: 0, dates: [] },
     ...over,

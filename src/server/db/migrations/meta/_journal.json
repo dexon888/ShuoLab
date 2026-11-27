@@ -85,6 +85,13 @@
       "when": 1795740215338,
       "tag": "0011_connected_sessions",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "6",
+      "when": 1795749612698,
+      "tag": "0012_task_checks_flags",
+      "breakpoints": true
     }
   ]
 }

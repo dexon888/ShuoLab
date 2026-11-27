@@ -14,6 +14,7 @@ import { useAnswerPractice, useAnswerReading, useAnswerWriting, useCreateMateria
 import { ApiRequestError } from "../lib/api";
 import { CardView } from "../pages/ReviewPage";
 import { Section } from "./Section";
+import { TaskCheckPanel } from "./TaskCheck";
 
 function errorText(error: unknown): string {
   return error instanceof ApiRequestError ? error.message : "Something went wrong. Try again.";
@@ -498,6 +499,7 @@ export function SessionSpine({ state, listen, conversation, summary }: SpineProp
     summary: (
       <div className="space-y-4">
         <TargetsMet state={state} />
+        <TaskCheckPanel session={session} />
         {summary}
         {ended && state.turns.length > 0 ? conversation : null}
       </div>

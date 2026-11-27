@@ -267,6 +267,7 @@ export async function getCurriculumItem(
       // A definition is never shown without saying where it came from.
       definitionProvenance: row.definition ? row.definitionProvenance : null,
       details: parseItemDetails(row.itemType as ItemType, row.metadataJson),
+      flag: await flagOf(d1, row.id),
     },
     edition: {
       id: edition.id,
@@ -279,6 +280,11 @@ export async function getCurriculumItem(
     sources,
     progress: { bySkill: await skillProgress(d1, row.id) },
   };
+}
+
+async function flagOf(d1: D1Database, itemId: string): Promise<{ note: string | null; flaggedAt: string } | null> {
+  const row = await d1.prepare("SELECT note, flagged_at FROM item_flags WHERE curriculum_item_id = ?1").bind(itemId).first<{ note: string | null; flagged_at: string }>();
+  return row ? { note: row.note, flaggedAt: row.flagged_at } : null;
 }
 
 /** The entry's state for each of the four skills; `unseen` where there is no row. */

@@ -714,3 +714,23 @@ A day counts when it has both something produced (spoken, written or typed)
 and something recalled in review. Minutes alone never make a day count, and
 there is no streak to break.
 
+## 106. The task check needs the learner's own words as evidence
+
+The tutor model writes the criteria and says which were met, but a criterion
+counts only when the words it quotes are found in what the learner said or
+wrote, so a generous judge cannot pass a task on its own say-so. It runs once,
+on request, after the session is finished, metered with the session's other
+model calls; the scorer model and a version are stored with the result.
+
+## 107. Achieving a task needs two days and two topics
+
+One good session is not enough: a task is achieved after passing on two
+different days, at least one in a different topic, which is the transfer
+SPEC §6.1 asks for. Achieved tasks are planned after the rest.
+
+## 108. Flags are owner data
+
+A flag is the owner's judgement about a source row, so it is exported,
+restored and deleted with the owner's data, and never changes the imported
+row itself.
+

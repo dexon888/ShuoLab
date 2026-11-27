@@ -510,3 +510,40 @@ export const sessionMaterials = sqliteTable("session_materials", {
   writingJson: text("writing_json"),
   createdAt: text("created_at").notNull(),
 });
+
+/**
+ * The task check of a finished session (SPEC §6.1): 2–3 yes/no criteria
+ * from the task's can-do statement, judged against what the learner said
+ * and wrote, with the scorer recorded. One per session.
+ */
+export const taskChecks = sqliteTable(
+  "task_checks",
+  {
+    sessionId: text("session_id")
+      .primaryKey()
+      .references(() => sessions.id, { onDelete: "cascade" }),
+    taskItemId: text("task_item_id")
+      .notNull()
+      .references(() => curriculumItems.id),
+    topicItemId: text("topic_item_id"),
+    localStudyDate: text("local_study_date").notNull(),
+    criteriaJson: text("criteria_json").notNull(),
+    passed: integer("passed").notNull(),
+    scorerModel: text("scorer_model").notNull(),
+    scorerVersion: text("scorer_version").notNull(),
+    checkedAt: text("checked_at").notNull(),
+  },
+  (t) => [index("task_checks_task_idx").on(t.taskItemId)],
+);
+
+/**
+ * Rows from an unverified section the owner has flagged as wrong (SPEC §2.5
+ * rule 8). A flagged row is left out of plans, review and test keys.
+ */
+export const itemFlags = sqliteTable("item_flags", {
+  curriculumItemId: text("curriculum_item_id")
+    .primaryKey()
+    .references(() => curriculumItems.id, { onDelete: "cascade" }),
+  note: text("note"),
+  flaggedAt: text("flagged_at").notNull(),
+});

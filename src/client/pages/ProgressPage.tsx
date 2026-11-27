@@ -204,8 +204,8 @@ function SectionsProgress({ s }: { s: ProgressSummary }) {
           <span className="font-medium">Topics:</span> {topics.met} of {topics.imported} used in a finished session.
         </li>
         <li>
-          <span className="font-medium">Tasks:</span> {tasks.met} of {tasks.imported} practised. Practising a task is
-          not achieving it.
+          <span className="font-medium">Tasks:</span> {tasks.met} of {tasks.imported} practised, {tasks.achieved} achieved by the task
+          check (passed on two days, in two topics). Practising a task is not achieving it.
         </li>
       </ul>
     </Section>

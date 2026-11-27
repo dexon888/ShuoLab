@@ -5,6 +5,7 @@
 import { SPEECH_TOKEN_REUSE_SECONDS } from "../../shared/speech";
 import { MATERIALS_FORMAT_NAME, type MaterialsOutput } from "../../shared/lesson";
 import { LISTENING_FORMAT_NAME, type ListeningOutput } from "../../shared/listening";
+import { TASK_CHECK_FORMAT_NAME, type TaskCheckOutput } from "../../shared/task-check";
 import type { TutorOutput } from "../../shared/tutor";
 import type {
   SpeechToken,
@@ -119,6 +120,21 @@ export function fakeMaterialsOutput(request: TutorRequest): MaterialsOutput {
   };
 }
 
+/**
+ * A canned task check: two criteria, met when the learner said or wrote at
+ * least two messages, quoting the first two. Not a language model.
+ */
+export function fakeTaskCheckOutput(request: TutorRequest): TaskCheckOutput {
+  const said = (request.context.learnerText ?? []).filter((t) => t.trim().length >= 2);
+  const quote = (i: number) => said[i]?.trim().slice(0, 40) ?? "";
+  return {
+    criteria: [
+      { label_en: "Took part in the task in Mandarin (practice stand-in)", met: said.length >= 1, evidence_quote: quote(0) },
+      { label_en: "Added a second relevant detail (practice stand-in)", met: said.length >= 2, evidence_quote: quote(1) },
+    ],
+  };
+}
+
 export class FakeTutorProvider implements TutorProvider {
   readonly vendor = "Local fake tutor";
   readonly model = "fake-tutor-1";
@@ -141,7 +157,9 @@ export class FakeTutorProvider implements TutorProvider {
         ? fakeListeningOutput(request)
         : request.format?.name === MATERIALS_FORMAT_NAME
           ? fakeMaterialsOutput(request)
-          : fakeTutorOutput(request);
+          : request.format?.name === TASK_CHECK_FORMAT_NAME
+            ? fakeTaskCheckOutput(request)
+            : fakeTutorOutput(request);
     const text = this.options.respond ? this.options.respond(request) : JSON.stringify(builtIn);
     return { text, usage };
   }
