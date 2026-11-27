@@ -80,6 +80,30 @@ production evidence, a flag-as-wrong control and meaningful days (DECISIONS 97).
 
 Each is tested, documented and shipped on its own, in this order.
 
-## Phase 6 — P1
+## Phase 6 — Zero to fluent, foundations
 
-Pronunciation drills and the remaining P1 items, after Phase 5.
+The owner starts from no Chinese and wants fluency in all four skills. An
+adversarial review on 2026-11-27 (DECISIONS 113) found a beginner stalls in
+week 1 and input is far too small. SPEC v2.4 §2.6 sets the rules.
+
+| PR | Branch | Contents |
+|---|---|---|
+| — | `phase-6/spec` | SPEC v2.4, this plan, checklist rows FR-032 to FR-038; tests sample the whole band. Done |
+| A1 | `phase-6/sound-system` | On-ramp units for initials, finals, tones, tone changes and pinyin typing; multi-voice tone drills; the tone check; Today recommends it until passed (FR-032) |
+| A2 | `phase-6/meanings` | CC-CEDICT import with provenance (owner downloads or approves the download); Introduce step; meanings on recognition cards and in the notice step (FR-033) |
+| A3 | `phase-6/coherent-targets` | Task and topic first; new words from their text, then shared characters, then the band (FR-034) |
+| A4 | `phase-6/pitched-input` | Known-word coverage on tutor replies and generated texts, regenerate below target, beginner scaffolds, reply length growing with the learner's (FR-035) |
+| A5 | `phase-6/stories` | Graded stories and dialogues outside the session, multi-voice audio cached, glosses, questions before translation, input minutes (FR-036) |
+| A6 | `phase-6/placement` | Placement across every band, vocabulary-size estimate, promotion rule (FR-037); word questions on meaning (FR-038) |
+
+## Phase 7 — Zero to fluent, skills
+
+Shadowing with pronunciation assessment, speaking fluency tasks with speech
+rate and pauses, the character system, a bridge to real Mandarin, and
+measurement fixes (SPEC §17 Phase 7).
+
+## Phase 8 — Later
+
+Progress toward the operational definition of fluent with external anchors,
+tutor memory, short days and a review cap, beyond-HSK frequency track,
+licensed native audio, and the remaining P1 items.

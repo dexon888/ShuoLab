@@ -761,3 +761,28 @@ being found on the phone. It measures on the local runtime, which leaves out
 network time as the requirement does; the deployed figures are the owner's
 check.
 
+## 113. The goal is zero to fluent, and the app was not built for it
+
+On 2026-11-27 the owner set the goal: from no Chinese to fluent in all four
+skills, alone. An adversarial review found the MVP a sound HSK study tracker
+but not an acquisition engine: no pronunciation or pinyin teaching, no word
+meanings (so "mastered" was self-rated against a meaning never shown), new
+words in alphabetical syllabus order, about four minutes of listening a day
+in one voice, no placement or promotion, and tests drawn from the first 400
+entries of a band. SPEC v2.4 §2.6 adds rules for each, Phases 6–8 order the
+work, and the honesty rules stay: every gloss, generated text and model tag
+is labelled with its source and never counts as verified HSK coverage.
+
+## 114. Fluent has an operational definition and an external anchor
+
+The app never declares fluency. It reports progress toward four concrete
+targets (native audio understood, a 10-minute conversation at speed, a novel
+chapter at speed, a page of writing a native reader understands), and points
+to an official HSK and HSKK exam once a year as the outside check.
+
+## 115. Tests sample the whole band
+
+Band tests and checkpoints shuffled the first 400 entries of a band, which
+are its alphabetically first words, so most of bands 4 to 7–9 were never
+asked about. They now shuffle the whole band with the same seed.
+

@@ -153,3 +153,17 @@ describe("taking a test (SPEC §6.5, FR-027)", () => {
     expect(skills.results.map((s) => s.skill)).toEqual(["writing"]);
   });
 });
+
+describe("sampling the whole band (SPEC §2.6 rule 7, FR-038)", () => {
+  it("draws words from across the band, not only the start of its list", async () => {
+    const test = await start("7-9");
+    const row = await database.db.prepare("SELECT metadata_json FROM assessment_runs WHERE id = ?1").bind(test.id).first<{ metadata_json: string }>();
+    const seen = new Set<number>();
+    for (const q of (JSON.parse(row?.metadata_json ?? "{}") as { questions: { itemId: string | null }[] }).questions) {
+      if (q.itemId?.includes(":vocab:")) seen.add(Number(q.itemId.split(":").pop()));
+    }
+    const ids = [...seen];
+    // Band 7-9 is entries 5401-11000; the first 400 end at 5800.
+    expect(ids.some((n) => n > 5800)).toBe(true);
+  });
+});

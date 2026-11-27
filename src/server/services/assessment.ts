@@ -261,6 +261,7 @@ async function activeEdition(d1: D1Database): Promise<string> {
 }
 
 async function pools(d1: D1Database, editionId: string, band: HskBand, kind: AssessmentKind): Promise<TestPools> {
+  // The whole band, shuffled by the seed in buildQuestions (SPEC §2.6 rule 7), not the start of its alphabetical list.
   // A checkpoint asks about words never met in a session, so it measures unseen material.
   const unseenOnly =
     kind === "checkpoint"
@@ -268,7 +269,7 @@ async function pools(d1: D1Database, editionId: string, band: HskBand, kind: Ass
       : "";
   const [words, sections, verified] = await d1.batch<Record<string, unknown>>([
     d1
-      .prepare(`SELECT ci.id, ci.hanzi, ci.pinyin FROM curriculum_items ci WHERE ci.edition_id = ?1 AND ci.item_type = 'vocab' AND ci.hsk_band = ?2 ${unseenOnly} ORDER BY ci.source_id LIMIT 400`)
+      .prepare(`SELECT ci.id, ci.hanzi, ci.pinyin FROM curriculum_items ci WHERE ci.edition_id = ?1 AND ci.item_type = 'vocab' AND ci.hsk_band = ?2 ${unseenOnly} ORDER BY ci.source_id`)
       .bind(editionId, band),
     d1
       .prepare(

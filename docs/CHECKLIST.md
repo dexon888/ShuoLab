@@ -44,6 +44,13 @@ Status values:
 | FR-030 | Task check (achieved after two passes in different topics) | 5 | Done | After a session is finished, the tutor model splits the task's can-do statement into 2–3 yes/no criteria and judges them on what the learner said and wrote; a criterion counts only when its quoted evidence really is in the learner's words; the scorer model and version (`task-check-v1`) are stored; a task is achieved after passes on two different days in two topics, and achieved tasks are planned after the rest. Shown in the summary as a personal can-do check, not an HSK result (`test/integration/task-check.test.ts`, `test/client/spine.test.tsx`). Remains: a live check with OpenAI (Owner). |
 | FR-031 | Flag an unverified row as wrong | 5 | Done | Grammar points, characters, topics and tasks can be flagged with a note from their page and unflagged; a flagged row leaves lesson plans and review, is listed by the API, and is exported and deleted with the owner's data. Verified vocabulary cannot be flagged (`test/integration/task-check.test.ts`, `test/client/curriculum-browse.test.tsx`). Test keys follow in PR F. |
 | FR-027 | Band practice test | 5 | Done | Built in code from imported items with fixed keys, the same for a band, kind and day: word reading (pinyin) and listening, grammar gaps from syllabus examples (keys labelled unverified), characters in words, and a writing task set in a band task, scored by length and band words (`band-test-v1`). Stored in `assessment_runs` with the questions, keys, per-section scores and sample sizes; every answer is recall evidence for its item; flagged rows never become keys; shown as personal tracking, never an HSK score (`test/integration/assessment.test.ts`, `test/client/tests.test.tsx`). |
+| FR-032 | Sound-system on-ramp | 6 | Not started | PR A1. |
+| FR-033 | Sourced meanings and Introduce step | 6 | Not started | PR A2. Needs the owner's OK to download CC-CEDICT. |
+| FR-034 | Coherent targets | 6 | Not started | PR A3. |
+| FR-035 | Pitched input (coverage against known words) | 6 | Not started | PR A4. |
+| FR-036 | Extensive input (graded stories) | 6 | Not started | PR A5. |
+| FR-037 | Placement and promotion | 6 | Not started | PR A6. |
+| FR-038 | Whole-band tests | 6 | Partial | Test items are now drawn from the whole band with the seed, not the first 400 entries (`test/integration/assessment.test.ts`). Remains: word questions on meaning in context (after FR-033). |
 
 ## Security and reliability requirements
 
