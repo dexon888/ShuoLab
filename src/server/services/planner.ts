@@ -68,6 +68,7 @@ export interface CharacterCandidate {
 
 const STEP_TEXT: Readonly<Record<SpineStep, { title: string; description: string }>> = {
   warmup: { title: "Warm-up", description: "Recall a few due cards and last session's corrections before anything new." },
+  introduce: { title: "Introduce", description: "Meet each new word: hear it, see its pinyin and a meaning, then the grammar point with its example." },
   listen: { title: "Listen first", description: "Hear a short exchange that carries out today's task, before seeing any text." },
   notice: { title: "Notice", description: "See the words and the grammar pattern in what you heard, with a syllabus example." },
   read: { title: "Read", description: "A short new text in the same topic. Answer before the translation." },

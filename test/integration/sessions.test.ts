@@ -149,7 +149,7 @@ describe("planning with an imported curriculum (FR-006, SPEC §6.2)", () => {
       [1, 2, 3, 4, 5].map((n) => `synthetic-fixture:vocab:${n}`),
     );
     expect(session.plan.targets.every((t) => t.role === "active" && t.hskBand === "1")).toBe(true);
-    expect(session.plan.activities.map((a) => a.kind)).toEqual(["warmup", "listen", "notice", "read", "practice", "speak", "write", "summary"]);
+    expect(session.plan.activities.map((a) => a.kind)).toEqual(["warmup", "introduce", "listen", "notice", "read", "practice", "speak", "write", "summary"]);
     expect(session.plan.activities.reduce((sum, a) => sum + a.minutes, 0)).toBe(20);
 
     const targets = await database.db

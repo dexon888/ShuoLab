@@ -16,7 +16,7 @@ export const SESSION_PLAN_VERSION = 2;
 export const SESSION_KINDS = ["hsk", "free_chat"] as const;
 export type SessionKind = (typeof SESSION_KINDS)[number];
 
-export const ACTIVITY_KINDS = ["warmup", "listen", "notice", "read", "practice", "speak", "write", "summary"] as const;
+export const ACTIVITY_KINDS = ["warmup", "introduce", "listen", "notice", "read", "practice", "speak", "write", "summary"] as const;
 export type ActivityKind = (typeof ACTIVITY_KINDS)[number];
 
 /** `active`: new at the study band. `review`: targeted before. `stretch`: one band up, never counted toward the band. */

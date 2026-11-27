@@ -50,7 +50,7 @@ test.describe("planning today's session (SPEC §5.2, §5.3, FR-005, FR-006)", ()
 
     // The session runs as a fixed sequence of steps (SPEC §5.3).
     const steps = page.getByRole("navigation", { name: "Session steps" });
-    await expect(steps.getByRole("button")).toHaveCount(8);
+    await expect(steps.getByRole("button")).toHaveCount(9);
     await expect(steps).toContainText(/\d+% of the time is listening and speaking\./);
     await steps.getByRole("button", { name: /Conversation/ }).click();
     await expect(page.getByRole("region", { name: "Conversation" }).getByLabel("Your reply in Chinese")).toBeVisible();
