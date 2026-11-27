@@ -97,7 +97,7 @@ function exercise(over: Partial<ListeningExercise> = {}): ListeningExercise {
 }
 
 function state(listening: ListeningExercise | null = null, status: SessionDetail["status"] = "active"): SessionStateResponse {
-  return { session: session(status), turns: [], debrief: null, listening, materials: null };
+  return { session: session(status), turns: [], debrief: null, listening, materials: null, glosses: {} };
 }
 
 class TestEngine implements SpeechEngine {

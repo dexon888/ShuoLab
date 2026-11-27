@@ -58,8 +58,8 @@ describe("time budget (SPEC §5.3)", () => {
     }
   });
 
-  it("matches the 25-minute spine: warm-up 3, listen 4, notice 2, read 3, practice 3, conversation 7, write 3", () => {
-    expect(TIME_BUDGETS[25]).toEqual({ warmup: 3, listen: 4, notice: 2, read: 3, practice: 3, speak: 7, write: 3, summary: 0 });
+  it("matches the 25-minute spine: warm-up 2, introduce 2, listen 4, notice 2, read 3, practice 3, conversation 6, write 3", () => {
+    expect(TIME_BUDGETS[25]).toEqual({ warmup: 2, introduce: 2, listen: 4, notice: 2, read: 3, practice: 3, speak: 6, write: 3, summary: 0 });
   });
 
   it("keeps listening and speaking at 40% or more of every session, even after a shift", () => {
@@ -72,8 +72,8 @@ describe("time budget (SPEC §5.3)", () => {
   });
 
   it("runs every step of the spine in order", () => {
-    expect(buildActivities(20).map((a) => a.kind)).toEqual(["warmup", "listen", "notice", "read", "practice", "speak", "write", "summary"]);
-    expect(buildActivities(20)[1]?.skill).toBe("listening");
+    expect(buildActivities(20).map((a) => a.kind)).toEqual(["warmup", "introduce", "listen", "notice", "read", "practice", "speak", "write", "summary"]);
+    expect(buildActivities(20)[2]?.skill).toBe("listening");
   });
 
   it("moves minutes to the weakest skill's step", () => {

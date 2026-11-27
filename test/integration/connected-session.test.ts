@@ -72,7 +72,7 @@ describe("a connected plan (SPEC §2.4, §2.5, §6.2)", () => {
     expect(p.topic?.subject).toBe("样例主题甲");
     expect(p.task?.canDo).toBe("能完成样例任务甲。");
     expect(p.situation).toMatchObject({ sourceType: "syllabus", communicativeGoal: "能完成样例任务甲。" });
-    expect(p.activities.map((a) => a.kind)).toEqual(["warmup", "listen", "notice", "read", "practice", "speak", "write", "summary"]);
+    expect(p.activities.map((a) => a.kind)).toEqual(["warmup", "introduce", "listen", "notice", "read", "practice", "speak", "write", "summary"]);
 
     const items = await database.db
       .prepare("SELECT item_type, role FROM session_items WHERE session_id = ?1 ORDER BY position")

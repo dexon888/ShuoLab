@@ -62,8 +62,20 @@ export function buildDebrief(session: SessionDetail, turns: readonly Turn[], lis
 
 export async function getSessionState(d1: D1Database, id: string): Promise<SessionStateResponse> {
   const session = await getSession(d1, id);
-  const [turns, listening, materials] = await Promise.all([listTurns(d1, session.id), getListening(d1, session.id), getMaterials(d1, session)]);
-  return { session, turns, listening, materials, debrief: session.status === "complete" ? buildDebrief(session, turns, listening) : null };
+  const [turns, listening, materials, glosses] = await Promise.all([listTurns(d1, session.id), getListening(d1, session.id), getMaterials(d1, session), sessionGlosses(d1, session.id)]);
+  return { session, turns, listening, materials, glosses, debrief: session.status === "complete" ? buildDebrief(session, turns, listening) : null };
+}
+
+/** Sourced meanings of the session's words; a meaning is never shown without its source. */
+async function sessionGlosses(d1: D1Database, sessionId: string): Promise<Record<string, { definition: string; provenance: string }>> {
+  const rows = await d1
+    .prepare(
+      `SELECT ci.id, ci.definition, ci.definition_provenance FROM session_targets st JOIN curriculum_items ci ON ci.id = st.curriculum_item_id
+WHERE st.session_id = ?1 AND ci.definition IS NOT NULL AND ci.definition_provenance IS NOT NULL`,
+    )
+    .bind(sessionId)
+    .all<{ id: string; definition: string; definition_provenance: string }>();
+  return Object.fromEntries(rows.results.map((r) => [r.id, { definition: r.definition, provenance: r.definition_provenance }]));
 }
 
 const ENDED = "This session has ended. Start a new one from Today.";

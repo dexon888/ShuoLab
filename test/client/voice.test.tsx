@@ -82,7 +82,7 @@ function turn(n: number, over: Partial<Turn> = {}): Turn {
 }
 
 function state(turns: Turn[] = [], status: SessionDetail["status"] = "active"): SessionStateResponse {
-  return { session: session(status), turns, debrief: null, listening: null, materials: null };
+  return { session: session(status), turns, debrief: null, listening: null, materials: null, glosses: {} };
 }
 
 const allowance = (over: Partial<SpeechAllowance> = {}): SpeechAllowance => ({

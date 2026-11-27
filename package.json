@@ -24,6 +24,7 @@
     "db:migrate:remote": "wrangler d1 migrations apply shuolab --remote",
     "curriculum:import": "tsx scripts/import-curriculum.ts",
     "curriculum:import-sections": "tsx scripts/import-syllabus-sections.ts",
+    "dictionary:import": "tsx scripts/import-dictionary.ts",
     "colloquial:import": "tsx scripts/import-colloquial.ts",
     "curriculum:verify": "tsx scripts/verify-curriculum.ts",
     "seed:dev": "tsx scripts/seed-dev-fixtures.ts",

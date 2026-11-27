@@ -90,7 +90,7 @@ week 1 and input is far too small. SPEC v2.4 §2.6 sets the rules.
 |---|---|---|
 | — | `phase-6/spec` | SPEC v2.4, this plan, checklist rows FR-032 to FR-038; tests sample the whole band. Done |
 | A1 | `phase-6/sound-system` | On-ramp units for initials, finals, tones, tone changes and pinyin typing; multi-voice tone drills; the tone check; Today recommends it until passed (FR-032). Done |
-| A2 | `phase-6/meanings` | CC-CEDICT import with provenance (owner downloads or approves the download); Introduce step; meanings on recognition cards and in the notice step (FR-033) |
+| A2 | `phase-6/meanings` | CC-CEDICT import with provenance (owner downloads or approves the download); Introduce step; meanings on recognition cards and in the notice step (FR-033). Done in code; the owner imports the dictionary |
 | A3 | `phase-6/coherent-targets` | Task and topic first; new words from their text, then shared characters, then the band (FR-034) |
 | A4 | `phase-6/pitched-input` | Known-word coverage on tutor replies and generated texts, regenerate below target, beginner scaffolds, reply length growing with the learner's (FR-035) |
 | A5 | `phase-6/stories` | Graded stories and dialogues outside the session, multi-voice audio cached, glosses, questions before translation, input minutes (FR-036) |

@@ -183,13 +183,14 @@ describe("the session spine (SPEC §5.3)", () => {
     const nav = screen.getByRole("navigation", { name: "Session steps" });
     expect(within(nav).getAllByRole("button").map((b) => b.textContent?.replace(/ · .*$/, ""))).toEqual([
       "1. Warm-up",
-      "2. Listen first",
-      "3. Notice",
-      "4. Read",
-      "5. Guided practice",
-      "6. Conversation",
-      "7. Write",
-      "8. Summary",
+      "2. Introduce",
+      "3. Listen first",
+      "4. Notice",
+      "5. Read",
+      "6. Guided practice",
+      "7. Conversation",
+      "8. Write",
+      "9. Summary",
     ]);
     expect(nav).toHaveTextContent("Extra time today for writing");
   });
@@ -201,7 +202,7 @@ describe("the session spine (SPEC §5.3)", () => {
     const marks = Array.from(document.querySelectorAll("mark")).map((m) => m.textContent);
     expect(marks).toContain("样例词1");
     expect(marks).toEqual(expect.arrayContaining(["是", "的"]));
-    expect(notice.getByText(/in/, { selector: "span" })).toHaveTextContent("in 样例词1 · to recognise");
+    expect(notice.getByRole("link", { name: /in 样例词1 · to recognise/ })).toBeInTheDocument();
   });
 
   it("notice: waits for the listening answers before showing the transcript", async () => {
@@ -257,8 +258,8 @@ describe("the session spine (SPEC §5.3)", () => {
   it("moves through the steps with Next and Back", async () => {
     open("warmup");
     await screen.findByRole("region", { name: "Warm-up" });
-    await userEvent.click(screen.getByRole("button", { name: "Next: Listen first" }));
-    expect(await screen.findByRole("region", { name: "Listen first" })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Next: Introduce" }));
+    expect(await screen.findByRole("region", { name: "Introduce" })).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Back" }));
     expect(await screen.findByRole("region", { name: "Warm-up" })).toBeInTheDocument();
   });
@@ -306,5 +307,24 @@ describe("the task check in the summary (SPEC §6.1, FR-030)", () => {
   it("says the task is checked after finishing while the session is open", async () => {
     open("summary");
     expect(await (await step("Summary")).findByText(/checked after you finish/)).toBeInTheDocument();
+  });
+});
+
+describe("introducing new words with sourced meanings (SPEC §2.6 rule 2, FR-033)", () => {
+  it("shows each new word with pinyin and its meaning labelled with the dictionary, and says so when there is none", async () => {
+    open("introduce", {
+      glosses: { "synthetic-fixture:vocab:1": { definition: "placeholder meaning one", provenance: "CC-CEDICT (CC BY-SA 4.0), matched by characters and pinyin. Not HSK content." } },
+    });
+    const intro = await step("Introduce");
+    expect(intro.getByText("样例词1")).toBeInTheDocument();
+    expect(intro.getByText("placeholder meaning one")).toBeInTheDocument();
+    expect(intro.getByText(/CC-CEDICT \(CC BY-SA 4.0\).*Not HSK content/)).toBeInTheDocument();
+    expect(intro.getByText(/No meaning imported yet/)).toBeInTheDocument();
+    expect(intro.getByText("是……的")).toBeInTheDocument();
+  });
+
+  it("lists today's words with their meanings in the notice step", async () => {
+    open("notice", { glosses: { "synthetic-fixture:vocab:2": { definition: "placeholder meaning two", provenance: "CC-CEDICT" } } });
+    expect(await (await step("Notice")).findByText("placeholder meaning two")).toBeInTheDocument();
   });
 });

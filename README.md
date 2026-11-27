@@ -84,6 +84,7 @@ no secrets and costs nothing.
 | `pnpm db:migrate:local` | Apply migrations to the local database |
 | `pnpm db:migrate:remote` | Apply migrations to the deployed database |
 | `pnpm curriculum:import` | Validate and import your HSK vocabulary files (see below) |
+| `pnpm dictionary:import` | Import English meanings from CC-CEDICT, labelled with their source (see below) |
 | `pnpm curriculum:import-sections` | Import grammar, characters, topics and tasks after the vocabulary (see below) |
 | `pnpm curriculum:verify` | Check the stored curriculum against the edition's published totals |
 | `pnpm colloquial:import` | Validate and import the optional colloquial-expression dataset (see below) |
@@ -391,6 +392,29 @@ The commit and each file's checksum are stored with the import. Re-running the
 same files changes nothing. First run locally on 2026-11-26 from commit
 `f3163ca6edff5d6b1e81afb1cd716bb78f5a958a`: 593 grammar points, 4,288
 character rows (3,088 to recognise, 1,200 to write), 427 topics and 678 tasks.
+
+### Meanings (CC-CEDICT)
+
+The HSK syllabus lists words without meanings. ShuoLab shows English meanings
+from CC-CEDICT, a free Chinese–English dictionary (CC BY-SA 4.0), always
+labelled with its source and never as HSK content.
+
+1. Download `cedict_1_0_ts_utf-8_mdbg.zip` from
+   <https://www.mdbg.net/chinese/dictionary?page=cc-cedict> and unzip it into
+   `private-data/cedict/` (git-ignored).
+2. Check, then import (after the HSK vocabulary):
+
+```bash
+pnpm dictionary:import --file ./private-data/cedict/cedict_ts.u8 --dry-run
+```
+
+```bash
+pnpm dictionary:import --file ./private-data/cedict/cedict_ts.u8
+```
+
+Each entry is matched by its characters and pinyin. When the pinyin matches no
+reading, every reading's meanings are kept and labelled "matched by characters
+only". Add `--remote` for the deployed database.
 
 ### Placeholder data for development
 

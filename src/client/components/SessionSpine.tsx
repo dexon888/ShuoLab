@@ -10,7 +10,10 @@ import { SPINE, grammarMarkers, type LessonMaterials, type PlanGrammar, type Spi
 import type { ListeningExercise as Exercise } from "../../shared/listening";
 import type { SessionPlan } from "../../shared/session";
 import { listeningSpeakingShare } from "../../shared/session";
-import { useAnswerPractice, useAnswerReading, useAnswerWriting, useCreateMaterials, useDueReviews, useRevealReading } from "../hooks/queries";
+import { defaultSettings } from "../../shared/settings";
+import { useAnswerPractice, useAnswerReading, useAnswerWriting, useCreateMaterials, useDueReviews, useMe, useRevealReading } from "../hooks/queries";
+import { problemText } from "../speech/problems";
+import { useVoice } from "../speech/useVoice";
 import { ApiRequestError } from "../lib/api";
 import { CardView } from "../pages/ReviewPage";
 import { Section } from "./Section";
@@ -67,7 +70,7 @@ function Warmup({ onNext }: { onNext: () => void }) {
       <div>
         <p>{done.length > 0 ? `Warm-up done: ${done.length} card${done.length === 1 ? "" : "s"} recalled.` : "Nothing is due, so there is nothing to warm up with today."}</p>
         <button type="button" onClick={onNext} className="mt-3 min-h-11 rounded-md bg-cobalt px-5 font-semibold text-glaze">
-          Go to Listen first
+          Go to Introduce
         </button>
       </div>
     );
@@ -80,7 +83,85 @@ function Warmup({ onNext }: { onNext: () => void }) {
   );
 }
 
-function Notice({ plan, listening }: { plan: SessionPlan; listening: Exercise | null }) {
+type Glosses = SessionStateResponse["glosses"];
+
+/** A sourced meaning with its source, or a plain statement that there is none. */
+function Meaning({ gloss }: { gloss: Glosses[string] | undefined }) {
+  if (!gloss) return <span className="text-mist">No meaning imported yet (see README, "Meanings").</span>;
+  return (
+    <>
+      <span>{gloss.definition}</span>
+      <span className="block text-xs text-mist">{gloss.provenance}</span>
+    </>
+  );
+}
+
+/** SPEC §2.6 rule 2: each new word with sound, pinyin and a sourced meaning; then the grammar with its example. */
+function Introduce({ plan, glosses }: { plan: SessionPlan; glosses: Glosses }) {
+  const me = useMe();
+  const { speechRate } = me.data?.settings ?? defaultSettings();
+  const speech = me.data?.providers.find((p) => p.id === "speech") ?? null;
+  const speechOff = speech === null || speech.mode === "missing";
+  const voice = useVoice(null, speechRate);
+  const words = plan.targets.filter((t) => t.role !== "stretch");
+  const fresh = words.filter((t) => t.role === "active");
+  const again = words.filter((t) => t.role !== "active");
+  const say = (key: string, text: string) => void voice.speakText(key, text, { rate: Math.min(speechRate, 0.85) });
+  return (
+    <div className="space-y-6">
+      {fresh.length > 0 ? (
+        <ul className="space-y-4">
+          {fresh.map((t) => (
+            <li key={t.itemId} className="border-b border-line pb-3">
+              <div className="flex flex-wrap items-baseline gap-x-4">
+                <span lang="zh-Hans" className="font-kai text-4xl">
+                  {t.hanzi}
+                </span>
+                <span className="text-xl">{t.pinyin}</span>
+                <button type="button" disabled={speechOff} onClick={() => say(`intro-${t.itemId}`, t.hanzi)} className="min-h-11 rounded-md border border-cobalt px-3 font-medium text-cobalt disabled:opacity-60">
+                  Play
+                </button>
+              </div>
+              <p className="mt-1">
+                <Meaning gloss={glosses[t.itemId]} />
+              </p>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="text-mist">No new words today; everything below comes back from earlier sessions.</p>
+      )}
+      {again.length > 0 ? (
+        <p className="text-mist">
+          Coming back: <span lang="zh-Hans">{again.map((t) => t.hanzi).join("、")}</span>
+        </p>
+      ) : null}
+      {plan.grammar.map((g) => (
+        <div key={g.itemId} className="border-l-4 border-cobalt pl-3">
+          <p lang="zh-Hans" className="text-xl font-semibold">
+            {g.name} <span className="text-sm font-normal text-mist">{g.grammarType}</span>
+          </p>
+          {g.example ? (
+            <p className="mt-1 flex flex-wrap items-baseline gap-x-3 text-lg">
+              <Highlighted text={g.example} words={[]} grammar={[g]} />
+              <button type="button" disabled={speechOff} onClick={() => say(`intro-${g.itemId}`, g.example ?? "")} className="min-h-11 rounded-md border border-cobalt px-3 text-base font-medium text-cobalt disabled:opacity-60">
+                Play
+              </button>
+            </p>
+          ) : null}
+          {g.unverified ? <p className="mt-1 text-sm text-mist">{UNVERIFIED}</p> : null}
+        </div>
+      ))}
+      {voice.state.problem ? (
+        <p role="alert" className="text-seal">
+          {problemText(voice.state.problem)}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+function Notice({ plan, listening, glosses }: { plan: SessionPlan; listening: Exercise | null; glosses: Glosses }) {
   const words = targetWords(plan);
   const heard = listening !== null && (listening.answeredAt !== null || listening.revealedAt !== null);
   return (
@@ -108,6 +189,23 @@ function Notice({ plan, listening }: { plan: SessionPlan; listening: Exercise | 
           </ul>
         </div>
       ) : null}
+
+      <div>
+        <h3 className="font-semibold">Today's words</h3>
+        <ul className="mt-2 space-y-1">
+          {words.map((w) => {
+            const t = plan.targets.find((x) => x.hanzi === w);
+            return (
+              <li key={w}>
+                <span lang="zh-Hans" className="text-lg">
+                  {w}
+                </span>{" "}
+                <span className="text-mist">{t?.pinyin}</span> — <Meaning gloss={t ? glosses[t.itemId] : undefined} />
+              </li>
+            );
+          })}
+        </ul>
+      </div>
 
       <div>
         <h3 className="font-semibold">What you heard</h3>
@@ -471,9 +569,10 @@ export function SessionSpine({ state, listen, conversation, summary }: SpineProp
   const prev = SPINE[index - 1];
 
   const body: Record<SpineStep, ReactNode> = {
-    warmup: <Warmup onNext={() => go("listen")} />,
+    warmup: <Warmup onNext={() => go("introduce")} />,
     listen,
-    notice: <Notice plan={plan} listening={state.listening} />,
+    introduce: <Introduce plan={plan} glosses={state.glosses} />,
+    notice: <Notice plan={plan} listening={state.listening} glosses={state.glosses} />,
     read: (
       <MaterialsGate sessionId={session.id} materials={materials} ended={ended}>
         {(m) => <Reading sessionId={session.id} plan={plan} materials={m} />}

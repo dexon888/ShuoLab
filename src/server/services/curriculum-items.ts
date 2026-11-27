@@ -35,6 +35,12 @@ function stateOf(rank: number | null | undefined): MasteryState {
   return MASTERY_STATES[rank ?? 0] ?? "unseen";
 }
 
+/** The first sense of a sourced meaning, short enough for a list row. */
+function shortGloss(definition: string): string {
+  const first = definition.split(";")[0]?.trim() ?? definition;
+  return first.length > 40 ? `${first.slice(0, 39)}…` : first;
+}
+
 function toSummary(row: ItemRow): CurriculumItemSummary {
   return {
     id: row.id,
@@ -48,7 +54,12 @@ function toSummary(row: ItemRow): CurriculumItemSummary {
     homograph: row.homograph,
     levelLabel: row.levelLabel,
     state: stateOf(row.rank),
-    note: itemNote(parseItemDetails(row.itemType as ItemType, row.metadataJson)),
+    note:
+      row.itemType === "vocab"
+        ? row.definition && row.definitionProvenance
+          ? shortGloss(row.definition)
+          : null
+        : itemNote(parseItemDetails(row.itemType as ItemType, row.metadataJson)),
   };
 }
 

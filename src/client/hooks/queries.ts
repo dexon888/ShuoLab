@@ -265,7 +265,7 @@ export function usePlanSession() {
   return useMutation({
     mutationFn: (request: PlanRequest) => apiPost("/sessions/plan", request, planResponseSchema),
     onSuccess: ({ session }) => {
-      client.setQueryData<SessionStateResponse>(sessionKey(session.id), { session, turns: [], debrief: null, listening: null, materials: null });
+      client.setQueryData<SessionStateResponse>(sessionKey(session.id), { session, turns: [], debrief: null, listening: null, materials: null, glosses: {} });
       void client.invalidateQueries({ queryKey: ["sessions", "list"] });
     },
   });

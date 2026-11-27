@@ -800,3 +800,20 @@ from authored content and checked against a fixed list and pattern.
 Today recommends it until the tone check is passed, but sessions stay open:
 the owner may already know some Chinese, or want to mix the two.
 
+## 118. Meanings come from CC-CEDICT, labelled, matched by sound too
+
+The syllabus has no meanings. CC-CEDICT is free, openly licensed and complete
+enough for HSK. An entry is matched by its characters and pinyin, so 好 hǎo
+gets "good" and not "to be fond of"; when no reading matches, all readings are
+kept and the label says so. Meanings live in `definition` with
+`definition_provenance`, so the existing rule that a meaning is never shown
+without its source covers them. The file is downloaded by the owner and
+imported locally, like the syllabus.
+
+## 119. The Introduce step comes before listening
+
+A word is met with its sound, pinyin and meaning before the exchange that
+uses it, so the listening is comprehensible input rather than noise. It takes
+two minutes from the warm-up and the conversation; listening and speaking
+stay above 50% of the session.
+

@@ -28,7 +28,7 @@ test.describe("sessions without the curriculum (FR-005)", () => {
 
     await expect(page.getByText("Open conversation, not an HSK lesson.")).toBeVisible();
     await expect(page.getByRole("region", { name: "Words for this session" })).toHaveCount(0);
-    await expect(page.getByRole("navigation", { name: "Session steps" }).getByRole("button")).toHaveCount(8);
+    await expect(page.getByRole("navigation", { name: "Session steps" }).getByRole("button")).toHaveCount(9);
 
     const overflow = await page.evaluate(
       () => document.documentElement.scrollWidth - document.documentElement.clientWidth,

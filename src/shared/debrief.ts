@@ -69,5 +69,7 @@ export const sessionStateResponseSchema = z.object({
   listening: listeningExerciseSchema.nullable().default(null),
   /** The session's reading, guided practice and writing, once written. */
   materials: materialsSchema.nullable().default(null),
+  /** Meanings for the session's words, from a separately sourced dictionary (SPEC §2.6 rule 2). Keyed by item id. */
+  glosses: z.record(z.string(), z.object({ definition: z.string(), provenance: z.string() })).default({}),
 });
 export type SessionStateResponse = z.infer<typeof sessionStateResponseSchema>;

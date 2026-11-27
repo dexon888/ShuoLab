@@ -88,7 +88,7 @@ function turn(n: number, over: Partial<Turn> = {}): Turn {
 }
 
 function state(status: SessionDetail["status"] = "active", turns: Turn[] = [], debrief: Debrief | null = null): SessionStateResponse {
-  return { session: session(status), turns, debrief, listening: null, materials: null };
+  return { session: session(status), turns, debrief, listening: null, materials: null, glosses: {} };
 }
 
 function answered(body: { clientTurnId: string; transcript: string }, n = 0, over: Partial<TurnResponse> = {}): TurnResponse {

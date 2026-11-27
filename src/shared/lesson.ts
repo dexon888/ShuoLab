@@ -114,11 +114,12 @@ export type PlanTask = z.infer<typeof planTaskSchema>;
 // --- The spine -------------------------------------------------------------------------
 
 /** SPEC §5.3: every session, in this order. */
-export const SPINE = ["warmup", "listen", "notice", "read", "practice", "speak", "write", "summary"] as const;
+export const SPINE = ["warmup", "introduce", "listen", "notice", "read", "practice", "speak", "write", "summary"] as const;
 export type SpineStep = (typeof SPINE)[number];
 
 export const STEP_SKILL: Readonly<Record<SpineStep, Skill>> = {
   warmup: "reading",
+  introduce: "listening",
   listen: "listening",
   notice: "reading",
   read: "reading",
@@ -130,10 +131,10 @@ export const STEP_SKILL: Readonly<Record<SpineStep, Skill>> = {
 
 /** Minutes per step (SPEC §5.3). The summary is read afterwards and has no budget. */
 export const SPINE_BUDGETS: Readonly<Record<SessionMinutes, Readonly<Record<SpineStep, number>>>> = {
-  15: { warmup: 2, listen: 3, notice: 1, read: 2, practice: 2, speak: 4, write: 1, summary: 0 },
-  20: { warmup: 2, listen: 3, notice: 2, read: 2, practice: 3, speak: 6, write: 2, summary: 0 },
-  25: { warmup: 3, listen: 4, notice: 2, read: 3, practice: 3, speak: 7, write: 3, summary: 0 },
-  30: { warmup: 3, listen: 5, notice: 2, read: 4, practice: 4, speak: 8, write: 4, summary: 0 },
+  15: { warmup: 1, introduce: 2, listen: 3, notice: 1, read: 2, practice: 2, speak: 3, write: 1, summary: 0 },
+  20: { warmup: 2, introduce: 2, listen: 3, notice: 1, read: 2, practice: 3, speak: 5, write: 2, summary: 0 },
+  25: { warmup: 2, introduce: 2, listen: 4, notice: 2, read: 3, practice: 3, speak: 6, write: 3, summary: 0 },
+  30: { warmup: 3, introduce: 3, listen: 5, notice: 2, read: 3, practice: 4, speak: 7, write: 3, summary: 0 },
 };
 
 /** Minutes moved toward the weakest skill (SPEC §5.3: up to 20%). */
@@ -141,7 +142,7 @@ export const SKILL_SHIFT_MINUTES: Readonly<Record<SessionMinutes, number>> = { 1
 
 const MAIN_STEP: Readonly<Record<Skill, SpineStep>> = { listening: "listen", speaking: "speak", reading: "read", writing: "write" };
 
-const ORAL: readonly SpineStep[] = ["listen", "practice", "speak"];
+const ORAL: readonly SpineStep[] = ["introduce", "listen", "practice", "speak"];
 
 /**
  * The step budget for a session, with minutes moved from the biggest other
