@@ -106,6 +106,13 @@
       "when": 1795766866453,
       "tag": "0014_onramp",
       "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "6",
+      "when": 1795769856499,
+      "tag": "0015_stories",
+      "breakpoints": true
     }
   ]
 }

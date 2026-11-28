@@ -1,4 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
+import { audioKey, getCachedAudio, playAudio, putCachedAudio } from "./audio-cache";
 import { speechUsageResponseSchema, type SpeechAllowance, type SpeechTokenResponse } from "../../shared/speech";
 import { turnEventResponseSchema, type Turn, type TurnEvent } from "../../shared/tutor";
 import { ApiRequestError, apiPost } from "../lib/api";
@@ -221,8 +222,45 @@ export function useVoice(sessionId: string | null, rate: number) {
     [recordEvent, speakTextOnDevice],
   );
 
+  /**
+   * Plays text from the device cache, synthesizing and caching it the first
+   * time (SPEC §5.10). Only a fresh synthesis is counted against the allowance.
+   */
+  const speakCached = useCallback(
+    async (key: string, text: string, options: { rate?: number; voice: string }) => {
+      abortRef.current?.abort();
+      const controller = new AbortController();
+      abortRef.current = controller;
+      setState((s) => ({ ...s, phase: "starting", problem: null, speakingTurnId: key, deviceVoiceOffer: null }));
+      try {
+        const r = options.rate ?? rate;
+        const cacheKey = await audioKey(text, options.voice, r);
+        let audio = await getCachedAudio(cacheKey);
+        if (!audio) {
+          const { token, engine } = await ready();
+          if (!token.allowance.synthesisAvailable) {
+            setState((s) => ({ ...s, phase: "idle", speakingTurnId: null }));
+            return;
+          }
+          const made = await engine.synthesize(text, r, { voice: options.voice });
+          if (engine.real) void report({ kind: "synthesis", characters: made.characters });
+          audio = made.audio;
+          await putCachedAudio(cacheKey, audio);
+        }
+        setState((s) => ({ ...s, phase: "speaking" }));
+        await playAudio(audio, controller.signal);
+        setState((s) => ({ ...s, phase: "idle", speakingTurnId: null }));
+      } catch (error) {
+        setState((s) => ({ ...s, phase: "idle", speakingTurnId: null, problem: problemFrom(error) }));
+      } finally {
+        if (abortRef.current === controller) abortRef.current = null;
+      }
+    },
+    [rate, ready, report],
+  );
+
   const reveal = useCallback((turnId: string) => recordEvent(turnId, "revealed"), [recordEvent]);
   const clearProblem = useCallback(() => setState((s) => ({ ...s, problem: null, deviceVoiceOffer: null })), []);
 
-  return { state, canRecord: env.canRecord(), listen, speak, speakText, speakOnDevice, speakTextOnDevice, stop, reveal, clearProblem };
+  return { state, canRecord: env.canRecord(), listen, speak, speakText, speakCached, speakOnDevice, speakTextOnDevice, stop, reveal, clearProblem };
 }

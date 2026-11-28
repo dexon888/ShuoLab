@@ -17,6 +17,7 @@ import { listeningResponseSchema, type ListeningEvent, type ListeningResponse } 
 import { DELETE_ALL_PHRASE, dataSummaryResponseSchema, deletionResponseSchema } from "../../shared/owner-data";
 import { progressSummarySchema, type ProgressWindow } from "../../shared/progress";
 import { onrampResultSchema, onrampStatusSchema } from "../../shared/onramp";
+import { storyListResponseSchema, storyResponseSchema } from "../../shared/stories";
 import { assessmentListResponseSchema, assessmentResponseSchema } from "../../shared/assessment";
 import { flagListResponseSchema, flagResponseSchema, taskCheckResponseSchema } from "../../shared/task-check";
 import { dueResponseSchema, rateResponseSchema, type ReviewRating } from "../../shared/review";
@@ -483,4 +484,49 @@ export function useAnswerUnit() {
     mutationFn: (body: { unitId: string; answers: (number | string | null)[] }) => apiPost("/onramp/answers", body, onrampAnswerResponseSchema),
     onSuccess: () => void client.invalidateQueries({ queryKey: ["onramp"] }),
   });
+}
+
+// --- Stories (SPEC §5.10) -----------------------------------------------------------
+
+export function useStories() {
+  return useQuery({ queryKey: ["stories", "list"], queryFn: () => apiGet("/stories", storyListResponseSchema) });
+}
+
+export function useStory(id: string) {
+  return useQuery({ queryKey: ["stories", id], queryFn: () => apiGet(`/stories/${encodeURIComponent(id)}`, storyResponseSchema) });
+}
+
+export function useNewStory() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { kind: "story" | "dialogue"; continueSeries: boolean }) => apiPost("/stories", body, storyResponseSchema),
+    onSuccess: (result) => {
+      client.setQueryData(["stories", result.story.id], result);
+      void client.invalidateQueries({ queryKey: ["stories", "list"] });
+      void client.invalidateQueries({ queryKey: ["usage"] });
+    },
+  });
+}
+
+function useStoreStory(id: string) {
+  const client = useQueryClient();
+  return (result: z.infer<typeof storyResponseSchema>) => {
+    client.setQueryData(["stories", id], result);
+    void client.invalidateQueries({ queryKey: ["stories", "list"] });
+  };
+}
+
+export function useAnswerStory(id: string) {
+  const store = useStoreStory(id);
+  return useMutation({ mutationFn: (answers: number[]) => apiPost(`/stories/${encodeURIComponent(id)}/answers`, { answers }, storyResponseSchema), onSuccess: store });
+}
+
+export function useRevealStory(id: string) {
+  const store = useStoreStory(id);
+  return useMutation({ mutationFn: () => apiPost(`/stories/${encodeURIComponent(id)}/reveal`, {}, storyResponseSchema), onSuccess: store });
+}
+
+export function useFinishStory(id: string) {
+  const store = useStoreStory(id);
+  return useMutation({ mutationFn: (minutes: number) => apiPost(`/stories/${encodeURIComponent(id)}/finish`, { minutes }, storyResponseSchema), onSuccess: store });
 }

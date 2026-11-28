@@ -101,6 +101,9 @@ type Scripted = RecognitionOutcome | SpeechFailure | "wait";
 
 /** A speech engine the test controls: what it "hears", and what it was asked to say. */
 class TestEngine implements SpeechEngine {
+  async synthesize(text: string): Promise<{ audio: ArrayBuffer; characters: number }> {
+    return { audio: new ArrayBuffer(0), characters: text.length };
+  }
   readonly real: boolean;
   readonly heard: Scripted[] = [];
   readonly spoken: { text: string; rate: number }[] = [];

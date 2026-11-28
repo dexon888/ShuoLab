@@ -592,3 +592,32 @@ export const onrampResults = sqliteTable(
   },
   (t) => [index("onramp_results_unit_idx").on(t.unitId, t.answeredAt)],
 );
+
+/**
+ * Graded stories and dialogues for extensive input (SPEC §5.10). Written by
+ * the tutor model, kept with the learner's answers and reading time.
+ */
+export const stories = sqliteTable(
+  "stories",
+  {
+    id: text("id").primaryKey(),
+    kind: text("kind").notNull(),
+    hskBand: text("hsk_band").notNull(),
+    titleZh: text("title_zh").notNull(),
+    titleEn: text("title_en").notNull(),
+    episode: integer("episode").notNull(),
+    contentJson: text("content_json").notNull(),
+    coverageKnown: integer("coverage_known").notNull(),
+    coverageTotal: integer("coverage_total").notNull(),
+    model: text("model").notNull(),
+    standIn: integer("stand_in").notNull().default(0),
+    createdAt: text("created_at").notNull(),
+    answersJson: text("answers_json"),
+    correct: integer("correct"),
+    answeredAt: text("answered_at"),
+    revealedAt: text("revealed_at"),
+    finishedAt: text("finished_at"),
+    minutes: real("minutes").notNull().default(0),
+  },
+  (t) => [index("stories_created_idx").on(t.createdAt), check("stories_kind_check", sql`${t.kind} IN ('story','dialogue')`)],
+);

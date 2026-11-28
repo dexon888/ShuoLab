@@ -118,5 +118,7 @@ export const progressSummarySchema = z.object({
    * and at least one retrieval (a review rating): SPEC §8.3, in place of a streak.
    */
   meaningfulDays: z.object({ count, dates: z.array(z.string()) }).default({ count: 0, dates: [] }),
+  /** Minutes of story reading and listening outside the sessions (SPEC §5.10). */
+  inputMinutes: z.number().nonnegative().default(0),
 });
 export type ProgressSummary = z.infer<typeof progressSummarySchema>;

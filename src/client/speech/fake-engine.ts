@@ -61,6 +61,14 @@ export class FakeSpeechEngine implements SpeechEngine {
     };
   }
 
+  async synthesize(text: string, _rate: number, options: SpeakOptions = {}): Promise<{ audio: ArrayBuffer; characters: number }> {
+    if (typeof window !== "undefined") {
+      const script = (window.__shuolabFakeSpeech ??= {});
+      (script.spoken ??= []).push(options.voice ? `${text} [${options.voice}]` : text);
+    }
+    return { audio: new ArrayBuffer(0), characters: text.length };
+  }
+
   async speak(text: string, _rate: number, signal: AbortSignal, options: SpeakOptions = {}): Promise<SpeakOutcome> {
     if (typeof window !== "undefined") {
       const script = (window.__shuolabFakeSpeech ??= {});

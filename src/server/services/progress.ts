@@ -248,6 +248,7 @@ FROM review_events WHERE created_at >= ?1`,
     sections: await sections(d1),
     skillBalance: await skillBalance(d1, since),
     meaningfulDays: await meaningfulDays(d1, since, timezone, dates),
+    inputMinutes: ((await d1.prepare("SELECT COALESCE(SUM(minutes), 0) AS m FROM stories WHERE finished_at >= ?1").bind(since).first<{ m: number }>())?.m ?? 0),
   };
 }
 
