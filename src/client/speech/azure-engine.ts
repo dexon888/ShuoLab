@@ -9,9 +9,11 @@
  */
 import type * as SpeechSdk from "microsoft-cognitiveservices-speech-sdk";
 import { MAX_SYNTHESIS_CHARS_PER_EVENT } from "../../shared/speech";
+import { parseAssessment } from "../../shared/pronunciation";
 import { AZURE_VOICE, RECOGNITION_LANGUAGE, buildSsml, readConfidence, utteranceSeconds } from "./ssml";
 import {
   SpeechFailure,
+  type AssessmentOutcome,
   type RecognitionOutcome,
   type SpeakOptions,
   type SpeakOutcome,
@@ -74,6 +76,46 @@ export class AzureSpeechEngine implements SpeechEngine {
   private async config(sdk: Sdk) {
     const { token, region } = await this.credentials();
     return sdk.SpeechConfig.fromAuthorizationToken(token, region);
+  }
+
+  async assess(referenceText: string, signal: AbortSignal): Promise<AssessmentOutcome> {
+    await checkMicrophone();
+    if (signal.aborted) return { kind: "cancelled" };
+    const sdk = await loadSdk();
+    const config = await this.config(sdk);
+    config.speechRecognitionLanguage = RECOGNITION_LANGUAGE;
+    config.outputFormat = sdk.OutputFormat.Detailed;
+    const recognizer = new sdk.SpeechRecognizer(config, sdk.AudioConfig.fromDefaultMicrophoneInput());
+    const assessment = new sdk.PronunciationAssessmentConfig(referenceText, sdk.PronunciationAssessmentGradingSystem.HundredMark, sdk.PronunciationAssessmentGranularity.Word, true);
+    assessment.applyTo(recognizer);
+    const started = Date.now();
+    try {
+      return await new Promise<AssessmentOutcome>((resolve, reject) => {
+        const onAbort = () => resolve({ kind: "cancelled" });
+        signal.addEventListener("abort", onAbort, { once: true });
+        recognizer.recognizeOnceAsync(
+          (result) => {
+            signal.removeEventListener("abort", onAbort);
+            if (signal.aborted) return resolve({ kind: "cancelled" });
+            const seconds = utteranceSeconds(result.duration, Date.now() - started);
+            if (result.reason === sdk.ResultReason.RecognizedSpeech) {
+              const parsed = parseAssessment(result.properties.getProperty(sdk.PropertyId.SpeechServiceResponse_JsonResult));
+              resolve(parsed ? { kind: "assessed", ...parsed, audioSeconds: seconds } : { kind: "no-speech", audioSeconds: seconds });
+            } else if (result.reason === sdk.ResultReason.Canceled) {
+              reject(failureFor(sdk, sdk.CancellationDetails.fromResult(result).ErrorCode));
+            } else {
+              resolve({ kind: "no-speech", audioSeconds: seconds });
+            }
+          },
+          () => {
+            signal.removeEventListener("abort", onAbort);
+            reject(new SpeechFailure("failed"));
+          },
+        );
+      });
+    } finally {
+      recognizer.close();
+    }
   }
 
   async recognize(signal: AbortSignal): Promise<RecognitionOutcome> {

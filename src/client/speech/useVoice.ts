@@ -6,7 +6,8 @@ import { ApiRequestError, apiPost } from "../lib/api";
 import { AzureSpeechEngine, speakWithDeviceVoice } from "./azure-engine";
 import { FakeSpeechEngine } from "./fake-engine";
 import { SpeechTokenSource } from "./token";
-import { SpeechFailure, type RecognitionOutcome, type SpeechEngine, type SpeechFailureKind } from "./types";
+import { startLocalRecording, type LocalRecording } from "./local-recording";
+import { SpeechFailure, type RecognitionOutcome, type SpeechEngine, type SpeechFailureKind, type AssessmentOutcome } from "./types";
 
 export interface SpeechEnvironment {
   /** Whether this browser can record at all: a secure page with microphone access. */
@@ -25,8 +26,11 @@ export const defaultSpeechEnvironment: SpeechEnvironment = {
           const current = await source.get();
           return { token: current.token, region: current.region };
         }),
-  createTokenSource: () => new SpeechTokenSource(),
+  // One token for the whole page: every step and panel that speaks or listens
+  // shares it, so moving through a lesson doesn't use up the per-minute limit.
+  createTokenSource: () => (sharedTokenSource ??= new SpeechTokenSource()),
 };
+let sharedTokenSource: SpeechTokenSource | null = null;
 
 /** Tests replace the engines and the browser checks here. */
 export const SpeechEnvironmentContext = createContext<SpeechEnvironment>(defaultSpeechEnvironment);
@@ -126,6 +130,43 @@ export function useVoice(sessionId: string | null, rate: number) {
       );
     },
     [sessionId],
+  );
+
+  /**
+   * Scores the learner reading `text` aloud (SPEC §7.3). Counted against the
+   * recognition allowance like any listening. Null when nothing was heard.
+   * With `keepCopy`, a real engine's attempt is also recorded into memory for
+   * listening back; it is never uploaded. The stand-in never opens the microphone.
+   */
+  const assess = useCallback(
+    async (text: string, options: { keepCopy?: boolean } = {}): Promise<(Extract<AssessmentOutcome, { kind: "assessed" }> & { mine: Blob | null }) | null> => {
+      let recording: Promise<LocalRecording | null> = Promise.resolve(null);
+      abortRef.current?.abort();
+      const controller = new AbortController();
+      abortRef.current = controller;
+      setState((s) => ({ ...s, phase: "starting", problem: null, speakingTurnId: null, deviceVoiceOffer: null }));
+      try {
+        const { token, engine } = await ready();
+        if (!token.allowance.recognitionAvailable) {
+          setState((s) => ({ ...s, phase: "idle" }));
+          return null;
+        }
+        setState((s) => ({ ...s, phase: "listening" }));
+        if (options.keepCopy && engine.real) recording = startLocalRecording();
+        const outcome = await engine.assess(text, controller.signal);
+        const mine = (await (await recording)?.stop()) ?? null;
+        if (engine.real && outcome.kind !== "cancelled") void report({ kind: "recognition", audioSeconds: outcome.audioSeconds });
+        setState((s) => ({ ...s, phase: "idle", problem: outcome.kind === "no-speech" ? { kind: "no-speech" } : null }));
+        return outcome.kind === "assessed" ? { ...outcome, mine } : null;
+      } catch (error) {
+        void (await recording)?.stop();
+        setState((s) => ({ ...s, phase: "idle", problem: problemFrom(error) }));
+        return null;
+      } finally {
+        if (abortRef.current === controller) abortRef.current = null;
+      }
+    },
+    [ready, report],
   );
 
   /** Listens for one utterance. Returns null when nothing usable was heard. */
@@ -262,5 +303,5 @@ export function useVoice(sessionId: string | null, rate: number) {
   const reveal = useCallback((turnId: string) => recordEvent(turnId, "revealed"), [recordEvent]);
   const clearProblem = useCallback(() => setState((s) => ({ ...s, problem: null, deviceVoiceOffer: null })), []);
 
-  return { state, canRecord: env.canRecord(), listen, speak, speakText, speakCached, speakOnDevice, speakTextOnDevice, stop, reveal, clearProblem };
+  return { state, canRecord: env.canRecord(), listen, assess, speak, speakText, speakCached, speakOnDevice, speakTextOnDevice, stop, reveal, clearProblem };
 }

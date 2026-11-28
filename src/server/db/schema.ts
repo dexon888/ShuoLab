@@ -621,3 +621,25 @@ export const stories = sqliteTable(
   },
   (t) => [index("stories_created_idx").on(t.createdAt), check("stories_kind_check", sql`${t.kind} IN ('story','dialogue')`)],
 );
+
+/**
+ * Scored shadowing attempts (SPEC §7.3, FR-039): Azure's pronunciation
+ * assessment of the learner reading a known sentence. Scores only; the
+ * learner's recording never leaves the device.
+ */
+export const pronunciationAttempts = sqliteTable(
+  "pronunciation_attempts",
+  {
+    id: text("id").primaryKey(),
+    sessionId: text("session_id").references(() => sessions.id, { onDelete: "set null" }),
+    referenceText: text("reference_text").notNull(),
+    accuracy: real("accuracy").notNull(),
+    fluency: real("fluency").notNull(),
+    completeness: real("completeness").notNull(),
+    pronunciation: real("pronunciation").notNull(),
+    wordsJson: text("words_json").notNull(),
+    audioSeconds: real("audio_seconds").notNull(),
+    attemptedAt: text("attempted_at").notNull(),
+  },
+  (t) => [index("pronunciation_attempts_at_idx").on(t.attemptedAt)],
+);

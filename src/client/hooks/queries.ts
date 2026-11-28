@@ -24,6 +24,7 @@ import { dueResponseSchema, rateResponseSchema, type ReviewRating } from "../../
 import { planResponseSchema, sessionListResponseSchema, type PlanRequest } from "../../shared/session";
 import { monthlyUsageResponseSchema, turnResponseSchema, type SourceMode } from "../../shared/tutor";
 import { apiDelete, apiGet, apiPatch, apiPost, apiPut } from "../lib/api";
+import { pronunciationSummarySchema, type PronunciationAttemptRequest } from "../../shared/pronunciation";
 
 export function useMe() {
   return useQuery({ queryKey: ["me"], queryFn: () => apiGet("/me", meResponseSchema) });
@@ -534,4 +535,17 @@ export function useRevealStory(id: string) {
 export function useFinishStory(id: string) {
   const store = useStoreStory(id);
   return useMutation({ mutationFn: (minutes: number) => apiPost(`/stories/${encodeURIComponent(id)}/finish`, { minutes }, storyResponseSchema), onSuccess: store });
+}
+
+export function usePronunciationSummary() {
+  return useQuery({ queryKey: ["pronunciation", "summary"], queryFn: () => apiGet("/pronunciation/summary", pronunciationSummarySchema) });
+}
+
+/** Saves the scores of one shadowing attempt; never the audio (SPEC §7.3). */
+export function useRecordPronunciation() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (body: PronunciationAttemptRequest) => apiPost("/pronunciation/attempts", body, z.object({ id: z.string() })),
+    onSuccess: () => void client.invalidateQueries({ queryKey: ["pronunciation"] }),
+  });
 }

@@ -11,6 +11,7 @@ import { progressRoutes } from "./routes/progress";
 import { testRoutes } from "./routes/tests";
 import { onrampRoutes } from "./routes/onramp";
 import { createStoryRoutes } from "./routes/stories";
+import { pronunciationRoutes } from "./routes/pronunciation";
 import { reviewRoutes } from "./routes/reviews";
 import { createSessionRoutes, type SessionRouteDeps } from "./routes/sessions";
 import { settingsRoutes } from "./routes/settings";
@@ -84,6 +85,7 @@ export function createApp(deps: AppDeps = {}) {
   api.route("/tests", testRoutes);
   api.route("/onramp", onrampRoutes);
   api.route("/stories", createStoryRoutes({ tutor: deps.tutor }));
+  api.route("/pronunciation", pronunciationRoutes);
   api.route("/export", exportRoutes);
   api.route("/my-data", myDataRoutes);
   // This app's own estimate of the month's spending; not a provider bill.

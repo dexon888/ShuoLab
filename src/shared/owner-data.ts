@@ -23,6 +23,7 @@ export const OWNER_TABLES = [
   "assessment_runs",
   "onramp_results",
   "stories",
+  "pronunciation_attempts",
   "conversation_turns",
   "listening_exercises",
   "review_cards",

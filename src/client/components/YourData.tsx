@@ -17,6 +17,7 @@ const TABLE_LABELS: Readonly<Record<OwnerTable, string>> = {
   assessment_runs: "Tests and checkpoints",
   onramp_results: "Sound-system drills",
   stories: "Stories",
+  pronunciation_attempts: "Shadowing scores",
   conversation_turns: "Conversation turns",
   listening_exercises: "Listening exercises",
   review_cards: "Review cards",

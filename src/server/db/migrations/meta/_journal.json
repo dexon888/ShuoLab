@@ -120,6 +120,13 @@
       "when": 1795844124695,
       "tag": "0016_placement_kind",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "6",
+      "when": 1795847738921,
+      "tag": "0017_pronunciation_attempts",
+      "breakpoints": true
     }
   ]
 }

@@ -282,12 +282,28 @@ test("listen first: hear an exchange, answer before seeing the text, then read i
 
 test("notice, read, guided practice and write: the rest of the session's steps (SPEC §5.3)", async ({ page }) => {
   const errors = trackErrors(page);
+  await page.addInitScript(() => {
+    (window as unknown as { __shuolabFakeSpeech: unknown }).__shuolabFakeSpeech = { assessments: [{ accuracy: 82, weak: ["末"] }] };
+  });
   await page.goto("/");
   await page.getByRole("link", { name: /Resume today's session|Open today's plan/ }).click();
 
   // Notice: the exchange heard earlier, now with today's words marked.
   await step(page, "Notice");
   await expect(page.getByRole("region", { name: "Notice" }).locator("mark").first()).toBeVisible();
+  // Shadowing (SPEC §7.3): the stand-in scores the line; the weakest character is offered to replay.
+  const notice = page.getByRole("region", { name: "Notice" });
+  // The earlier tests may have used this minute's six speech tokens; the app
+  // says so and the attempt can be retried once the minute has passed.
+  test.setTimeout(120_000);
+  await expect(async () => {
+    await notice.getByRole("button", { name: /^Shadow line 2/ }).click();
+    await expect(notice.getByText(/Pronunciation 82 · accuracy 82/)).toBeVisible({ timeout: 3_000 });
+  }).toPass({ timeout: 75_000, intervals: [5_000] });
+  await expect(notice.getByRole("button", { name: /Hear 末/ })).toBeVisible();
+  const summary = await (await page.request.get("/api/v1/pronunciation/summary")).json();
+  expect(summary.attempts).toBeGreaterThanOrEqual(1);
+  expect(summary.weakCharacters.map((w: { text: string }) => w.text)).toContain("末");
 
   // Read: written on request, answered before the translation.
   await step(page, "Read");
@@ -319,7 +335,8 @@ test("notice, read, guided practice and write: the rest of the session's steps (
   const saved = await (await page.request.get(`/api/v1/sessions/${sessionId}`)).json();
   expect(saved.materials.reading.correct).toBe(1);
   expect(saved.materials.writing.result.answer).toContain("我今天学了很多新词");
-  expect(errors).toEqual([]);
+  // Only the speech-token limit the shadowing step waited out above.
+  expect(errors.filter((e) => !e.includes("status of 429 (Too Many Requests)"))).toEqual([]);
 });
 
 test("review: words from the finished session come back as cards to rate (SPEC §5.5, FR-014, FR-015)", async ({ page }) => {

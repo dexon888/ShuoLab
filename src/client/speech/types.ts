@@ -1,3 +1,4 @@
+import type { AssessedWord, AssessmentScores } from "../../shared/pronunciation";
 /** What one tap of "Speak" produced. */
 export type RecognitionOutcome =
   | {
@@ -8,6 +9,12 @@ export type RecognitionOutcome =
       /** How long the microphone was open, for the free-tier count. */
       audioSeconds: number;
     }
+  | { kind: "no-speech"; audioSeconds: number }
+  | { kind: "cancelled" };
+
+/** What one scripted pronunciation attempt produced (SPEC §7.3). */
+export type AssessmentOutcome =
+  | { kind: "assessed"; scores: AssessmentScores; words: AssessedWord[]; recognized: string; audioSeconds: number }
   | { kind: "no-speech"; audioSeconds: number }
   | { kind: "cancelled" };
 
@@ -63,6 +70,8 @@ export interface SpeechEngine {
    * audio from the stand-in.
    */
   synthesize(text: string, rate: number, options?: SpeakOptions): Promise<{ audio: ArrayBuffer; characters: number }>;
+  /** Listens to the learner read `referenceText` and scores their pronunciation. Abort to cancel. */
+  assess(referenceText: string, signal: AbortSignal): Promise<AssessmentOutcome>;
 }
 
 export interface SpeakOptions {
