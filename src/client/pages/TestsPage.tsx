@@ -4,13 +4,13 @@
  */
 import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
-import type { Assessment, TestQuestion } from "../../shared/assessment";
+import { PLACEMENT_PER_BAND, PROMOTION_RECALLED, PROMOTION_TEST_SCORE, type Assessment, type Promotion, type TestQuestion } from "../../shared/assessment";
 import { HSK_BANDS, type HskBand } from "../../shared/curriculum";
 import { defaultSettings } from "../../shared/settings";
 import { AsyncStatus } from "../components/AsyncStatus";
 import { PageHeader } from "../components/PageHeader";
 import { Section } from "../components/Section";
-import { useAssessment, useAssessments, useFinishAssessment, useMe, useStartAssessment } from "../hooks/queries";
+import { useAssessment, useAssessments, useFinishAssessment, useMe, usePromotion, useStartAssessment, useUpdateSettings } from "../hooks/queries";
 import { ApiRequestError } from "../lib/api";
 import { problemText } from "../speech/problems";
 import { useVoice } from "../speech/useVoice";
@@ -32,9 +32,35 @@ const SECTION_LABELS: Readonly<Record<TestQuestion["kind"], string>> = {
   speaking_task: "Speaking",
 };
 
-const KIND_LABELS = { band_test: "Band practice test", checkpoint: "Monthly checkpoint" } as const;
+const KIND_LABELS = { band_test: "Band practice test", checkpoint: "Monthly checkpoint", placement: "Placement test" } as const;
 
 const NOT_A_SCORE = "Built from your imported items and scored by fixed keys. Personal tracking only: never an HSK score or pass.";
+
+/** SPEC §2.6 rule 6: the next band is suggested, never forced. */
+function PromotionNotice({ promotion }: { promotion: Promotion }) {
+  const update = useUpdateSettings();
+  const share = promotion.bandSize > 0 ? Math.round((promotion.recalled / promotion.bandSize) * 100) : 0;
+  if (!promotion.next) return null;
+  return (
+    <div className={`mb-6 border-l-4 px-4 py-3 ${promotion.ready ? "border-cobalt bg-wash" : "border-line"}`}>
+      {promotion.ready ? (
+        <>
+          <p className="font-semibold">Ready to move up to {bandName(promotion.next)}?</p>
+          <p className="mt-1">
+            You recall {promotion.recalled} of {promotion.bandSize} {bandName(promotion.band)} words ({share}%) and have passed its practice test {promotion.testPasses} times.
+          </p>
+          <button type="button" disabled={update.isPending} onClick={() => update.mutate({ studyBand: promotion.next ?? undefined })} className="mt-2 min-h-11 rounded-md bg-cobalt px-4 font-semibold text-glaze disabled:opacity-60">
+            Study {bandName(promotion.next)} from now on
+          </button>
+        </>
+      ) : (
+        <p className="text-sm text-mist">
+          Moving up to {bandName(promotion.next)} is suggested once you recall {Math.round(PROMOTION_RECALLED * 100)}% of {bandName(promotion.band)} words (now {share}%) and pass its practice test twice at {Math.round(PROMOTION_TEST_SCORE * 100)}% (now {promotion.testPasses}).
+        </p>
+      )}
+    </div>
+  );
+}
 
 export function TestsPage() {
   const me = useMe();
@@ -43,12 +69,23 @@ export function TestsPage() {
   const navigate = useNavigate();
   const [band, setBand] = useState<HskBand | "">("");
   const chosen: HskBand = band || me.data?.settings.studyBand || "1";
-  const start = (kind: "band_test" | "checkpoint") =>
+  const promotion = usePromotion();
+  const start = (kind: "band_test" | "checkpoint" | "placement") =>
     startTest.mutate({ band: chosen, kind }, { onSuccess: ({ assessment }) => void navigate(`/tests/${assessment.id}`) });
 
   return (
     <>
       <PageHeader zh="测试" en="Tests" summary={NOT_A_SCORE} />
+      {promotion.data?.promotion ? <PromotionNotice promotion={promotion.data.promotion} /> : null}
+      <Section title="Where to start">
+        <p className="mb-3">
+          Not sure which band to study? The placement test asks {PLACEMENT_PER_BAND} words from every band and suggests one,
+          with an estimate of how many words you know.
+        </p>
+        <button type="button" disabled={startTest.isPending} onClick={() => start("placement")} className="min-h-11 rounded-md border border-cobalt px-5 font-semibold text-cobalt disabled:opacity-60">
+          Take the placement test
+        </button>
+      </Section>
       <Section title="Start">
         <label className="block max-w-xs">
           <span className="mb-1 block font-medium">Band</span>
@@ -208,6 +245,28 @@ function Question({
   );
 }
 
+function PlacementResult({ placement }: { placement: NonNullable<NonNullable<Assessment["results"]>["placement"]> }) {
+  const update = useUpdateSettings();
+  return (
+    <div className="mt-3">
+      <p>
+        About <span className="font-semibold tabular-nums">{placement.estimatedWords.toLocaleString("en-US")}</span> syllabus words known, estimated from {placement.sampleSize} questions (corrected for guessing).
+      </p>
+      <ul className="mt-2 space-y-1">
+        {placement.bands.map((b) => (
+          <li key={b.band}>
+            {bandName(b.band)}: {b.correct} of {b.total} right, about {Math.round(b.known * 100)}% known
+          </li>
+        ))}
+      </ul>
+      <p className="mt-2 font-medium">Suggested study band: {bandName(placement.suggestedBand)}.</p>
+      <button type="button" disabled={update.isPending || update.isSuccess} onClick={() => update.mutate({ studyBand: placement.suggestedBand })} className="mt-2 min-h-11 rounded-md bg-cobalt px-4 font-semibold text-glaze disabled:opacity-60">
+        {update.isSuccess ? "Study band saved" : `Study ${bandName(placement.suggestedBand)}`}
+      </button>
+    </div>
+  );
+}
+
 function Runner({ test }: { test: Assessment }) {
   const finish = useFinishAssessment(test.id);
   const [answers, setAnswers] = useState<(number | string | null)[]>(() => test.questions.map(() => null));
@@ -215,7 +274,7 @@ function Runner({ test }: { test: Assessment }) {
   const done = test.results;
   return (
     <>
-      <PageHeader zh="测试" en={`${KIND_LABELS[test.kind]}: ${bandName(test.hskBand)}`} summary={NOT_A_SCORE} />
+      <PageHeader zh="测试" en={test.kind === "placement" ? KIND_LABELS.placement : `${KIND_LABELS[test.kind]}: ${bandName(test.hskBand)}`} summary={NOT_A_SCORE} />
       {test.synthetic ? <p className="mb-4 text-mist">Generated placeholder items for testing, not HSK content.</p> : null}
       {test.frame.task ? (
         <p className="mb-4">
@@ -235,7 +294,10 @@ function Runner({ test }: { test: Assessment }) {
               </li>
             ))}
           </ul>
-          <p className="mt-2 text-sm text-mist">Each answer counts as recall evidence for the item it asked about. {NOT_A_SCORE}</p>
+          {done.placement ? <PlacementResult placement={done.placement} /> : null}
+          <p className="mt-2 text-sm text-mist">
+            {done.placement ? "Placement answers are not counted as recall: guesses would inflate it." : "Each answer counts as recall evidence for the item it asked about."} {NOT_A_SCORE}
+          </p>
         </Section>
       ) : null}
       <form

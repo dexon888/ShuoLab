@@ -167,3 +167,48 @@ describe("sampling the whole band (SPEC §2.6 rule 7, FR-038)", () => {
     expect(ids.some((n) => n > 5800)).toBe(true);
   });
 });
+
+describe("placement and promotion (SPEC §2.6 rule 6, FR-037)", () => {
+  it("asks the same number of words from every band, estimates size and suggests a band, without recording recall", async () => {
+    const test = await start("1", "placement");
+    expect(test.kind).toBe("placement");
+    const row = await database.db.prepare("SELECT metadata_json FROM assessment_runs WHERE id = ?1").bind(test.id).first<{ metadata_json: string }>();
+    const qs = (JSON.parse(row?.metadata_json ?? "{}") as { questions: { band: string; key: number }[] }).questions;
+    const perBand = Object.fromEntries(["1", "2", "3", "4", "5", "6", "7-9"].map((b) => [b, qs.filter((q) => q.band === b).length]));
+    expect(perBand).toEqual({ "1": 6, "2": 6, "3": 6, "4": 6, "5": 6, "6": 6, "7-9": 6 });
+    // Right on bands 1 and 2, wrong after.
+    const answers = qs.map((q) => (q.band === "1" || q.band === "2" ? q.key : (q.key + 1) % 3));
+    const done = assessmentResponseSchema.parse(await (await send("POST", `/tests/${test.id}/answers`, { answers })).json()).assessment;
+    expect(done.results?.placement).toMatchObject({ suggestedBand: "3", sampleSize: 42, estimatedWords: 500 });
+    expect(done.results?.placement?.bands[0]).toMatchObject({ band: "1", correct: 6, total: 6, known: 1 });
+    const attempts = await database.db.prepare("SELECT COUNT(*) AS n FROM practice_attempts").first<{ n: number }>();
+    expect(attempts?.n).toBe(0);
+  });
+
+  it("suggests the next band only when most of this one is recalled and its test is passed twice", async () => {
+    const promo = async () => (await (await send("GET", "/tests/promotion")).json()) as { promotion: { ready: boolean; recalled: number; testPasses: number; next: string } };
+    let p = await promo();
+    expect(p.promotion).toMatchObject({ ready: false, recalled: 0, testPasses: 0, next: "2" });
+    await database.db
+      .prepare("INSERT INTO mastery_states (owner_id, curriculum_item_id, skill, state, first_seen_at, updated_at) SELECT 'owner', id, 'reading', 'developing', '2026-11-01', '2026-11-01' FROM curriculum_items WHERE item_type = 'vocab' AND hsk_band = '1' ORDER BY source_id LIMIT 250")
+      .run();
+    for (let i = 0; i < 2; i++) {
+      const t = await start("1");
+      const k = await keys(t.id);
+      await send("POST", `/tests/${t.id}/answers`, { answers: k.map((x) => x ?? "我今天学了样例词1和样例词2，觉得很有意思，明天还想学。") });
+      await database.db.prepare("UPDATE assessment_runs SET started_at = '2000-01-01' WHERE id = ?1").bind(t.id).run();
+    }
+    p = await promo();
+    expect(p.promotion).toMatchObject({ ready: true, testPasses: 2 });
+    expect(p.promotion.recalled).toBeGreaterThanOrEqual(250);
+  });
+});
+
+describe("word questions on meaning (SPEC §2.6 rule 7, FR-038)", () => {
+  it("asks for the meaning when sourced meanings exist", () => {
+    const words = Array.from({ length: 8 }, (_, i) => ({ id: `w${i}`, hanzi: `样例词${i}`, pinyin: `yàng ${i}`, meaning: `meaning ${i}` }));
+    const [q] = buildQuestions({ words, grammar: [], characters: [], topic: null, task: null }, "band_test", "m");
+    expect(q?.ask).toBe("Choose the meaning of this word.");
+    expect(q?.options.every((o) => o.startsWith("meaning "))).toBe(true);
+  });
+});

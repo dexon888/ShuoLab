@@ -6,7 +6,7 @@ import { ProviderStatusList } from "../components/ProviderStatusList";
 import { Section } from "../components/Section";
 import { TodaySession } from "../components/TodaySession";
 import { UsageBudgetMeter } from "../components/UsageBudgetMeter";
-import { useCurriculumStatus, useDueReviews, useMe, useMonthlyUsage, useOnramp, useProgressSummary } from "../hooks/queries";
+import { useCurriculumStatus, useDueReviews, useMe, useMonthlyUsage, useOnramp, useProgressSummary, usePromotion } from "../hooks/queries";
 import { MIN_OBSERVATIONS, type ProgressSummary } from "../../shared/progress";
 
 /** This week's communication evidence, kept apart from HSK coverage. */
@@ -54,6 +54,7 @@ export function DashboardPage() {
   const due = useDueReviews();
   const usage = useMonthlyUsage();
   const onramp = useOnramp();
+  const promotion = usePromotion();
 
   return (
     <>
@@ -75,6 +76,15 @@ export function DashboardPage() {
           typing Chinese, before your first sessions{onramp.data.units.length > 0 ? " (you have started)" : ""}.{" "}
           <Link to="/start" className="font-medium text-cobalt underline">
             Start here
+          </Link>
+        </p>
+      ) : null}
+
+      {promotion.data?.promotion?.ready && promotion.data.promotion.next ? (
+        <p className="mb-6 border-l-4 border-cobalt bg-wash px-4 py-3">
+          <span className="font-semibold">Ready for the next band?</span> You have reached the suggestion for moving up.{" "}
+          <Link to="/tests" className="font-medium text-cobalt underline">
+            See it on Tests
           </Link>
         </p>
       ) : null}

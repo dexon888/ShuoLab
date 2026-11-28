@@ -68,6 +68,7 @@ describe("tests (SPEC §6.5, FR-027)", () => {
             ],
             correct: 2,
             total: 3,
+            placement: null,
           }),
         });
       },
@@ -83,5 +84,52 @@ describe("tests (SPEC §6.5, FR-027)", () => {
     expect(screen.getByText(/✗ Not this time\./)).toBeInTheDocument();
     expect(sent).toEqual([{ answers: [1, 0, "我今天学了很多。"], spoken: [false, false, false] }]);
     expect(finished).toBe(true);
+  });
+});
+
+describe("placement and moving up (SPEC §2.6 rule 6, FR-037)", () => {
+  it("shows the size estimate and suggested band, and saves it as the study band", async () => {
+    const sent: unknown[] = [];
+    const placed: Assessment = {
+      ...test1({
+        sections: [],
+        questions: [],
+        correct: 14,
+        total: 42,
+        placement: {
+          bands: [
+            { band: "1", correct: 6, total: 6, known: 1, bandSize: 300 },
+            { band: "2", correct: 3, total: 6, known: 0.25, bandSize: 200 },
+          ],
+          estimatedWords: 350,
+          sampleSize: 42,
+          suggestedBand: "2",
+        },
+      }),
+      kind: "placement",
+      questions: [],
+    };
+    renderApp(`/tests/${ID}`, {
+      "/api/v1/me": () => json(me),
+      [`/api/v1/tests/${ID}`]: () => json({ assessment: placed }),
+      "PUT /api/v1/settings": (init) => (sent.push(JSON.parse(String(init?.body))), json({ settings: savedSettings({ studyBand: "2" }) })),
+    });
+    expect(await screen.findByText(/About/)).toHaveTextContent("About 350 syllabus words known, estimated from 42 questions (corrected for guessing).");
+    expect(screen.getByText("HSK 2: 3 of 6 right, about 25% known")).toBeInTheDocument();
+    expect(screen.getByText(/not counted as recall/)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Study HSK 2" }));
+    expect(await screen.findByRole("button", { name: "Study band saved" })).toBeInTheDocument();
+    expect(sent).toEqual([{ studyBand: "2" }]);
+  });
+
+  it("suggests moving up once ready, and says what is still needed when not", async () => {
+    renderApp("/tests", {
+      "/api/v1/me": () => json(me),
+      "/api/v1/tests": () => json({ runs: [], checkpointDue: false }),
+      "/api/v1/tests/promotion": () => json({ promotion: { band: "2", next: "3", bandSize: 200, recalled: 170, testPasses: 2, ready: true } }),
+    });
+    expect(await screen.findByText("Ready to move up to HSK 3?")).toBeInTheDocument();
+    expect(screen.getByText(/You recall 170 of 200 HSK 2 words \(85%\)/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Take the placement test" })).toBeInTheDocument();
   });
 });
