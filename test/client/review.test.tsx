@@ -54,6 +54,9 @@ function due(cards: ReviewCard[], over: Partial<DueResponse> = {}): DueResponse 
 }
 
 class TestEngine implements SpeechEngine {
+  async assess(): Promise<{ kind: "cancelled" }> {
+    return { kind: "cancelled" };
+  }
   async synthesize(text: string): Promise<{ audio: ArrayBuffer; characters: number }> {
     return { audio: new ArrayBuffer(0), characters: text.length };
   }

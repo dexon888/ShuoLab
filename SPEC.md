@@ -393,7 +393,7 @@ This is **an illustrative shape only**. Build a shared Zod schema and infer Type
 If microphone permission, Azure service, device SDK support, or quota fails, allow typed Mandarin answers and still complete the session. Distinguish typed turns from spoken turns in analytics; don't imply a speaking practice occurred.
 
 ### 7.3 P1 pronunciation assessment
-Use Azure's `zh-CN` Pronunciation Assessment only for **known-reference short utterances** and expose the returned supported metrics (for example accuracy/fluency), with a clear confidence caveat. Do not promise tone-specific precision, syllable groups, comprehensive spontaneous conversational scoring, or English-only speech-learning features for Mandarin. Evaluate on devices and non-native recordings before promoting scores to the dashboard.
+Use Azure's `zh-CN` Pronunciation Assessment only for **known-reference short utterances** and expose the returned supported metrics (for example accuracy/fluency), with a clear confidence caveat. Phase 7 uses it for shadowing (FR-039): the reference is a line the learner has just heard, scores are stored without audio, and the learner's own recording stays in the page's memory for listening back. Do not promise tone-specific precision, syllable groups, comprehensive spontaneous conversational scoring, or English-only speech-learning features for Mandarin. Evaluate on devices and non-native recordings before promoting scores to the dashboard.
 
 ### 7.4 Speech edge cases
 - No transcript / silence -> ask to retry, **no automatic failure**.
@@ -576,6 +576,11 @@ Reusable components: `AudioRecordButton`, `AudioPlaybackBar`, `MandarinText` (Ha
 | FR-036 | P0 | Extensive input | Graded stories with audio cached, glosses, questions before translation, input minutes logged |
 | FR-037 | P0 | Placement and promotion | Placement samples every band; promotion is suggested by stated rules |
 | FR-038 | P0 | Whole-band tests | Test items are sampled from the whole band; word questions test meaning or sound in context |
+| FR-039 | P1 | Shadowing | The day's listening lines can be shadowed: Azure pronunciation assessment on the known line, weakest characters shown and replayable, a link to tone drills, the learner's own attempt kept on the device only; scores stored without audio and trended on Progress, labelled as not a tone grade |
+| FR-040 | P1 | Speaking fluency tasks | Retelling and timed narration with speech rate, mean length of run and pauses, tracked over time |
+| FR-041 | P1 | Character system | Components and phonetic series, frequency order, homophone choice; any stroke check kept apart from typed answers |
+| FR-042 | P1 | Bridge to real Mandarin | A pasted text shows known-word coverage and its sentences can become cards; outside listening and reading is logged |
+| FR-043 | P1 | Measurement fixes | Vocabulary size over time and rubric-scored writing, each with its sample |
 | FR-027 | P0 | Band practice test | Deterministic test per band from imported items, scored and stored with sample sizes; feeds mastery; never presented as an HSK score |
 
 ---

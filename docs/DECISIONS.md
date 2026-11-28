@@ -870,3 +870,21 @@ evidence, because a lucky guess would mark a word as recalled.
 80%. The suggestion appears on Tests and Today and changes the study band
 only when the owner presses the button.
 
+
+## 127. Shadowing scores the line just heard, and keeps the learner's voice on the device
+
+Pronunciation assessment is only trustworthy against a known reference, so
+shadowing uses the listening lines the learner has just heard and answered.
+Azure returns hundred-mark accuracy, fluency, completeness and per-word
+accuracy; the app shows them with a note that they are not a tone grade. The
+learner's own attempt is recorded into page memory only when a real engine
+listens, played back from an object URL and revoked on leaving; only scores
+and per-character results reach D1, and the request schema has no field for
+audio. The trend needs 5 attempts before a mean is shown.
+
+## 128. One speech token per page
+
+Each voice component used to fetch its own Azure token, so moving through a
+lesson's steps could reach the six-a-minute limit. The default speech
+environment now hands every component the same in-memory token source; the
+token still never leaves memory and is refreshed shortly before it expires.

@@ -102,6 +102,14 @@ Shadowing with pronunciation assessment, speaking fluency tasks with speech
 rate and pauses, the character system, a bridge to real Mandarin, and
 measurement fixes (SPEC §17 Phase 7).
 
+| # | Branch | What |
+|---|---|---|
+| B1 | `phase-7/shadowing` | Shadowing in Notice with Azure pronunciation assessment, weakest characters, own attempt kept on the device, scores trended on Progress (FR-039). Done |
+| B2 | `phase-7/fluency` | Retelling and timed narration with speech rate, mean length of run and pauses (FR-040) |
+| B3 | `phase-7/characters` | Components, phonetic series, frequency order, homophone choice (FR-041) |
+| B4 | `phase-7/bridge` | Paste a text for coverage and sentence mining; outside-input log (FR-042) |
+| B5 | `phase-7/measurement` | Vocabulary size over time, rubric-scored writing (FR-043) |
+
 ## Phase 8 — Later
 
 Progress toward the operational definition of fluent with external anchors,

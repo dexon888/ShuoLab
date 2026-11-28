@@ -6,7 +6,8 @@ import { AsyncStatus } from "../components/AsyncStatus";
 import { PageHeader } from "../components/PageHeader";
 import { PracticeChart } from "../components/PracticeChart";
 import { Section } from "../components/Section";
-import { useProgressSummary } from "../hooks/queries";
+import { usePronunciationSummary, useProgressSummary } from "../hooks/queries";
+import { SCORE_NOTE } from "../components/ShadowPanel";
 
 const SKILL_LABELS: Readonly<Record<Skill, string>> = { listening: "Listening", speaking: "Speaking", reading: "Reading", writing: "Writing" };
 
@@ -151,6 +152,8 @@ function Summary({ s }: { s: ProgressSummary }) {
         )}
       </Section>
 
+      <Pronunciation />
+
       <SectionsProgress s={s} />
 
       <Section title="Skill balance">
@@ -176,6 +179,41 @@ function Summary({ s }: { s: ProgressSummary }) {
         <p className="mt-2 text-sm text-mist">Attempts are review ratings, guided practice, writing and grammar used in conversation. Typed answers count as writing.</p>
       </Section>
     </>
+  );
+}
+
+/** Shadowing scores over the last attempts (SPEC §7.3). */
+function Pronunciation() {
+  const p = usePronunciationSummary();
+  if (!p.data || p.data.attempts === 0) return null;
+  const { attempts, mean, weakCharacters } = p.data;
+  return (
+    <Section title="Pronunciation">
+      <div className="grid gap-4 sm:grid-cols-3">
+        <Figure
+          label="Pronunciation score"
+          value={mean ? mean.pronunciation : "—"}
+          basis={mean ? `Mean of your last ${Math.min(attempts, 30)} shadowing attempts, out of 100.` : `Insufficient evidence: ${plural(attempts, "attempt", "attempts")} of the 5 needed.`}
+        />
+        <Figure label="Accuracy" value={mean ? mean.accuracy : "—"} basis="How closely the sounds matched." />
+        <Figure label="Fluency" value={mean ? mean.fluency : "—"} basis="Pauses and rhythm while shadowing." />
+      </div>
+      {weakCharacters.length > 0 ? (
+        <p className="mt-3">
+          Most often unclear:{" "}
+          {weakCharacters.map((w, i) => (
+            <span key={w.text}>
+              {i > 0 ? ", " : ""}
+              <span lang="zh-Hans" className="text-lg">
+                {w.text}
+              </span>{" "}
+              <span className="text-sm text-mist">({w.times}×)</span>
+            </span>
+          ))}
+        </p>
+      ) : null}
+      <p className="mt-3 text-sm text-mist">{SCORE_NOTE} It scores reading a known line aloud, not spontaneous speech.</p>
+    </Section>
   );
 }
 

@@ -17,6 +17,7 @@ import { useVoice } from "../speech/useVoice";
 import { ApiRequestError } from "../lib/api";
 import { CardView } from "../pages/ReviewPage";
 import { Section } from "./Section";
+import { ShadowPanel } from "./ShadowPanel";
 import { TaskCheckPanel } from "./TaskCheck";
 
 function errorText(error: unknown): string {
@@ -161,7 +162,7 @@ function Introduce({ plan, glosses }: { plan: SessionPlan; glosses: Glosses }) {
   );
 }
 
-function Notice({ plan, listening, glosses }: { plan: SessionPlan; listening: Exercise | null; glosses: Glosses }) {
+function Notice({ sessionId, plan, listening, glosses, ended }: { sessionId: string; plan: SessionPlan; listening: Exercise | null; glosses: Glosses; ended: boolean }) {
   const words = targetWords(plan);
   const heard = listening !== null && (listening.answeredAt !== null || listening.revealedAt !== null);
   return (
@@ -221,6 +222,14 @@ function Notice({ plan, listening, glosses }: { plan: SessionPlan; listening: Ex
         ) : (
           <p className="mt-1 text-mist">Answer the listening questions first; then the transcript appears here with today's words and patterns marked.</p>
         )}
+        {heard && listening && !ended ? (
+          <div className="mt-4">
+            <h3 className="font-semibold">Shadow it</h3>
+            <div className="mt-2">
+              <ShadowPanel sessionId={sessionId} lines={listening.lines.map((l) => l.zh).filter((zh) => zh.length <= 120).slice(0, 4)} />
+            </div>
+          </div>
+        ) : null}
         {listening && !listening.coversTargets ? (
           <p className="mt-2 text-sm text-mist">This exchange did not use every grammar pattern or enough of today's words; the reading and practice make up for it.</p>
         ) : null}
@@ -572,7 +581,7 @@ export function SessionSpine({ state, listen, conversation, summary }: SpineProp
     warmup: <Warmup onNext={() => go("introduce")} />,
     listen,
     introduce: <Introduce plan={plan} glosses={state.glosses} />,
-    notice: <Notice plan={plan} listening={state.listening} glosses={state.glosses} />,
+    notice: <Notice sessionId={session.id} plan={plan} listening={state.listening} glosses={state.glosses} ended={ended} />,
     read: (
       <MaterialsGate sessionId={session.id} materials={materials} ended={ended}>
         {(m) => <Reading sessionId={session.id} plan={plan} materials={m} />}

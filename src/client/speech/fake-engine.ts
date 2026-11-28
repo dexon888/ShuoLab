@@ -5,7 +5,7 @@
  *
  * Browser tests can script what it "hears" through `window.__shuolabFakeSpeech`.
  */
-import { SpeechFailure, type RecognitionOutcome, type SpeakOptions, type SpeakOutcome, type SpeechEngine, type SpeechFailureKind } from "./types";
+import { SpeechFailure, type AssessmentOutcome, type RecognitionOutcome, type SpeakOptions, type SpeakOutcome, type SpeechEngine, type SpeechFailureKind } from "./types";
 
 export interface FakeRecognition {
   text?: string;
@@ -17,6 +17,8 @@ export interface FakeRecognition {
 
 export interface FakeSpeechScript {
   recognitions?: FakeRecognition[];
+  /** Scores for scripted pronunciation attempts, in order; otherwise every character scores 85. */
+  assessments?: { accuracy: number; weak?: string[] }[];
   /** Every text the stand-in was asked to speak, for tests to read. */
   spoken?: string[];
 }
@@ -59,6 +61,15 @@ export class FakeSpeechEngine implements SpeechEngine {
       confidence: next?.confidence === undefined ? 0.92 : next.confidence,
       audioSeconds: next?.seconds ?? 2.4,
     };
+  }
+
+  async assess(referenceText: string, signal: AbortSignal): Promise<AssessmentOutcome> {
+    const next = typeof window === "undefined" ? undefined : window.__shuolabFakeSpeech?.assessments?.shift();
+    await wait(this.delayMs, signal);
+    if (signal.aborted) return { kind: "cancelled" };
+    const accuracy = next?.accuracy ?? 85;
+    const words = [...referenceText].filter((c) => /\p{Script=Han}/u.test(c)).map((c) => ({ text: c, accuracy: next?.weak?.includes(c) ? 40 : accuracy, error: next?.weak?.includes(c) ? "Mispronunciation" : "None" }));
+    return { kind: "assessed", scores: { accuracy, fluency: accuracy, completeness: 100, pronunciation: accuracy }, words, recognized: referenceText, audioSeconds: 3 };
   }
 
   async synthesize(text: string, _rate: number, options: SpeakOptions = {}): Promise<{ audio: ArrayBuffer; characters: number }> {
