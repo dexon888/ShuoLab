@@ -443,3 +443,10 @@ describe("flagging an unverified row (SPEC §2.5 rule 8, FR-031)", () => {
     expect(sent).toEqual([{ note: "Wrong example" }]);
   });
 });
+
+describe("meanings in the band list (SPEC §2.6 rule 2, FR-033)", () => {
+  it("shows a word's short sourced meaning beside its pinyin", async () => {
+    renderApp("/curriculum/1", { ...base, [ITEMS]: () => json(page([entry(1, { note: "placeholder meaning" })])) });
+    expect(await screen.findByText("placeholder meaning")).toBeInTheDocument();
+  });
+});

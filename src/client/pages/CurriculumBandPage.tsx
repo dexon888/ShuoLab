@@ -98,7 +98,11 @@ function EntryRow({ item }: { item: CurriculumItemSummary }) {
           {item.homograph ? (
             <span className="ml-2 text-sm text-mist">form {item.homograph}</span>
           ) : null}
-          <span className="block text-mist">{item.pinyin}</span>
+          <span className="block text-mist">
+            {item.pinyin}
+            {/* A short sourced meaning (CC-CEDICT); the source is on the entry page. */}
+            {item.note ? <span className="ml-2 text-ink">{item.note}</span> : null}
+          </span>
         </span>
         <span className="shrink-0 text-right text-sm">
           {item.partOfSpeech ? (
