@@ -52,6 +52,7 @@ export function emptyProgress(days = 7, over: Partial<ProgressSummary> = {}): Pr
     sections: { grammar: null, character: null, topics: { met: 0, imported: 0, achieved: 0 }, tasks: { met: 0, imported: 0, achieved: 0 } },
     skillBalance: SKILLS.map((skill) => ({ skill, attempts: 0, successes: 0 })),
     meaningfulDays: { count: 0, dates: [] },
+    inputMinutes: 0,
     ...over,
   };
 }

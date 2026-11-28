@@ -88,6 +88,16 @@ export function DashboardPage() {
         )}
       </Section>
 
+      <Section title="Extra input">
+        <p>
+          The daily session is only part of it: fluency needs hours of listening and reading.{" "}
+          <Link to="/stories" className="font-medium text-cobalt underline">
+            Read or listen to a story
+          </Link>{" "}
+          at the words you know.
+        </p>
+      </Section>
+
       <Section title="HSK curriculum">
         <AsyncStatus
           isPending={curriculum.isPending}

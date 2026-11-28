@@ -57,6 +57,12 @@ export interface SpeechEngine {
    * numbers (e.g. "ma 1") so a drill plays precisely the sound intended.
    */
   speak(text: string, rate: number, signal: AbortSignal, options?: SpeakOptions): Promise<SpeakOutcome>;
+  /**
+   * Synthesizes text to audio without playing it, so it can be cached and
+   * replayed without using the speech allowance again (SPEC §5.10). Empty
+   * audio from the stand-in.
+   */
+  synthesize(text: string, rate: number, options?: SpeakOptions): Promise<{ audio: ArrayBuffer; characters: number }>;
 }
 
 export interface SpeakOptions {

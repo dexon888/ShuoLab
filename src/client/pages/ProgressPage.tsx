@@ -159,6 +159,12 @@ function Summary({ s }: { s: ProgressSummary }) {
           {s.meaningfulDays.count === 1 ? "day" : "days"} in the last {s.window.days}: days on which you both produced
           something (spoke or wrote) and recalled something in review.
         </p>
+        <p className="mb-2">
+          <span className="font-semibold tabular-nums">{Math.round(s.inputMinutes)}</span> minutes of story reading and listening outside the sessions.{" "}
+          <Link to="/stories" className="font-medium text-cobalt underline">
+            Stories
+          </Link>
+        </p>
         <ul className="space-y-1">
           {s.skillBalance.map((b) => (
             <li key={b.skill}>

@@ -5,6 +5,7 @@
 import { SPEECH_TOKEN_REUSE_SECONDS } from "../../shared/speech";
 import { MATERIALS_FORMAT_NAME, type MaterialsOutput } from "../../shared/lesson";
 import { LISTENING_FORMAT_NAME, type ListeningOutput } from "../../shared/listening";
+import { STORY_FORMAT_NAME, type StoryOutput } from "../../shared/stories";
 import { TASK_CHECK_FORMAT_NAME, type TaskCheckOutput } from "../../shared/task-check";
 import type { TutorOutput } from "../../shared/tutor";
 import type {
@@ -135,6 +136,21 @@ export function fakeTaskCheckOutput(request: TutorRequest): TaskCheckOutput {
   };
 }
 
+/** A canned short story from the learner's known words. Not a language model; the right answer is always the first option before shuffling. */
+export function fakeStoryOutput(request: TutorRequest): StoryOutput {
+  const words = request.context.targets.map((t) => t.hanzi);
+  const w = (i: number) => words[i % Math.max(1, words.length)] ?? "朋友";
+  return {
+    title_zh: "样例故事",
+    title_en: "A placeholder story (practice stand-in)",
+    lines: [0, 1, 2, 3].map((i) => ({ speaker: null, zh: `今天我看到了${w(i)}。`, pinyin: "(stand-in)", en: `Today I saw a word. (Practice stand-in.)` })),
+    questions: [
+      { question_en: "What did the writer see? (Practice stand-in.)", options_en: ["A word", "A cat", "A car"], answer_index: 0 },
+      { question_en: "When? (Practice stand-in.)", options_en: ["Today", "Last year", "Never"], answer_index: 0 },
+    ],
+  };
+}
+
 export class FakeTutorProvider implements TutorProvider {
   readonly vendor = "Local fake tutor";
   readonly model = "fake-tutor-1";
@@ -159,7 +175,9 @@ export class FakeTutorProvider implements TutorProvider {
           ? fakeMaterialsOutput(request)
           : request.format?.name === TASK_CHECK_FORMAT_NAME
             ? fakeTaskCheckOutput(request)
-            : fakeTutorOutput(request);
+            : request.format?.name === STORY_FORMAT_NAME
+              ? fakeStoryOutput(request)
+              : fakeTutorOutput(request);
     const text = this.options.respond ? this.options.respond(request) : JSON.stringify(builtIn);
     return { text, usage };
   }

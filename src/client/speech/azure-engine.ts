@@ -117,6 +117,29 @@ export class AzureSpeechEngine implements SpeechEngine {
     }
   }
 
+  async synthesize(text: string, rate: number, options: SpeakOptions = {}): Promise<{ audio: ArrayBuffer; characters: number }> {
+    const ssml = buildSsml(text, rate, options.voice, options.phoneme);
+    const characters = Math.min(MAX_SYNTHESIS_CHARS_PER_EVENT, ssml.length);
+    const sdk = await loadSdk();
+    const config = await this.config(sdk);
+    // No audio output: the result's audio data is returned for caching.
+    const synthesizer = new sdk.SpeechSynthesizer(config, null as unknown as InstanceType<typeof sdk.AudioConfig>);
+    try {
+      return await new Promise((resolve, reject) => {
+        synthesizer.speakSsmlAsync(
+          ssml,
+          (result) => {
+            if (result.reason === sdk.ResultReason.Canceled) reject(failureFor(sdk, sdk.CancellationDetails.fromResult(result).ErrorCode));
+            else resolve({ audio: result.audioData, characters });
+          },
+          () => reject(new SpeechFailure("failed")),
+        );
+      });
+    } finally {
+      synthesizer.close();
+    }
+  }
+
   async speak(text: string, rate: number, signal: AbortSignal, options: SpeakOptions = {}): Promise<SpeakOutcome> {
     const ssml = buildSsml(text, rate, options.voice, options.phoneme);
     // Counted as the whole SSML document, which errs high for the free-tier count.

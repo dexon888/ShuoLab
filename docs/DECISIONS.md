@@ -842,3 +842,17 @@ Longest match against the 11,000 imported words needs no outside
 segmenter or model, and treats any word outside the syllabus as its
 separate characters, which errs toward calling text harder than it is.
 
+## 123. Story audio is cached on the device, not in Cloudflare
+
+Generated speech is synthesized to audio once and kept in the browser's
+Cache Storage keyed by voice, speed and text, so a replay costs no free-tier
+characters and needs no new storage service. Each device keeps its own copy;
+a cleared cache only means the next play is synthesized again.
+
+## 124. Stories are a series at the learner's known words
+
+Each new story continues the last of its kind, which gives a reason to
+return, and is written mostly from known words with its coverage stored.
+Reading time is logged when the learner says they are done, capped at an
+hour, and kept apart from session minutes.
+
