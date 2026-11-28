@@ -35,7 +35,7 @@ is summarised with sample sizes; export is **not built yet**.
 | Grammar, characters, topics and tasks | Imported locally from a second-hand transcription (CC BY 4.0) after its vocabulary matched entry for entry; browsable, used in lesson plans, review, tests and their own progress figures, always labelled unverified and kept apart from verified vocabulary coverage; any row can be flagged as wrong |
 | Sound-system on-ramp | Eight units at /start on pinyin, tones, tone changes and typing, with a tone check in a new voice; recommended on Today until passed |
 | Stories | Graded stories and dialogues at /stories, at your known words, with tap-for-meaning, questions before translation, cached audio and logged input minutes |
-| Tests | Band practice tests and a monthly checkpoint built in code from imported items; personal tracking, never an HSK score |
+| Tests | A placement test across every band that suggests a study band, band practice tests (meaning questions where meanings are imported), a suggestion to move up by a stated rule, and a monthly checkpoint built in code from imported items; personal tracking, never an HSK score |
 | Browsing entries | Working and tested with generated placeholder data |
 | Colloquial expressions (separate from HSK) | Working and tested with generated placeholder rows; not yet run on the real dataset file |
 | Preferences (onboarding, Settings) | Working locally; saved in the database, so they follow you across devices once deployed |

@@ -113,6 +113,13 @@
       "when": 1795769856499,
       "tag": "0015_stories",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "6",
+      "when": 1795844124695,
+      "tag": "0016_placement_kind",
+      "breakpoints": true
     }
   ]
 }

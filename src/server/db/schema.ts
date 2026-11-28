@@ -572,7 +572,7 @@ export const assessmentRuns = sqliteTable(
     /** Answers, per-section scores and sample sizes, once finished. */
     resultsJson: text("results_json"),
   },
-  (t) => [index("assessment_runs_kind_idx").on(t.kind, t.startedAt), check("assessment_runs_kind_check", sql`${t.kind} IN ('band_test','checkpoint')`)],
+  (t) => [index("assessment_runs_kind_idx").on(t.kind, t.startedAt), check("assessment_runs_kind_check", sql`${t.kind} IN ('band_test','checkpoint','placement')`)],
 );
 
 /**

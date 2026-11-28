@@ -18,7 +18,7 @@ import { DELETE_ALL_PHRASE, dataSummaryResponseSchema, deletionResponseSchema } 
 import { progressSummarySchema, type ProgressWindow } from "../../shared/progress";
 import { onrampResultSchema, onrampStatusSchema } from "../../shared/onramp";
 import { storyListResponseSchema, storyResponseSchema } from "../../shared/stories";
-import { assessmentListResponseSchema, assessmentResponseSchema } from "../../shared/assessment";
+import { assessmentListResponseSchema, assessmentResponseSchema, promotionSchema } from "../../shared/assessment";
 import { flagListResponseSchema, flagResponseSchema, taskCheckResponseSchema } from "../../shared/task-check";
 import { dueResponseSchema, rateResponseSchema, type ReviewRating } from "../../shared/review";
 import { planResponseSchema, sessionListResponseSchema, type PlanRequest } from "../../shared/session";
@@ -446,10 +446,14 @@ export function useAssessment(id: string) {
   return useQuery({ queryKey: ["tests", id], queryFn: () => apiGet(`/tests/${encodeURIComponent(id)}`, assessmentResponseSchema) });
 }
 
+export function usePromotion() {
+  return useQuery({ queryKey: ["tests", "promotion"], queryFn: () => apiGet("/tests/promotion", z.object({ promotion: promotionSchema.nullable() })) });
+}
+
 export function useStartAssessment() {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: (body: { band: HskBand; kind: "band_test" | "checkpoint" }) => apiPost("/tests", body, assessmentResponseSchema),
+    mutationFn: (body: { band: HskBand; kind: "band_test" | "checkpoint" | "placement" }) => apiPost("/tests", body, assessmentResponseSchema),
     onSuccess: (result) => {
       client.setQueryData(["tests", result.assessment.id], result);
       void client.invalidateQueries({ queryKey: ["tests", "list"] });
@@ -465,6 +469,7 @@ export function useFinishAssessment(id: string) {
     onSuccess: (result) => {
       client.setQueryData(["tests", id], result);
       void client.invalidateQueries({ queryKey: ["tests", "list"] });
+      void client.invalidateQueries({ queryKey: ["tests", "promotion"] });
       void client.invalidateQueries({ queryKey: ["progress"] });
     },
   });

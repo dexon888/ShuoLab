@@ -856,3 +856,17 @@ return, and is written mostly from known words with its coverage stored.
 Reading time is logged when the learner says they are done, capped at an
 hour, and kept apart from session minutes.
 
+## 125. Placement samples every band and corrects for guessing
+
+Six words a band, 42 in all, each with three options, so a band's raw score
+is corrected for guessing ((p - 1/3) / (2/3)) before it counts as known. The
+suggested band is the first under 80% known; the estimate of words known is
+shown with its sample size. Placement guesses are not recorded as recall
+evidence, because a lucky guess would mark a word as recalled.
+
+## 126. Moving up is suggested, by a stated rule
+
+80% of the band recalled in reading and its practice test passed twice at
+80%. The suggestion appears on Tests and Today and changes the study band
+only when the owner presses the button.
+
